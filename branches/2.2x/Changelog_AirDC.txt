@@ -1,0 +1,525 @@
+2.0.0.2
+
+#Removed Limiter
+#Re-arranged Toolbar, Deleted some buttons (Need a new toolbar image, similiar pics as AirDC had)
+#Changed Background Color & Text color
+
+2.0.0.3
+
+#Added regexp to ADL Search, with additional support for old fulDC/AirDC++ format searches
+#Added background image
+#Added reconnect disconnected
+#Changed some Default Settings
+#Added Hideshare (Needs testing)
+
+2.0.0.4
+#Changed to using FulDC style Tabs
+#Added Tabs Pages in settings
+#Added Multimark in hublist
+#Added ignore PM to hubs
+
+2.0.0.5
+#Added Support for iTunes, Mpc , WMP, Winamp
+#Added Media toolbar
+#Added winamp window
+#Added improved IgnoreManager from ApexDC++
+
+2.0.0.6
+#Deleted TabsPage, Moved all to FulTabsPage
+#Added ExtraPage
+#Moved Mediaplayer things to ExtraPage
+#Added Peerguardian
+
+2.0.0.7
+#Added Add to fav if speed is more than
+#Added Open x hubs on start
+#Added Virus scan after dl
+#Small fixes
+#Moved Max tab rows to TabsPage
+#Added Update ip on Startup
+
+2.0.0.8
+#Some ADLSearch fixes
+#Few other small optimizations
+#Added Client command /prvstats
+#Added Client Command /speed
+#/help in English now
+#Added show Client Commands
+#Added show server commands
+#Added AirDownloadsPage
+#Extrapage is now AirDCPage
+#New settings Tree order
+#Added skiplist for share
+#Added minislots for extension
+#Fixed tag in ADC hub
+#Fixed Hide share (Emptyfiles)
+#Small fix for FavNoPM
+#Added ApexDC++ style popups
+#Added AirSharingPage in settings
+#Moved Minislots for extension to AirSharingPage
+#Moved skiplist for share to AirSharingPage
+#Moved Background Image setting to AirDCPage
+#New Settings Tree icons
+#Added Skiplist for Download
+#Added HighPrio Files
+#Added "remove File from queue" in Transfers righclick menu
+#Added possibility to Copy Directoryname in filelistMenu
+#Added Copy Path in filelistMenu
+#Added CopyMenu in TransferView
+#Added FlashWindow Options
+
+2.0.0.9
+#Added Highlights
+#Added AutosearchPage(min autosearch time 3min)
+	-Results Download, Add to queue
+#Added Pause in HashProgress
+#Added AirAppearancePage
+#Moved Background image setting to AirAppearancePage
+#Moved Flashwindow options to AirAppearancePage
+#Moved NAtural sort option to AirAppearancePage
+#Moved Show Server&Client commands options to AirAppearancePage
+#Added Toolbar Icon Size Setting to allow different TB sizes.
+#Added Get IP button
+#Added Setting to enable highlights or not
+#Added Dupe color setting
+
+
+
+
+
+
+
+
+2.01 Beta 1
+#Removed Limiter
+#Re-arranged Toolbar, Deleted some buttons (Need a new toolbar image, similiar pics as AirDC had)
+#Changed Background Color & Text color
+#Added regexp to ADL Search, with additional support for old fulDC/AirDC++ format searches
+#Added background image
+#Added reconnect disconnected
+#Changed some Default Settings
+#Added Hideshare
+#New Tabs style
+#Added TabsPage in settings
+#Added Multimark in hublist
+#Added ignore PM to hubs
+#Added Support for iTunes, Mpc , WMP, Winamp
+#Added Media toolbar
+#Added winamp window
+#Added IgnoreManager
+#Added Peerguardian
+#Added Add to fav if speed is more than
+#Added Open x hubs on start
+#Added Virus scan after dl
+#Small fixes
+#Moved Max tab rows to TabsPage
+#Added Update ip on Startup
+#Some ADLSearch fixes
+#Added Client command /prvstats
+#Added Client Command /speed
+#/help in English now
+#Added show Client Commands
+#Added show server commands
+#Added AirDownloadsPage
+#Extrapage is now AirDCPage
+#New settings Tree order
+#Added skiplist for share
+#Added minislots for extension
+#Added Custom popups, Popup Bitmap (ApexDC++ style settings)
+#Added AirSharingPage in settings
+#Moved Minislots for extension to AirSharingPage
+#Moved skiplist for share to AirSharingPage
+#Moved Background Image setting to AirDCPage
+#New Settings Tree icons
+#Added Skiplist for Download
+#Added HighPrio Files
+#Added "remove File from queue" in Transfers righclick menu
+#Added possibility to Copy Directoryname in filelistMenu
+#Added Copy Path in filelistMenu
+#Added CopyMenu in TransferView
+#Added FlashWindow Options
+#Added Highlights
+#Added AutosearchPage(min autosearch time 3min)
+	-Results Download 
+	-Add to queue
+#Added Pause in HashProgress
+#Added AirAppearancePage
+#Moved Background image setting to AirAppearancePage
+#Moved Flashwindow options to AirAppearancePage
+#Moved NAtural sort option to AirAppearancePage
+#Moved Show Server&Client commands options to AirAppearancePage
+#Added Toolbar Icon Size Setting to allow different TB sizes.
+#Added Get IP button
+#Added Setting to enable highlights or not
+#Added Dupe color setting
+
+
+2.01 Beta 2
+#Fixed ADL
+#Added Option to disable Progress Bars in queue
+#Added client command /df 
+#Added client command /info
+#Fixed rightclick in filelists
+#Added CDM switch
+
+2.02 Beta 1
+#StrongDC++ 2.06 merge (core update)
+#StrongDC++ 2.1 merge (core update)
+#Added Language setting (Finnish language is in but no language file yet)
+#Copy multiple selected in filelists
+#Removed Webserver
+#Added Setup project
+#Added client commands /df /speed in PM too
+#Added Media spam in PM
+#Added Search And Search By TTH in mainchat
+#Added Protected Users String
+#Added Google, IMDB, As Url righclicks in mainchat righclick menu
+#Added Black Theme button to quick set old Xion++ theme. 
+#Added Expand search results can now be set as default like only free slots
+#StrongDC+ 2.11 merge
+#Added Norwegian language in settings
+#Added refresh filelist Button in Toolbar
+#Added open downloads directory Button in Toolbar
+#Updated fakeshare checking
+
+2.0.2.1
+#StrongDc++ svn merge
+#Added regexp to protected users string
+#Added regexp to share skiplist
+#Added regexp to highprio files
+#Added regexp to downloads skiplist
+#StrongDC++ svn 366 merge
+#StrongDC++ svn 371 merge
+#Added Client Command /back
+#Added Copy filename with path to search frame
+#Added ALT+1-0 1-10 window shortcuts 
+#StrongDC++ svn 372 merge
+
+2.03
+#upgraded to VS2008
+#Fixed popup dialog on Norwegian language setting
+#Added case insensitive option to regexp
+#Added regexp tester
+#Added comment string to regexp
+#(parameters are: userAC, userAI for comment and filename) 
+#StrongDC++ merge
+#ADL list should now be compatible with ApexDC++ (for some standardization) 
+#Added min segment size 
+#Added raw & regexp columns to adl frame 
+#Fixed comments display problem in adl 
+#Added Hubtracker hublist
+#Added Hublist.co.uk hublist
+#Added Virtual Folders for share (DC++ svn)
+#Fixed Min Segment size
+#Fixes for Virtual folders
+#AirDownloadsPage HighPrio has now top priority unless priority is Highest
+#Fixed Usercommands
+#Added Portuegese Brazialian language in settings
+#Added raw on PeerGuardian match
+
+2.04
+
+#StrongDC++ merge
+#Some bug fixes
+#Fixed Media toolbar tooltips
+#Added Option to open logs internally(ApexDC++)
+#Added button to window menu to open systemlog
+#Added copy exact size in filelists
+#Added File type column in Finished downloads
+#Added some of Toasts regex in default settings (Thanks Toast, finally remembered)
+#Fixed Highlight regex
+#Fixed some colors in filelists
+#Added option to use Dupe color for text instead of background
+#Fixed "is kicking" to status bar if sent from the hub with no user name
+#Some Client Update system fixes
+#Added Language file update system
+#Fixed issue with userlist sorting
+#Some Media toolbar changes
+#Added Copy "Info" in userlist copymenu
+#Fixed "update ip on startup" prob with coral
+#Some Bug fixes
+#Added System Log
+#Added Button in toolbar for System Log
+
+2.05
+#Most missing strings in translations fixed.
+#Speed up client startup, share refresh starts with a delay.
+#Fix natural sort in search.
+#Fix copy in search.
+#If partial filelist fails when searching for alternates then grab whole list and match queue
+#If browse filelist fails then grab whole list
+#Change back to PCRE Regexp engine and updated PCRE to 7.7
+#Support for FulDC Regexp ADLSearch files and hopefully better compabality when loading others to.
+#Fixed System log button is not pressed if system log is closed from tab.
+#Added remember filetype of last search
+#Fixed crash on pm
+#Updated PCRE to 7.8
+#Sdc svn 426 merge
+#Fixed ADL RegExp crash when opening multiple file lists at once.
+#Fixed crash when sending pm
+#Added some more strings in translations fixed
+#Fixed Copy size in DirectoryListingFrame
+#Fixed Copy path so full directory is copied in DirectoryListingFrame ADL directory
+#Added Max resize lines(ApexDC++)
+#Added Don't share empty directories(ApexDC++)
+#Added Only share fully hashed directories(ApexDC++)
+#Added Don't show emoticons in messages with links(ApexDC++)
+#Fixed adcs:// links
+#Added Right-click Usercommands can be used on own nick in main chat
+#Added Refresh delay setting for the startup refresh
+#Removed winamp frame
+#Shared path is remembered in settings on startup if forget to start external hdd or something
+#Added Readable magnet links
+#Fixes for partial and Filelists from searchframe
+#Added client command /uptime
+#Added Option to grant Free slots to fellow AirDC++ users ;)
+#Changed style to Black and white
+#Fixed Remove file from queue for filelists
+
+#Known 2.05 beta BUG's:
+Download from Search Frame might fail if remote client don't support Partial filelist. Use Get file list to download stuff.
+Download from Search Frame will not download subdir (bug or not?), Use Get file list to download subdir.
+
+
+
+2.06 beta
+#Added /topic and /ctopic
+#fixed update dialog so it's always topmost
+#fixed number of segments in download queue frame matches min segment size
+#Added segment patch https://bugs.launchpad.net/dcplusplus/+bug/317339
+#Sdc merge
+#Fixed hideshare
+#Fixed autosearch crash
+#Added Dupe color in search
+#Logmanager shows when allready shared file is blocked from downloading
+#Added Russian & French languages
+#Added Copymenu in finished transfers (Requested by KaKtuScAr, Rest in peace m8)
+#Sdc svn435 merge
+
+
+2.07
+#Removed Peerguardian 
+#sdc svn461 merge
+#Added Client password protection
+#Added forbidding the share of DownloadDirectory
+#Added tab icon change based on Reg/Op/Normal
+#Added Disallow connection to hubs without password option 
+#Added Total Queue Size to Mainframe statusbar
+#Added Total Time left (thanks john)
+#Added Bold Hub's Tabs on kick messages
+#Added readd all sources to queue command
+
+#sdc merge
+#Small error Fixes
+#added Search Skiplist
+#Added Search Skiplist preset settings
+#AutosearchPage = Search Page
+#Using Stlport git
+#Fixed Queuepriority change on restart
+#added favorites.xml.bak to backup favorites file
+#DC bzr fixes
+#Fixed bug in startup refresh
+#Added /Refresh path, ability to refresh part of share
+#Added dropdown menu for refresh filelist in toolbar
+#Totaltimeleft not show 0:00:00 when download not running.
+#Option to disable refresh when use Sharepage Settings.
+#Options to Choose between full refresh or partial refresh: only changed virtualnames.
+#Icons folder in client contains icons to make client more customable with icons sets
+#sdc svn 479 merge
+#Added Option "Automatically add sources from search".
+#Sdc svn 481 merge
+#File exists at target location error contains filename now.
+
+
+2.08 Beta 1
+#Sdc merge
+#Using VS2010 now
+#Built an installer
+#Client update system changed to more automated (affects updating from this version)
+#Test Write system to test write privileges for AirDC++ common folders (Settings, Incomplete, downloads, exepath)
+#Test write can be disabled in settings->advancedPage
+
+Client update:
+Prompts for an update, on click download, client downloads the update installer when download is finished
+user is asked to update, if user dont wish to update at that time the client will ask again when closing AirDC++.
+
+
+2.08 Beta 2
+#Added Incoming folders refresh:
+-select incoming by checking folder in share
+-set incoming refresh time to refresh incoming every x min
+-/refresh incoming in chat will refresh only incoming folders
+- Incoming refresh will refresh all share folders unders same virtual name 
+
+2.08 Beta 3
+#Added option Advancedpage "Use ADLSearch on Filelists"
+#Added option Advancedpage "Use ADLSearch on Own Filelist"
+#Sdc merge
+#Added Option QueuePage "Dont dl files already in queue" (fixes issue with file not downloaded if sample is same tth)
+#Some DC++ bzr merge
+#removed Cdm (Thanks Lansh)
+#Userlist icons changed (Thanks Lansh)
+#Added option "Show Joins / parts" in favoritehubs
+#"matched (x) files" will now show the correct match count of files.
+ 
+#Fixed TLS transfers on nmdc
+#Added Searchmenu in filelist rightclickmenu
+#Added Possibility to copy from multiple lines in searchFrame
+#Add Finished files to share instantly(if shared) option in advancedpage
+#Added Auto Expand Downloads in TransferView option in queuepage
+
+2.09 Beta 1
+#Fixed open own list before startup refresh
+#Added more sites for site search //Maksalaatikko
+#Improved title detection for site search //Maksalaatikko
+#Added User nick color settings in Colors & Fonts page //Maksalaatikko
+#Fixed SystemUptime
+#Added System log options in LogPage
+#Added option to show Finished Uploads in systemlog
+#Added option to show Finished Downloads in systemlog
+#Added Copy Directory menu item in search and filelists //Maksalaatikko
+#Added Site search in search window //Maksalaatikko
+#Built Settings Wizard
+#Format releasenames as links, search the release when clicking it //Maksalaatikko
+#Chat rightclick search will now search for whole word.
+#Double click on identified releasename in chat will do a search
+#Perform SFV check for files being hashed (+option to disable the check) //Maksalaatikko
+
+2.09 Beta 2
+#Shell menu for Own Filelist
+#New /stats spam (RSX++) //Maksalaatikko
+#Taskbar improvements for Win7 (ApexDC++) //Maksalaatikko
+#Added Search Directory for alternatives in filelist //Maksalaatikko
+#View as text in own filelist //Maksalaatikko
+#Site Search in Queue
+#View as Text can now handle links and releasenames
+#View Chat History Rightclick commands
+#Max View Chat History lines setting in experts only page
+#Some fixes
+#Highlight option to apply highlights in Nicklist
+#Mainchat logging option for each fav hub //Maksalaatikko
+#"Search for alternates" for queue directories //Maksalaatikko
+#App icon changeable in icons folder
+#AutoSearch option to post result in mainchat
+#Non Recursive pcre regex matches for adlsearch (still faster than boost?)
+#Scan share for missing files function in MainWindow File menu
+#Scan folder for missing files rightclick in own filelist
+
+
+
+2.10
+
+Added:
+
+#Chat notification icon for hub mainchat messages + rightclick select on tab
+#SFV checker for an own filelist and finished downloads window //maksalaatikko
+#"Find and view NFO" for search window //maksalaatikko
+#Path coloring and possibility to open folder in systemlog
+#CTRL + W suppost for closing tabs
+# /ratio /r Commands (Thanks Alehk)
+#Sort directories First in search option in searchpage settings
+#Stop button to Hashing progress dialog
+#Open folder righclick on a dupe file in search window
+#Detection for Spotify links, Spotify toolbar and Spotify spam //maksalaatikko
+#Added settings "Don't share files bigger than X MB" (set to 600MB by default for RAR users) //maksalaatikko
+#The share scanner will now report empty folders //maksalaatikko
+#Open Folder rightclick in queue
+#Save the search history into config file //maksalaatikko
+#Dupe color release folders in search
+
+Changed:
+
+#Rewritten link detection code: links with all protocols will be detected with regex without hardcoded protocols
+ (using modified regex from http://daringfireball.net/2010/07/improved_regex_for_matching_urls ) //maksalaatikko
+#sdc merge
+#Total time left shows the total time of a download folder
+#Sort by virtualnames in sharingpage settings
+#Improved os version detection in /stats  //maksalaatikko
+#Links revised in the help menu //maksalaatikko
+#The share scanner will detect missing NFO files and extra files in Sample folders better + a bit better performance //maksalaatikko
+#Better support for the following release types in the share scanner: apps/0day, lossless audio, audiobooks, mvids //maksalaatikko
+#/df works with folder mounted disks, and shows network mounted disks separately
+#Alternate search adds source to all rars in same folder with 1 search
+
+#Minimium segment size setting is moved to Queue Page in settings!!!
+#user Icons state if user is detected using airdc++
+
+Fixed:
+
+#Open Folder rightclicks in own filelist
+#Many mainwindow freezes with big shares
+#Hideshare on partial filelist ( thanks iceman50)
+#Fixed rebuild
+#Fix own list shellmenu for files
+#The scanner won't report any files in subfolders as missing now //maksalaatikko
+#Fix autosearch for directory types
+#fix alternate search with queue dir menu
+
+
+
+
+2.20
+
+Added:
+
+#Multiple connections per user and a dedicated slot for partial lists and small files (ADC only)
+#Show modify dates, folder sizes and dupes in partial lists
+#Automatic detection for download/upload limits
+#IPv6 support for recent Windows versions (StrongDC++)
+#New ADC extensions: ZLIF (Dice!++), KP (DC++) and LC
+#The window positions are now being saved
+#Favorite Download directories can be ordered in settings
+#An option to choose if recursive partial lists are always being used for adding sources for the whole release
+#An option to set the download speed in settings + validation for all line speed values
+#Broadcast the download speed for all users in ADC hubs
+#/save command for saving share cache ( for big sharing users )
+#Autosearch option to spesify "download to" path
+#Autosearch option to remove item after found
+#Download & Download to rightclick for releasenames in chat ( release is added to autosearch list! )
+#Added options for ignoring files in skiplist and empty files when scanning the share
+!!Warning Adding Release to autosearch list enables AUTOSEARCH, so check old items in the list!!
+
+#"Skip files smaller than" setting for subtract filelist in airsharingpage (will only skip if 2 or less files in dir)
+#Dupe releases and magnet links are also being detected in chat
+
+Changed:
+
+#The program will now be installed to Program Files\AirDC++ by default, if an old installation isn't being found
+#The program is being launched by default when the installation has been finished
+#removed some nowadays useless refresh settings
+#Better performance for detecting dupe folders in search
+#Don't show "Matched X files" when matching partial lists
+#Option expand downloads in transferview => not group them
+#Updated pcre regex
+#SDC (DC++ core) merge (connection auto detection improvements, the KEYP ADC extension etc.)
+#New wizard layout
+#Show the formated size for folders in ADC searches
+#Use recursive partial list for downloading incomplete folders from partial lists
+#cache share to share.xml instead of bzipping it(faster)
+#Allow adding multiple partial filelists from the same user in the queue
+#Dupe folder check is also performed for release subfolders
+#New link formating which allows changing the link color and style
+#Rearranged update dialog
+#Imporoved loading speed for partial lists
+#Don't insert Emoticons in the middle of words
+
+Fixed:
+
+#A few crashes
+#The option to disable SFV check for hashed files is working now
+#The scanner will ignore oversized SFV files and too short filenames in SFV files and won't check hidden system folders
+#Hidden system folders are also considered as hidden now
+#Auto Away mode with minimized to tray
+#prevent the password protect dialog from showing multiple times
+#Detect invalid SFV files when scanning the share
+#Detect quoted file names in SFV files
+#Download all folders with an unknown content from partial file lists (not just the first one selected)
+Fix Many crashes on ownlist functions
+#Show the correct version number in update dialog for stable releases
+#Don't change the settings when clicking OK in the wizard if the profile hasn't been changed
+#Display the Emoticon colors correctly (ApexDC++)
+
+Removed:
+
+#Refresh delay setting (client wont refresh on startup unless couldnt load share cache)
+#The options "Extra slots for fellow AirDC users" and "Maximum simultaneous files" 
