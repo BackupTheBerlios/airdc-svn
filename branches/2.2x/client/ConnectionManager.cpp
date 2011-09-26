@@ -89,8 +89,10 @@ void ConnectionManager::getDownloadConnection(const HintedUser& aUser, bool smal
 				if ((!smallSlot && cqi->isSet(ConnectionQueueItem::FLAG_SMALL_CONF)) || (smallSlot && !cqi->isSet(ConnectionQueueItem::FLAG_SMALL_CONF))) {
 					continue;
 				}
-				dcdebug("Returning1!");
-				return;
+				if (!cqi->isSet(ConnectionQueueItem::FLAG_REMOVE)) {
+					dcdebug("Returning1!");
+					return;
+				}
 			}
 		}
 		if (smallSlot && !supportMcn && found) {
@@ -229,6 +231,8 @@ void ConnectionManager::on(TimerManagerListener::Second, uint64_t aTick) noexcep
 					fire(ConnectionManagerListener::Failed(), cqi, STRING(CONNECTION_TIMEOUT));
 					cqi->setState(ConnectionQueueItem::WAITING);
 				}
+			} else if (cqi->isSet(ConnectionQueueItem::FLAG_REMOVE)) {
+				cqi->unsetFlag(ConnectionQueueItem::FLAG_REMOVE);
 			}
 		}
 		for(ConnectionQueueItem::Iter m = removed.begin(); m != removed.end(); ++m) {
@@ -1012,7 +1016,6 @@ void ConnectionManager::failed(UserConnection* aSource, const string& aError, bo
 			for(ConnectionQueueItem::Iter i = downloads.begin(); i != downloads.end(); ++i) {
 				ConnectionQueueItem* cqi = *i;
 				if (aSource->getToken() == cqi->getToken()) {
-					dcassert(i != downloads.end());
 					if (cqi->getState() == ConnectionQueueItem::IDLE) {
 						cqi->setState(ConnectionQueueItem::WAITING);
 						cqi->setFlag(ConnectionQueueItem::FLAG_REMOVE);

@@ -246,7 +246,7 @@ static QueueItem* findCandidate(QueueItem* cand, QueueItem::StringMap::iterator 
 
 QueueItem* QueueManager::FileQueue::findAutoSearch(StringList& recent){
 	// We pick a start position at random, hoping that we will find something to search for...
-	 auto start = (QueueItem::StringMap::difference_type)Util::rand((uint32_t)queue.size());
+	 auto start = (QueueItem::StringMap::size_type)Util::rand((uint32_t)queue.size());
 
 	auto i = queue.begin();
 	advance(i, start);
@@ -445,7 +445,6 @@ int QueueManager::FileMover::run() {
 		}
 		moveFile_(next.first, next.second);
 	}
-	return 0;
 }
 
 void QueueManager::Rechecker::add(const string& file) {
@@ -848,7 +847,10 @@ void QueueManager::add(const string& aTarget, int64_t aSize, const TTHValue& roo
 		QueueItem* q = fileQueue.find(target);	
 		if(q == NULL) {
 			q = fileQueue.add(target, aSize, aFlags, QueueItem::DEFAULT, tempTarget, GET_TIME(), root);
-			updateDirSize(q->getTarget(), q->getSize(), true);
+			
+			if(!(aFlags & QueueItem::FLAG_USER_LIST))
+					updateDirSize(q->getTarget(), q->getSize(), true);
+			
 			fire(QueueManagerListener::Added(), q);
 
 			newItem = true;
@@ -1525,7 +1527,9 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool reportFi
 								fire(QueueManagerListener::StatusUpdated(), q);
 							}
 						}
+						if(!q->isSet(QueueItem::FLAG_USER_LIST)) 
 						updateDirSize(q->getTarget(), q->getSize(), false);
+
 						setDirty();
 					}
 				} else {
@@ -1591,7 +1595,7 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool reportFi
 		ConnectionManager::getInstance()->getDownloadConnection(*i);
 	}
 
-	if(!fl_fname.empty()) {
+	if(!fl_fname.empty() && fl_user.user) {
 		processList(fl_fname, fl_user, fl_path, fl_flag);
 	}
 
@@ -1727,7 +1731,9 @@ void QueueManager::remove(const string& aTarget) noexcept {
 			userQueue.remove(q);
 		}
 		fileQueue.remove(q);
+		if(q->isSet(QueueItem::FLAG_USER_LIST)) 
 		updateDirSize(q->getTarget(), q->getSize(), false);
+
 		setDirty();
 	}
 
@@ -2220,7 +2226,7 @@ void QueueManager::on(ClientManagerListener::UserConnected, const UserPtr& aUser
 		}
 	}
 
-	if(hasDown)	{
+	if(hasDown && aUser->isOnline()) { //even tho user just connected, check if he is still online and that we really have a user.
 		// the user just came on, so there's only 1 possible hub, no need for a hint
 		ConnectionManager::getInstance()->getDownloadConnection(HintedUser(aUser, Util::emptyString));
 	}
@@ -2390,7 +2396,7 @@ bool QueueManager::handlePartialResult(const HintedUser& aUser, const TTHValue& 
 	}
 	
 	// Connect to this user
-	if(wantConnection)
+	if(wantConnection && aUser.user->isOnline())
 		ConnectionManager::getInstance()->getDownloadConnection(aUser);
 
 	return true;

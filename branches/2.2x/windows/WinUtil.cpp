@@ -1952,9 +1952,11 @@ tstring WinUtil::UselessInfo() {
 }
 
 tstring WinUtil::DiskSpaceInfo(bool onlyTotal /* = false */) {
-
-	
 	tstring ret = Util::emptyStringT;
+	//support XP and higher
+	if((LOBYTE(LOWORD(GetVersion())) >= 5 && WinUtil::getOsMinor() >= 1) 
+		|| (WinUtil::getOsMajor() >= 6)) {
+
 	int64_t free = 0, totalFree = 0, size = 0, totalSize = 0, netFree = 0, netSize = 0;
 
    TCHAR   buf[MAX_PATH];  
@@ -2017,6 +2019,9 @@ tstring WinUtil::DiskSpaceInfo(bool onlyTotal /* = false */) {
 		
 
 	volumes.clear();
+	}else{
+		ret+=_T("Not Supported by OS");
+	}
 	return ret;
 }
 
@@ -2032,13 +2037,17 @@ BOOL WinUtil::FindVolume(HANDLE hVol, TCHAR *Buf, int bufSize) {
 }
 
 tstring WinUtil::diskInfo() {
+
+	tstring result = Util::emptyStringT;
 	
+	if((LOBYTE(LOWORD(GetVersion())) >= 5 && WinUtil::getOsMinor() >= 1) 
+		|| (WinUtil::getOsMajor() >= 6)) {
+
    TCHAR   buf[MAX_PATH];  
    HANDLE  hVol;    
    BOOL    found;
    TCHAR   buf2[MAX_PATH];
    int64_t free = 0, size = 0 , totalFree = 0, totalSize = 0;
-   tstring result = Util::emptyStringT;
    
    std::vector<tstring> results; //add in vector for sorting, nicer to look at :)
    // lookup drive volumes.
@@ -2097,6 +2106,9 @@ tstring WinUtil::diskInfo() {
    
    results.clear();
    volumes.clear();
+	}else{
+	result += _T("Not Supported by OS");
+	}
    return result;
 }
 string WinUtil::formatTime(uint64_t rest) {
