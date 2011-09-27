@@ -296,6 +296,11 @@ QueueItem* QueueManager::UserQueue::getNext(const UserPtr& aUser, QueueItem::Pri
 			for(auto j = i->second.begin(); j != i->second.end(); ++j) {
 				QueueItem* qi = *j;
 				
+				/*user is not a source anymore?? removed but still in userqueue?
+				item just finished, dont go further?, pick another one.*/
+				if(!qi->isSource(aUser) || qi->isFinished()) 
+					continue; 
+
 				QueueItem::SourceConstIter source = qi->getSource(aUser);
 
 				if(smallSlot && !qi->isSet(QueueItem::FLAG_PARTIAL_LIST) && qi->getSize() > 65792) {

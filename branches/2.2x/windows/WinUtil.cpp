@@ -2048,6 +2048,7 @@ tstring WinUtil::diskInfo() {
    BOOL    found;
    TCHAR   buf2[MAX_PATH];
    int64_t free = 0, size = 0 , totalFree = 0, totalSize = 0;
+   int disk_count = 0;
    
    std::vector<tstring> results; //add in vector for sorting, nicer to look at :)
    // lookup drive volumes.
@@ -2099,11 +2100,12 @@ tstring WinUtil::diskInfo() {
 
 
    sort(results.begin(), results.end()); //sort it
-   for(std::vector<tstring>::iterator i = results.begin(); i != results.end(); ++i)
+   for(std::vector<tstring>::iterator i = results.begin(); i != results.end(); ++i) {
+	   disk_count++;
 	   result += _T("\r\n ") + *i; 
-
+   }
    result +=  _T("\r\n\r\n Total HDD space (free/total): ") + Util::formatBytesW((totalFree)) + _T("/") + Util::formatBytesW(totalSize);
-   
+   result += _T("\r\n Total Drives count: ") + Text::toT(Util::toString(disk_count));
    results.clear();
    volumes.clear();
 	}else{
