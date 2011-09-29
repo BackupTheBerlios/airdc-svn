@@ -130,7 +130,7 @@ public:
 
 	/** @internal */
 	void addConnection(UserConnectionPtr conn);
-	void removeDelayUpload(const UserPtr& aUser);
+	void removeDelayUpload(const string& token);
 	void abortUpload(const string& aFile, bool waiting = true);
 		
 	GETSET(uint8_t, extraPartial, ExtraPartial);

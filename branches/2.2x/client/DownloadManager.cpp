@@ -164,23 +164,22 @@ int64_t DownloadManager::getTotalTime(const string& path) {
 }
 
 
-bool DownloadManager::checkIdle(const UserPtr& user, bool smallSlot) {
-
+bool DownloadManager::checkIdle(const UserPtr& user, bool smallSlot, bool reportOnly) {
+	Lock l (cs);
 	bool found=false;
 	for(UserConnectionList::const_iterator i = idlers.begin(); i != idlers.end(); ++i) {	
 		UserConnection* uc = *i;
 		if(uc->getUser() == user) {
 			if (((!smallSlot && uc->isSet(UserConnection::FLAG_SMALL_SLOT)) || (smallSlot && !uc->isSet(UserConnection::FLAG_SMALL_SLOT))) && uc->isSet(UserConnection::FLAG_MCN1))
 				continue;
-			uc->updated();
-			dcdebug("uc updated");
-			found = true;
+			if (!reportOnly) {
+				uc->updated();
+				dcdebug("uc updated");
+			}
+			return true;
 		}	
 	}
-	if (found)
-		return true;
-	else
-		return false;
+	return false;
 }
 
 void DownloadManager::addConnection(UserConnectionPtr conn) {
@@ -245,10 +244,14 @@ void DownloadManager::checkDownloads(UserConnection* aConn) {
 		if(!errorMessage.empty()) {
 			fire(DownloadManagerListener::Status(), aConn, errorMessage);
 		}
-		Lock l(cs);
-		aConn->setState(UserConnection::STATE_IDLE);
- 	    idlers.push_back(aConn);
-		ConnectionManager::getInstance()->changeCQIState(aConn, true);
+		if (!checkIdle(aConn->getUser(), aConn->isSet(UserConnection::FLAG_SMALL_SLOT), true)) {
+			Lock l(cs);
+			aConn->setState(UserConnection::STATE_IDLE);
+ 			idlers.push_back(aConn);
+			ConnectionManager::getInstance()->changeCQIState(aConn, true);
+		} else {
+			aConn->disconnect(true);
+		}
 		return;
 	}
 

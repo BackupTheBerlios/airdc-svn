@@ -286,13 +286,12 @@ ok:
 	for(UploadList::iterator i = delayUploads.begin(); i != delayUploads.end(); ++i) {
 		Upload* up = *i;
 		if(&aSource == &up->getUserConnection()) {
-			delayUploads.erase(i);
 			if(sourceFile != up->getPath()) {
 				logUpload(up);
 			} else {
 				resumed = true;
 			}
-			delete up;
+			removeDelayUpload(aSource.getToken());
 			break;
 		}
 	}
@@ -845,17 +844,12 @@ void UploadManager::on(TimerManagerListener::Second, uint64_t /*aTick*/) noexcep
 		Lock l(cs);
 		UploadList ticks;
 		
-		for(UploadList::iterator i = delayUploads.begin(); i != delayUploads.end();) {
+		for(UploadList::iterator i = delayUploads.begin(); i != delayUploads.end(); ++i) {
 			Upload* u = *i;
 			
 			if(++u->delayTime > 10) {
-				logUpload(u);
-				delete u;
-
-				delayUploads.erase(i);
-				i = delayUploads.begin();
-			} else {
-				i++;
+				removeDelayUpload(u->getUserConnection().getToken());
+				break;
 			}
 		}
 
@@ -881,16 +875,16 @@ void UploadManager::on(ClientManagerListener::UserDisconnected, const UserPtr& a
 	}
 }
 
-void UploadManager::removeDelayUpload(const UserPtr& aUser) {
+void UploadManager::removeDelayUpload(const string& aToken) {
 	Lock l(cs);
 	for(UploadList::iterator i = delayUploads.begin(); i != delayUploads.end(); ++i) {
 		Upload* up = *i;
-		if(aUser == up->getUser()) {
+		if(aToken == up->getUserConnection().getToken()) {
 			delayUploads.erase(i);
 			delete up;
 			break;
 		}
-	}		
+	}
 }
 
 /**

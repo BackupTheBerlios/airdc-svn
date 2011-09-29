@@ -43,7 +43,7 @@ public:
 
 	/** @internal */
 	void addConnection(UserConnectionPtr conn);
-	bool checkIdle(const UserPtr& user, bool smallSlot);
+	bool checkIdle(const UserPtr& user, bool smallSlot, bool reportOnly = false);
 
 	/** @internal */
 	void abortDownload(const string& aTarget);

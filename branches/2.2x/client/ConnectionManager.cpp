@@ -77,7 +77,7 @@ void ConnectionManager::getDownloadConnection(const HintedUser& aUser, bool smal
 	queueAddTick = GET_TICK();
 	dcassert((bool)aUser.user);
 	{
-		Lock l(cs); 
+		//Lock l(cs); 
 	if (!DownloadManager::getInstance()->checkIdle(aUser.user, smallSlot)) {
 		for(ConnectionQueueItem::Iter i = downloads.begin(); i != downloads.end(); ++i) {
 			ConnectionQueueItem* cqi = *i;
@@ -142,7 +142,7 @@ void ConnectionManager::putCQI(ConnectionQueueItem* cqi) {
 		}
 	} else {
 		Lock l(cs);
-		UploadManager::getInstance()->removeDelayUpload(cqi->getUser());
+		UploadManager::getInstance()->removeDelayUpload(cqi->getToken());
 		dcassert(find(uploads.begin(), uploads.end(), cqi) != uploads.end());
 		uploads.erase(remove(uploads.begin(), uploads.end(), cqi), uploads.end());
 	}
