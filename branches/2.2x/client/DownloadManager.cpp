@@ -166,7 +166,6 @@ int64_t DownloadManager::getTotalTime(const string& path) {
 
 bool DownloadManager::checkIdle(const UserPtr& user, bool smallSlot, bool reportOnly) {
 	Lock l (cs);
-	bool found=false;
 	for(UserConnectionList::const_iterator i = idlers.begin(); i != idlers.end(); ++i) {	
 		UserConnection* uc = *i;
 		if(uc->getUser() == user) {
