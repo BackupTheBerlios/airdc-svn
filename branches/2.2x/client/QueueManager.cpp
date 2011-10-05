@@ -1101,7 +1101,7 @@ void QueueManager::move(const string& aSource, const string& aTarget) noexcept {
 			// Good, update the target and move in the queue...
 			fire(QueueManagerListener::Moved(), qs, aSource);
 			fileQueue.move(qs, target);
-			updateDirSize(aSource, qs->getSize(), true);
+			updateDirSize(aSource, qs->getSize(), false);
 			updateDirSize(target, qs->getSize(), true);
 			fire(QueueManagerListener::Added(), qs);
 			setDirty();
@@ -1532,7 +1532,7 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool reportFi
 								fire(QueueManagerListener::StatusUpdated(), q);
 							}
 						}
-						if(!q->isSet(QueueItem::FLAG_USER_LIST)) 
+						if(aDownload->getType() != Transfer::TYPE_FULL_LIST && aDownload->getType() != Transfer::TYPE_PARTIAL_LIST) 
 						updateDirSize(q->getTarget(), q->getSize(), false);
 
 						setDirty();
@@ -1735,9 +1735,10 @@ void QueueManager::remove(const string& aTarget) noexcept {
 		if(!q->isFinished()) {
 			userQueue.remove(q);
 		}
-		fileQueue.remove(q);
+		
 		if(q->isSet(QueueItem::FLAG_USER_LIST)) 
 		updateDirSize(q->getTarget(), q->getSize(), false);
+		fileQueue.remove(q);
 
 		setDirty();
 	}

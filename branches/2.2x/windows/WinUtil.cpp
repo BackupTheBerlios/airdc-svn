@@ -1980,7 +1980,7 @@ tstring WinUtil::DiskSpaceInfo(bool onlyTotal /* = false */) {
    }
 
    for(TStringIter i = volumes.begin(); i != volumes.end(); i++) {
-	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE)
+	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM/* || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE*/)
 		   continue;
 	   if(GetDiskFreeSpaceEx((*i).c_str(), NULL, (PULARGE_INTEGER)&size, (PULARGE_INTEGER)&free)){
 				totalFree += free;
@@ -2068,7 +2068,7 @@ tstring WinUtil::diskInfo() {
    }
 
    for(TStringIter i = volumes.begin(); i != volumes.end(); i++) {
-	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE)
+	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM /*|| GetDriveType((*i).c_str()) == DRIVE_REMOVABLE*/)
 		   continue;
 	    
 	   if((GetVolumePathNamesForVolumeName((*i).c_str(), buf2,256, NULL) != 0) &&
@@ -2184,9 +2184,11 @@ uint8_t WinUtil::getFlagIndexByCode(const char* countryCode) {
 
 uint8_t WinUtil::getFlagIndexByName(const char* countryName) {
 	// country codes are not sorted, use linear searching (it is not used so often)
-	for(uint8_t i = 0; i < (sizeof(countryNames) / sizeof(countryNames[0])); ++i)
-		if(_stricmp(countryName, countryNames[i]) == 0)
-			return i + 1;
+	const char** first = countryNames;
+	const char** last = countryNames + (sizeof(countryNames) / sizeof(countryNames[0]));
+	const char** i = find_if(first, last, [&](const char* cn) { return stricmp(countryName, cn) == 0; });
+	 if(i != last)
+		 return i - countryNames + 1;
 
 	return 0;
 }
