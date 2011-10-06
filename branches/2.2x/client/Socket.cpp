@@ -594,8 +594,13 @@ bool Socket::waitAccepted(uint64_t /*millis*/) {
 
 string Socket::resolve(const string& aDns)
 {
+	try {
 	addrinfo_p result = resolveAddr(aDns, 0);
 	return resolveName((addr&)*result->ai_addr);
+	} catch(const SocketException&) {
+  	      // what to do now?
+	  	 return Util::emptyString;
+		}
 }
 
 Socket::addrinfo_p Socket::resolveAddr(const string& aDns, uint16_t port, int flags) {

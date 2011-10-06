@@ -1452,7 +1452,7 @@ void ShareManager::saveXmlList(){
 
 void ShareManager::Directory::toXmlList(OutputStream& xmlFile, string& indent) const{
 	string tmp, tmp2;
-
+	
 	xmlFile.write(indent);
 	xmlFile.write(LITERAL("<Directory Name=\""));
 	xmlFile.write(SimpleXML::escape(name, tmp, true));

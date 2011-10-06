@@ -1516,10 +1516,12 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool reportFi
 							}
 							
 							fire(QueueManagerListener::Finished(), q, dir, aDownload);
-							
+													
+							if(aDownload->getType() != Transfer::TYPE_FULL_LIST && aDownload->getType() != Transfer::TYPE_PARTIAL_LIST) 
+								updateDirSize(q->getTarget(), q->getSize(), false);
+
 							userQueue.remove(q);
-							
-						
+			
 							if(!BOOLSETTING(KEEP_FINISHED_FILES) || aDownload->getType() == Transfer::TYPE_FULL_LIST) {
 								fire(QueueManagerListener::Removed(), q);						
 								fileQueue.remove(q);
@@ -1527,13 +1529,12 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool reportFi
 								fire(QueueManagerListener::StatusUpdated(), q);
 							}
 						} else {
+
 							userQueue.removeDownload(q, aDownload->getUser());
 							if(aDownload->getType() != Transfer::TYPE_FILE || (reportFinish && q->isWaiting())) {
 								fire(QueueManagerListener::StatusUpdated(), q);
 							}
 						}
-						if(aDownload->getType() != Transfer::TYPE_FULL_LIST && aDownload->getType() != Transfer::TYPE_PARTIAL_LIST) 
-						updateDirSize(q->getTarget(), q->getSize(), false);
 
 						setDirty();
 					}
@@ -1736,8 +1737,9 @@ void QueueManager::remove(const string& aTarget) noexcept {
 			userQueue.remove(q);
 		}
 		
-		if(q->isSet(QueueItem::FLAG_USER_LIST)) 
+		if(!q->isSet(QueueItem::FLAG_USER_LIST)) 
 		updateDirSize(q->getTarget(), q->getSize(), false);
+		
 		fileQueue.remove(q);
 
 		setDirty();
@@ -2441,9 +2443,13 @@ void QueueManager::FileQueue::findPFSSources(PFSSourceList& sl)
 	uint64_t now = GET_TICK();
 
 	for(auto i = queue.begin(); i != queue.end(); ++i) {
-		const QueueItem* q = i->second;
+		QueueItem* q = i->second;
 
 		if(q->getSize() < PARTIAL_SHARE_MIN_SIZE) continue;
+
+		// don't share when file does not exist
+ 	    if(!Util::fileExists(q->isFinished() ? q->getTarget() : q->getTempTarget()))
+			continue;
 
 		const QueueItem::SourceList& sources = q->getSources();
 		const QueueItem::SourceList& badSources = q->getBadSources();
