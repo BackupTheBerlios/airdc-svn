@@ -126,7 +126,7 @@ Default = true;
 			} catch(...) {
 			}
 		}else{
-			if(Wildcard::patternMatch(aTarget.substr(pos), SETTING(HIGH_PRIO_FILES), '|')) {
+			if(Wildcard::patternMatch(Text::utf8ToAcp(aTarget.substr(pos)), Text::utf8ToAcp(SETTING(HIGH_PRIO_FILES)), '|')) {
 				p = QueueItem::HIGH;
 				Default = false;
 			}
@@ -815,7 +815,7 @@ void QueueManager::add(const string& aTarget, int64_t aSize, const TTHValue& roo
 				return;
 			}*/
 		}else{
-			if(Wildcard::patternMatch(aTarget.substr(pos), SETTING(SKIPLIST_DOWNLOAD), '|') ){
+			if(Wildcard::patternMatch(Text::utf8ToAcp(aTarget.substr(pos)), Text::utf8ToAcp(SETTING(SKIPLIST_DOWNLOAD)), '|') ){
 				return;
 			}
 		}
