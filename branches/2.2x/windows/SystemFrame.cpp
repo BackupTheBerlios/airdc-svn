@@ -148,7 +148,7 @@ void SystemFrame::addLine(time_t t, const tstring& msg) {
 	ctrlPad.GetScrollPos(&pt);
 
 	//dont know if should go over 64kb
-	if(ctrlPad.GetWindowTextLength() > (128*1024)) {
+	if(ctrlPad.GetWindowTextLength() > (64*1024)) {
 		LONG RemoveEnd = 0;
 		RemoveEnd = ctrlPad.LineIndex(ctrlPad.LineFromChar(2000));
 		End = Begin -=RemoveEnd;

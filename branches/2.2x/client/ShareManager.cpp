@@ -80,7 +80,7 @@ ShareManager::~ShareManager() {
 }
 
 void ShareManager::shutdown() {
-	if(ShareCacheDirty || !Util::fileExists(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml.bz2"))
+	if(ShareCacheDirty || !Util::fileExists(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml"))
 		saveXmlList();
 
 	try {

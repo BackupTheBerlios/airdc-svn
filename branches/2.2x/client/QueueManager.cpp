@@ -1545,7 +1545,9 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool reportFi
 						}
 						if(q->isSet(QueueItem::FLAG_USER_LIST)) {
 							// Blah...no use keeping an unfinished file list...
+							try{
 							File::deleteFile(q->getListName());
+							}catch(...) {}
 						}
 						if(aDownload->getType() == Transfer::TYPE_FILE) {
 							// mark partially downloaded chunk, but align it to block size
@@ -1588,9 +1590,13 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool reportFi
 					} else {
 						path += ".xml";
 					}
+					try{
 					File::deleteFile(path);
+					}catch(...) {}
 				} else if(!aDownload->getTempTarget().empty() && aDownload->getTempTarget() != path) {
+					try{
  					File::deleteFile(aDownload->getTempTarget());
+					}catch(...) {}
  				}
  			}
 		}
