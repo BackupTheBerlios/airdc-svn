@@ -139,9 +139,14 @@ string ShareManager::Directory::getRealPath(const std::string& path) const {
 		return ShareManager::getInstance()->findRealRoot(getName(), path);
 	}
 }
-	
+/*checking every root virtual folder that matches until the file exists?? what? 
+consider saving the realpath to every file item.
+for the share cache it would serve a purpose too, we dont need to save filename or tth then, just the realpath and size
+then check from hashmanager for the tth, would fix the rebuild problems also, and we would always have a sync to hashindex.
+But with what ram cost?? test?.
+*/
 string ShareManager::findRealRoot(const string& virtualRoot, const string& virtualPath) const {
-	for(StringMap::const_iterator i = shares.begin(); i != shares.end(); ++i) {
+	for(StringMap::const_iterator i = shares.begin(); i != shares.end(); ++i) {  
 		if(stricmp(i->second, virtualRoot) == 0) {
 			std::string name = i->first + virtualPath;
 			dcdebug("Matching %s\n", name.c_str());

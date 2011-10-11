@@ -155,7 +155,7 @@ public:
 
 
 	string getRealPath(const TTHValue& root) {
-		string result = "";
+		string result = ""; //would need a lock to protect tthindex but very possible freeze point since this is only called from user side functions.
 		HashFileIter i = tthIndex.find(root);
 		if(i != tthIndex.end()) {
 			result = i->second->getRealPath();
