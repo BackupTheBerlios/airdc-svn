@@ -1980,7 +1980,7 @@ tstring WinUtil::DiskSpaceInfo(bool onlyTotal /* = false */) {
    }
 
    for(TStringIter i = volumes.begin(); i != volumes.end(); i++) {
-	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM/* || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE*/)
+	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE)
 		   continue;
 	   if(GetDiskFreeSpaceEx((*i).c_str(), NULL, (PULARGE_INTEGER)&size, (PULARGE_INTEGER)&free)){
 				totalFree += free;
@@ -2068,7 +2068,7 @@ tstring WinUtil::diskInfo() {
    }
 
    for(TStringIter i = volumes.begin(); i != volumes.end(); i++) {
-	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM /*|| GetDriveType((*i).c_str()) == DRIVE_REMOVABLE*/)
+	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE)
 		   continue;
 	    
 	   if((GetVolumePathNamesForVolumeName((*i).c_str(), buf2,256, NULL) != 0) &&
