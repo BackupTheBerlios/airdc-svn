@@ -480,11 +480,11 @@ bool ConnectionManager::checkIpFlood(const string& aServer, uint16_t aPort, cons
 	return false;
 } 
 	
-void ConnectionManager::nmdcConnect(const string& aServer, uint16_t aPort, const string& aNick, const string& hubUrl, string* encoding, bool stealth, bool secure) {
+void ConnectionManager::nmdcConnect(const string& aServer, uint16_t aPort, const string& aNick, const string& hubUrl, const string& encoding, bool stealth, bool secure) {
 	nmdcConnect(aServer, aPort, 0, BufferedSocket::NAT_NONE, aNick, hubUrl, encoding, stealth, secure);
 }
 
-void ConnectionManager::nmdcConnect(const string& aServer, uint16_t aPort, uint16_t localPort, BufferedSocket::NatRoles natRole, const string& aNick, const string& hubUrl, string* encoding, bool stealth, bool secure) {
+void ConnectionManager::nmdcConnect(const string& aServer, uint16_t aPort, uint16_t localPort, BufferedSocket::NatRoles natRole, const string& aNick, const string& hubUrl, const string& encoding, bool stealth, bool secure) {
 	if(shuttingDown)
 		return;
 		
@@ -520,7 +520,7 @@ void ConnectionManager::adcConnect(const OnlineUser& aUser, uint16_t aPort, uint
 		return;
 
 	UserConnection* uc = getConnection(false, secure);
-	uc->setEncoding(const_cast<string*>(&Text::utf8));
+	uc->setEncoding(Text::utf8);
 	uc->setState(UserConnection::STATE_CONNECT);
 	uc->setHubUrl(aUser.getClient().getHubUrl());
 	uc->setToken(aToken);
@@ -656,10 +656,10 @@ void ConnectionManager::on(UserConnectionListener::MyNick, UserConnection* aSour
 		}
         aSource->setToken(i.first);	
 		aSource->setHubUrl(i.second);
-		aSource->setEncoding(const_cast<string*>(&ClientManager::getInstance()->findHubEncoding(i.second)));
+		aSource->setEncoding(ClientManager::getInstance()->findHubEncoding(i.second));
 	}
 
-	string nick = Text::toUtf8(aNick, *(aSource->getEncoding()));
+	string nick = Text::toUtf8(aNick, aSource->getEncoding());
 	CID cid = ClientManager::getInstance()->makeCid(nick, aSource->getHubUrl());
 
 	// First, we try looking in the pending downloads...hopefully it's one of them...

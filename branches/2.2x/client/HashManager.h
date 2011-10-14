@@ -102,9 +102,9 @@ public:
 
 	void shutdown() {
 		hasher.shutdown();
-		hasher.join();
 		Lock l(cs);
-		store.save();
+		store.save(); //attemp to save tha hashdata before waiting the hash thread to shutdown, some users are too eager to shutdown pc while its saving.
+		hasher.join();
 	}
 
 	struct HashPauser {
