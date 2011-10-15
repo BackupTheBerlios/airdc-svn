@@ -106,7 +106,7 @@ public:
 
 	StringPairList getDirectories(int refreshOptions) const noexcept;
 	static bool checkType(const string& aString, int aType);
-	MemoryInputStream* generatePartialList(const string& dir, bool recurse, bool isInSharingHub) const;
+	MemoryInputStream* generatePartialList(const string& dir, bool recurse, bool isInSharingHub);
 	MemoryInputStream* getTree(const string& virtualFile) const;
 
 	AdcCommand getFileInfo(const string& aFile);
@@ -132,13 +132,14 @@ public:
 		hits += aHits;
 	}
 
+
 	string getOwnListFile() {
 		//Directorylisting load thread will generate own list, so dont generate here.
 		return getBZXmlFile();
 	}
 
 	string generateOwnList() {
-	
+
 	if(xmlDirty) 
 		generateXmlList(true);
 
@@ -250,18 +251,19 @@ private:
 		void search(SearchResultList& aResults, AdcSearch& aStrings, StringList::size_type maxResults) const noexcept;
 		void findDirsRE(bool remove);
 
-		void toXml(OutputStream& xmlFile, string& indent, string& tmp2, bool fullList) const;
-		void filesToXml(OutputStream& xmlFile, string& indent, string& tmp2) const;
+		void toXml(SimpleXML& aXml, bool fullList);
+		void filesToXml(SimpleXML& aXml) const;
 		//for filelist caching
-		void toXmlList(OutputStream& xmlFile, string& indent) const;
+		void toXmlList(OutputStream& xmlFile, const string& path, string& indent) const;
 
 		File::Set::const_iterator findFile(const string& aFile) const { return find_if(files.begin(), files.end(), Directory::File::StringComp(aFile)); }
 
-		void merge(const Ptr& source);
+	//	void merge(const Ptr& source);
 		string find(const string& dir);
 
 		GETSET(string, lastwrite, LastWrite);
 		GETSET(string, name, Name);
+		GETSET(string, rootpath, RootPath); //saved only for root items.
 		GETSET(Directory*, parent, Parent);
 		GETSET(bool, fullyHashed, FullyHashed); //ApexDC
 	private:
@@ -336,10 +338,6 @@ private:
 	mutable CriticalSection cs;
 
 	
-	typedef unordered_map<int, string> nameMap;
-	nameMap dirNames;
-
-
 	StringList dirNameList;
 	//typedef std::multimap<string, string> DirNameMap;
 	//DirNameMap dirNameList;
@@ -350,8 +348,15 @@ private:
 	void sortReleaseList();
 
 
-	typedef std::vector<Directory::Ptr> DirList;
-	DirList directories;
+	/*
+	List of root directory items mapped to realpath,
+	multimap to allow multiple same key values, needed to return from some functions.
+	*/
+	typedef multimap<string, Directory::Ptr> DirMap; 
+	DirMap directories;
+
+	//list to return multiple directory item pointers
+	typedef std::vector<Directory::Ptr> Dirs;
 
 	/** Map real name to virtual name - multiple real names may be mapped to a single virtual one */
 	StringMap shares;
@@ -373,13 +378,13 @@ private:
 	void updateIndices(Directory& aDirectory);
 	void updateIndices(Directory& dir, const Directory::File::Set::iterator& i);
 	
-	Directory::Ptr merge(const Directory::Ptr& directory);
+	//Directory::Ptr merge(const Directory::Ptr& directory);
 	
 	StringList notShared;
 	StringList incoming;
 
-	DirList::const_iterator getByVirtual(const string& virtualName) const noexcept;
-	pair<Directory::Ptr, string> splitVirtual(const string& virtualPath) const;
+	Dirs getByVirtual(const string& virtualName) const noexcept;
+	DirMap splitVirtual(const string& virtualPath) const;
 	string findRealRoot(const string& virtualRoot, const string& virtualLeaf) const;
 
 	Directory::Ptr getDirectory(const string& fname);

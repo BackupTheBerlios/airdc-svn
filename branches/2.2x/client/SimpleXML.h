@@ -50,6 +50,11 @@ public:
 		addTag(aName, Util::toString(aData));
 	}
 
+	void forceEndTag(bool force = true) {
+		checkChildSelected();
+		(*currentChild)->forceEndTag = force;
+	}
+
 	template<typename T>
 	void addAttrib(const string& aName, const T& aData) {
 		addAttrib(aName, Util::toString(aData));
@@ -100,6 +105,7 @@ public:
 	}
 
 	bool findChild(const string& aName) noexcept;
+	
 
 	const string& getChildData() const {
 		checkChildSelected();
@@ -152,7 +158,7 @@ private:
 	public:
 		typedef Tag* Ptr;
 		typedef vector<Ptr> List;
-		typedef List::const_iterator Iter;
+		typedef List::iterator Iter;
 
 		/**
 		 * A simple list of children. To find a tag, one must search the entire list.
@@ -174,16 +180,18 @@ private:
 				
 		/** Parent tag, for easy traversal */
 		Ptr parent;
-
-		Tag(const string& aName, const StringPairList& a, Ptr aParent) : attribs(a), name(aName), data(), parent(aParent) { 
-		}
-
-		Tag(const string& aName, const string& d, Ptr aParent) : name(aName), data(d), parent(aParent) { 
-		}
 		
-		const string& getAttrib(const string& aName, const string& aDefault = Util::emptyString) const {
-			StringPairList::const_iterator i = find_if(attribs.begin(), attribs.end(), CompareFirst<string,string>(aName));
-			return (i == attribs.end()) ? aDefault : i->second; 
+		bool forceEndTag;
+		
+		Tag(const string& aName, const StringPairList& a, Ptr aParent) : attribs(a), name(aName), data(), parent(aParent), forceEndTag(false) { 
+		}
+
+		Tag(const string& aName, const string& d, Ptr aParent) : name(aName), data(d), parent(aParent), forceEndTag(false) { 
+		}
+
+		const string& getAttrib(const string& aName, const string& aDefault = Util::emptyString) {
+			StringPairIter i = find_if(attribs.begin(), attribs.end(), CompareFirst<string,string>(aName));
+			return (i == attribs.end()) ? aDefault : i->second;
 		}
 		void toXML(int indent, OutputStream* f);
 		

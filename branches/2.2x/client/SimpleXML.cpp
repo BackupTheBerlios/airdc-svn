@@ -97,7 +97,7 @@ void SimpleXML::Tag::appendAttribString(string& tmp) {
  * file, otherwise things will be very slow (I assume write is not expensive and call it a lot
  */
 void SimpleXML::Tag::toXML(int indent, OutputStream* f) {
-	if(children.empty() && data.empty()) {
+	if(children.empty() && data.empty() && !forceEndTag) {
 		string tmp;
 		tmp.reserve(indent + name.length() + 30);
 		tmp.append(indent, '\t');
