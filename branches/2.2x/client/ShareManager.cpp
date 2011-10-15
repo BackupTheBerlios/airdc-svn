@@ -712,9 +712,9 @@ void ShareManager::removeDirectory(const string& realPath) {
 
 
 
-
-	HashManager::HashPauser pauser;
 	/*
+	HashManager::HashPauser pauser;
+
 	// Readd all directories with the same vName
 	for(i = shares.begin(); i != shares.end(); ++i) {
 		if(stricmp(i->second, vName) == 0 && checkHidden(i->first)) {
@@ -1649,7 +1649,8 @@ void ShareManager::Directory::toXml(SimpleXML& xmlFile, bool fullList){
 			if(xmlFile.getChildAttrib("Incomplete").empty()) {
 			xmlFile.addChildAttrib("Incomplete", 1);
 			}
-			//xmlFile.addChildAttrib("Size", Util::toString(getSize())); wont be accurate with virtualpath
+			int64_t size = Util::toInt64(xmlFile.getChildAttrib("Size"));
+			xmlFile.replaceChildAttrib("Size", Util::toString(getSize() + size));   //make the size accurate with virtuals, added a replace or add function to simpleXML
 			}
 		
 	}

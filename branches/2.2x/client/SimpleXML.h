@@ -73,7 +73,8 @@ public:
 	void addChildAttrib(const string& aName, bool aData) {	
 		addChildAttrib(aName, string(aData ? "1" : "0"));
 	}
-	
+	void replaceChildAttrib(const string& aName, const string& aData);
+
 	const string& getData() const {
 		dcassert(current != NULL);
 		return current->data;

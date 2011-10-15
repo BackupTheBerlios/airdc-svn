@@ -183,6 +183,18 @@ void SimpleXML::addChildAttrib(const string& aName, const string& aData) {
 	(*currentChild)->attribs.push_back(make_pair(aName, aData));
 }
 
+void SimpleXML::replaceChildAttrib(const string& aName, const string& aData) {
+	checkChildSelected();
+
+	StringPairIter i = find_if((*currentChild)->attribs.begin(), (*currentChild)->attribs.end(), CompareFirst<string,string>(aName));
+	if(i != (*currentChild)->attribs.end()){
+		(*currentChild)->attribs.erase(i);
+		(*currentChild)->attribs.push_back(make_pair(aName, aData));
+	} else
+		(*currentChild)->attribs.push_back(make_pair(aName, aData));
+
+}
+
 void SimpleXML::fromXML(const string& aXML) {
 	if(!root.children.empty()) {
 		delete root.children[0];
