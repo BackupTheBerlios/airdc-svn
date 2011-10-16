@@ -79,7 +79,7 @@ public:
 	void setIncoming(const string& realPath) { incoming.push_back(realPath); };
 	void DelIncoming() { incoming.clear(); };
 
-	void Rebuild();
+	
 	
    void save() { 
 		w.join();
@@ -316,7 +316,7 @@ private:
 	bool xmlDirty;
 	bool ShareCacheDirty;
 	bool forceXmlRefresh; /// bypass the 15-minutes guard
-	bool rebuild;
+	
 	PME releaseReg, subDirReg;
 	
 	int listN;

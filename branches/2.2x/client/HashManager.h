@@ -264,7 +264,7 @@ private:
 	uint64_t  lastSave;
 	void on(TimerManagerListener::Minute, uint64_t) noexcept {
 		
-		if(GET_TICK() - lastSave > 15*60*1000) { 
+		if(GET_TICK() - lastSave > 10*60*1000) { 
 		
 		if(store.isDirty()) {
 			Lock l(cs);

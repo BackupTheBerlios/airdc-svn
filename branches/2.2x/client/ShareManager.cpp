@@ -55,7 +55,7 @@ namespace dcpp {
 
 ShareManager::ShareManager() : hits(0), xmlListLen(0), bzXmlListLen(0),
 	xmlDirty(true), forceXmlRefresh(false), listN(0), refreshing(false),
-	lastXmlUpdate(0), lastFullUpdate(GET_TICK()), lastIncomingUpdate(GET_TICK()), bloom(1<<20), sharedSize(0), rebuild(false), ShareCacheDirty(false), GeneratingXmlList(false),
+	lastXmlUpdate(0), lastFullUpdate(GET_TICK()), lastIncomingUpdate(GET_TICK()), bloom(1<<20), sharedSize(0), ShareCacheDirty(false), GeneratingXmlList(false),
 	c_size_dirty(true), c_shareSize(0)
 { 
 	SettingsManager::getInstance()->addListener(this);
@@ -138,16 +138,11 @@ string ShareManager::Directory::getRealPath(const std::string& path) const {
 	}else if(!getRootPath().empty()) {
 		dcdebug("found rootPath: %s", getRootPath());
 		return (getRootPath() + path);
-	} else {
+	} else { //shouldnt need to go here
 		return ShareManager::getInstance()->findRealRoot(getName(), path);
 	}
 }
-/*checking every root virtual folder that matches until the file exists?? what? 
-consider saving the realpath to every file item.
-for the share cache it would serve a purpose too, we dont need to save filename or tth then, just the realpath and size
-then check from hashmanager for the tth, would fix the rebuild problems also, and we would always have a sync to hashindex.
-But with what ram cost?? test?.
-*/
+
 string ShareManager::findRealRoot(const string& virtualRoot, const string& virtualPath) const {
 	for(StringMap::const_iterator i = shares.begin(); i != shares.end(); ++i) {  
 		if(stricmp(i->second, virtualRoot) == 0) {
@@ -461,13 +456,11 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 
 			if(!name.empty()) {
 				if(depth == 0) {
-					for(ShareManager::DirMap::const_iterator i = dirs.begin(); i != dirs.end(); ++i) {
-						if(stricmp(i->first, path) == 0) {
+						ShareManager::DirMap::const_iterator i = dirs.find(path); 
+						if(i != dirs.end()) {
 							cur = i->second;
 							cur->setRootPath(path);
-							break;
 						}
-					}
 				} else if(cur) {
 					cur = ShareManager::Directory::create(name, cur);
 					cur->setLastWrite(date);
@@ -486,12 +479,14 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 		} else if(cur && name == SFILE) {
 			const string& fname = getAttrib(attribs, SNAME, 0);
 			const string& size = getAttrib(attribs, SSIZE, 1);
-			const string& root = getAttrib(attribs, STTH, 2);    //todo dont save TTHs, check them from hashmanager, just need path and size.
-			if(fname.empty() || size.empty() || (root.size() != 39)) {
+			//const string& root = getAttrib(attribs, STTH, 2);    
+			if(fname.empty() || size.empty() /*|| (root.size() != 39)*/) {
 				dcdebug("Invalid file found: %s\n", fname.c_str());
 				return;
 			}
-			cur->files.insert(ShareManager::Directory::File(fname, Util::toInt64(size), cur, TTHValue(root)));
+			/*dont save TTHs, check them from hashmanager, just need path and size.
+			this will keep us sync to hashindex, alltho might take a bit longer to startup maybe? not too much for myself tho*/
+			cur->files.insert(ShareManager::Directory::File(fname, Util::toInt64(size), cur, HashManager::getInstance()->getTTH(cur->getRealPath(fname), Util::toInt64(size))));
 		}
 	}
 	void endTag(const string& name, const string&) {
@@ -1376,13 +1371,6 @@ int ShareManager::run() {
 		ClientManager::getInstance()->infoUpdated();
 	}
 
-	//make sure we have a refresh before doing a rebuild
-	if(rebuild) {
-		HashManager::getInstance()->rebuild();
-		LogManager::getInstance()->message(STRING(REBUILD_STARTED));
-		rebuild = false;
-	}
-
 	setDirty();
 	forceXmlRefresh = true;
 
@@ -1547,9 +1535,9 @@ void ShareManager::Directory::toXmlList(OutputStream& xmlFile, const string& pat
 		xmlFile.write(SimpleXML::escape(f.getName(), tmp2, true));
 		xmlFile.write(LITERAL("\" Size=\""));
 		xmlFile.write(Util::toString(f.getSize()));
-		xmlFile.write(LITERAL("\" TTH=\""));
+		//xmlFile.write(LITERAL("\" TTH=\""));
 		tmp2.clear();
-		xmlFile.write(f.getTTH().toBase32(tmp2));
+		//xmlFile.write(f.getTTH().toBase32(tmp2));
 		xmlFile.write(LITERAL("\"/>\r\n"));
 	}
 
@@ -2136,12 +2124,6 @@ void ShareManager::on(TimerManagerListener::Minute, uint64_t tick) noexcept {
 			refresh(ShareManager::REFRESH_ALL | ShareManager::REFRESH_UPDATE);
 		}
 	}
-}
-
-void ShareManager::Rebuild() {
-	//make sure we refreshed before doing a rebuild
-	rebuild = true;
-	refresh(ShareManager::REFRESH_ALL | ShareManager::REFRESH_UPDATE);
 }
 
 bool ShareManager::shareFolder(const string& path, bool thoroughCheck /* = false */) const {
