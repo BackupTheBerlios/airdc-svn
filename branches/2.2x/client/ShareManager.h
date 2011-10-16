@@ -148,7 +148,7 @@ public:
 	void generateXmlList(bool forced = false);
 
 	bool isTTHShared(const TTHValue& tth) {
-		Lock l(cs);
+		RLock l(cs);
 		return tthIndex.find(tth) != tthIndex.end();
 	}
 
@@ -335,7 +335,7 @@ private:
 	int64_t	 c_shareSize;
 	bool	 c_size_dirty;
 
-	mutable CriticalSection cs;
+	mutable SharedMutex cs;  // NON-recursive mutex BE Aware!!
 
 	
 	StringList dirNameList;
