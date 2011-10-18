@@ -80,7 +80,7 @@ ShareManager::~ShareManager() {
 }
 
 void ShareManager::shutdown() {
-	if(ShareCacheDirty || !Util::fileExists(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml"))
+	if(ShareCacheDirty || !Util::fileExists(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml"))
 		saveXmlList();
 
 	try {
@@ -510,13 +510,13 @@ bool ShareManager::loadCache() noexcept {
 		ShareLoader loader(directories);
 		
 		try {
-		//look for share.xml
-		dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml", dcpp::File::READ, dcpp::File::OPEN);
+		//look for shares.xml
+		dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml", dcpp::File::READ, dcpp::File::OPEN);
 		SimpleXMLReader(&loader).parse(ff);
 		}catch(...) 
 			//migrate the old bzipped cache, remove this at some point
 		{	
-			dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml.bz2", dcpp::File::READ, dcpp::File::OPEN);
+			dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml.bz2", dcpp::File::READ, dcpp::File::OPEN);
 			FilteredInputStream<UnBZFilter, false> f(&ff);
 			SimpleXMLReader(&loader).parse(f);
 		}
@@ -593,7 +593,7 @@ void ShareManager::addDirectory(const string& realPath, const string& virtualNam
 
 	list<string> removeMap;
 	{
-		WLock l(cs);
+		RLock l(cs);
 		
 		StringMap a = shares;
 		for(StringMapIter i = a.begin(); i != a.end(); ++i) {
@@ -705,8 +705,6 @@ void ShareManager::removeDirectory(const string& realPath) {
 	j->second->findDirsRE(true);
 	directories.erase(j);
 
-
-
 	/*
 	HashManager::HashPauser pauser;
 
@@ -725,8 +723,24 @@ void ShareManager::removeDirectory(const string& realPath) {
 }
 
 void ShareManager::renameDirectory(const string& realPath, const string& virtualName)  {
-	removeDirectory(realPath);
-	addDirectory(realPath, virtualName);
+	//removeDirectory(realPath);
+	//addDirectory(realPath, virtualName);
+	WLock l(cs);
+	string vName = validateVirtual(virtualName);
+	
+	StringMapIter i = shares.find(realPath);
+	if(i == shares.end()) {
+		return;
+	}
+	shares.erase(i);
+	shares.insert(make_pair(realPath, vName));
+
+	DirMap::iterator j = directories.find(realPath);
+	if(j == directories.end())
+		return;
+
+	j->second->setName(vName);
+
 }
 
 ShareManager::Dirs ShareManager::getByVirtual(const string& virtualName) const throw() {
@@ -782,7 +796,8 @@ bool ShareManager::isDirShared(const string& directory) {
 	string dir = getReleaseDir(directory);
 	if (dir.empty())
 		return false;
-
+	/*we need to protect this, but same mutex used here is too much, it will freeze during refreshing even with chat releasenames
+	Todo add own mutex to protect dirnamelist*/
 	if (std::binary_search(dirNameList.begin(), dirNameList.end(), dir)) {
 		return true;
 	}
@@ -1122,7 +1137,6 @@ void ShareManager::rebuildIndices() {
 
 	for(DirMap::const_iterator i = directories.begin(); i != directories.end(); ++i) {
 		updateIndices(*i->second);
-		i->second->findDirsRE(false);
 	}
 }
 
@@ -1330,6 +1344,7 @@ int ShareManager::run() {
 				}
 		}
 		{
+			
 			WLock l(cs);
 
 			//only go here when needed
@@ -1358,7 +1373,16 @@ int ShareManager::run() {
 			}
 		
 				directories.insert(newDirs.begin(), newDirs.end());
+				
+			for(DirMap::iterator i = newDirs.begin(); i != newDirs.end(); ++i)
+					i->second->findDirsRE(false);
 			
+			/*set filelist dirty here, will make the open own list thread need to wait with filelist creation,
+			decreases chances hitting lock on getrealpath for files in own list rightclick, 
+			filelist will take a bit longer to open in that case but prevents the gui freeze (for ex. when winshellmenu is used or trying to open folder)
+			*/
+			setDirty();
+
 			rebuildIndices();
 			sortReleaseList();
 		}
@@ -1371,12 +1395,13 @@ int ShareManager::run() {
 		ClientManager::getInstance()->infoUpdated();
 	}
 
-	setDirty();
+	
 	forceXmlRefresh = true;
 
-	if(refreshOptions & REFRESH_BLOCKING)
+	if(refreshOptions & REFRESH_BLOCKING) {
 		generateXmlList(true);
-
+		saveXmlList();
+	}
 	refreshing.clear();
 	return 0;
 }
@@ -1483,7 +1508,7 @@ void ShareManager::saveXmlList(){
 	RLock l(cs);
 	string indent;
 	//create a backup first incase we get interrupted on creation.
-	string newCache = Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml.tmp";
+	string newCache = Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml.tmp";
 	File ff(newCache, File::WRITE, File::TRUNCATE | File::CREATE);
 	BufferedOutputStream<false> xmlFile(&ff);
 	//FilteredOutputStream<BZFilter, true> *xmlFile = new FilteredOutputStream<BZFilter, true>(new File(newCache, File::WRITE, File::TRUNCATE | File::CREATE));
@@ -1497,8 +1522,8 @@ void ShareManager::saveXmlList(){
 		xmlFile.write("</Share>");
 		xmlFile.flush();
 		ff.close();
-		File::deleteFile(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml");
-		File::renameFile(newCache,  (Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml"));
+		File::deleteFile(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml");
+		File::renameFile(newCache,  (Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml"));
 		File::deleteFile(newCache);
 	}catch(Exception&){}
 

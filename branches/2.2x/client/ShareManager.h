@@ -92,6 +92,7 @@ public:
 			refresh(REFRESH_ALL | REFRESH_BLOCKING);
 	}
 
+
 	void shutdown();
 	bool shareFolder(const string& path, bool thoroughCheck = false) const;
 	int64_t removeExcludeFolder(const string &path, bool returnSize = true);
@@ -156,7 +157,8 @@ public:
 
 
 	string getRealPath(const TTHValue& root) {
-		string result = ""; //would need a lock to protect tthindex but very possible freeze point since this is only called from user side functions.
+		RLock l(cs); //better the possible small freeze than a crash right?
+		string result = ""; 
 		HashFileIter i = tthIndex.find(root);
 		if(i != tthIndex.end()) {
 			result = i->second->getRealPath();
@@ -174,7 +176,6 @@ public:
 		REFRESH_BLOCKING = 0x4,
 		REFRESH_UPDATE = 0x8
 	};
-
 
 	GETSET(size_t, hits, Hits);
 	GETSET(string, bzXmlFile, BZXmlFile);
@@ -347,7 +348,6 @@ private:
 	string getReleaseDir(const string& aName);
 	void sortReleaseList();
 
-
 	/*
 	List of root directory items mapped to realpath,
 	multimap to allow multiple same key values, needed to return from some functions.
@@ -421,7 +421,12 @@ public:
 	Worker() { }
 	 ~Worker() {}
 
+
 private:
+	
+	typedef multimap<int, pair<string, string>> TaskMap;
+	TaskMap tasks;
+
 		int run() {
 			ShareManager::getInstance()->saveXmlList();
 			LogManager::getInstance()->message("Share cache Created.");
