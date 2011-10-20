@@ -424,9 +424,6 @@ public:
 
 private:
 	
-	typedef multimap<int, pair<string, string>> TaskMap;
-	TaskMap tasks;
-
 		int run() {
 			ShareManager::getInstance()->saveXmlList();
 			LogManager::getInstance()->message("Share cache Created.");
