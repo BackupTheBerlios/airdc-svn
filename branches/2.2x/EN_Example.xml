@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<Language Name="Example Language" Author="BigMuscle" Version="2.22 Beta 1" Revision="1">
+<Language Name="Example Language" Author="BigMuscle" Version="2.22 Beta 2" Revision="1">
 	<Strings>
 		<String Name="AairdcppLanguageFile">EN_Example.xml</String>
 		<String Name="AairdcppLanguageVersion">1.00</String>
@@ -945,7 +945,10 @@ In the parameters, you can use %[xxx] variables and date/time specifiers (%Y, %m
 - %[bitrate]	Bitrate (ex. 128kbps)
 - %[sample]	Sample frequency (ex. 22kHz)
 - %[channels]	Number of channels (ex. stereo / mono)
-Empty = Default String -&gt; winamp(%[version]) %[state](%[title]) stats(%[percent] of %[length] %[bar])</String>
+- %[path]	Playing full Filepath
+- %[directory]	Playing DirectoryName
+- %[filename]	Playing FileName
+ Empty = Default String -&gt; winamp(%[version]) %[state](%[title]) stats(%[percent] of %[length] %[bar])</String>
 		<String Name="WinampHelpDesc">Winamp Help</String>
 		<String Name="Yes">Yes</String>
 		<String Name="ZonealarmWarning">ZoneAlarm was detected in your computer.  It is frequently responsible for corrupted downloads and is the cause of many \"rollback inconsistency\" errors.  Please uninstall it and use an alternate product.  </String>
@@ -1196,8 +1199,6 @@ Empty = Default String -&gt; +me playing: %[title] &lt;Media Player Classic&gt;<
 		<String Name="ProppageOperator">Operator</String>
 		<String Name="ProppageNorm">Other users</String>
 		<String Name="MaxResizeLines">Max resize lines</String>
-		<String Name="DontShareEmptyDirs">Don't share empty directories</String>
-		<String Name="OnlyShareFullDirs">Only share fully hashed directories</String>
 		<String Name="SettingsDupeSearch">Use Dupe Color in Search</String>
 		<String Name="SettingsLrus">Russian</String>
 		<String Name="FileAlreadyShared">Trying to Download File already shared! File: </String>
@@ -1367,5 +1368,10 @@ Empty = Default String -&gt; /me playing on Spotify: %[title] %[link]</String>
 		<String Name="ListHlExample">Example, *NORDIC* (this may slow down filelist loading...)</String>
 		<String Name="SettingsDupes">Dupes Settings</String>
 		<String Name="ReportSkiplist">Show Skiplist blocked files in systemlog</String>
+		<String Name="MatchAdl">ADLSearch</String>
+		<String Name="MatchingAdl">Matching Filelist with ADLSearch, this might take a while if the list is large...</String>
+		<String Name="LogHashing">Show Hashing Files in systemlog</String>
+		<String Name="SaveShare">Automatically save shares every </String>
+		<String Name="UseFtpLogger">Use external sfv checking (ex. FTPLogger, Enable this only if you know what you are doing)  </String>
 	</Strings>
 </Language>

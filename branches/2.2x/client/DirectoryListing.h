@@ -147,7 +147,7 @@ public:
 	};
 
 	DirectoryListing(const HintedUser& aUser);
-	virtual ~DirectoryListing();
+	~DirectoryListing();
 	
 	void loadFile(const string& name, bool checkdupe);
 

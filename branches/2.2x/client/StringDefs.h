@@ -883,7 +883,7 @@ enum Strings { // @DontAdd
 	WAITING_USERS_ONLINE, // "Waiting (%d of %d users online)"
 	WHATS_THIS, // "What's &this?"
 	WHO_IS, // "Whois "
-	WINAMP_HELP, // "/winamp - Works with 1.x, 2.x, 5.x (no WinAmp 3 support)\r\n- %[version]	Numerical Version (ex: 2.91)\r\n- %[state]	Playing state (ex: stopped/paused/playing)\r\n- %[title]		Window title from Winamp - if you want to change this for mp3s, Winamp > Pref > Input > MPEG > Title\r\n- %[rawtitle]	Window title from Winamp (if %[title] not working propertly)\r\n- %[percent]	Percentage (ex. 40%)\r\n- %[length]	Length in minutes:seconds (ex: 04:09)\r\n- %[elapsed]	Time elapsed in minutes:seconds (ex. 03:51)\r\n- %[bar]		ASCII progress bar, 10 characters wide no including brackets (ex. [----|-----])\r\n- %[bitrate]	Bitrate (ex. 128kbps)\r\n- %[sample]	Sample frequency (ex. 22kHz)\r\n- %[channels]	Number of channels (ex. stereo / mono)\r\nEmpty = Default String -> winamp(%[version]) %[state](%[title]) stats(%[percent] of %[length] %[bar])"
+	WINAMP_HELP, // "/winamp - Works with 1.x, 2.x, 5.x (no WinAmp 3 support)\r\n- %[version]	Numerical Version (ex: 2.91)\r\n- %[state]	Playing state (ex: stopped/paused/playing)\r\n- %[title]		Window title from Winamp - if you want to change this for mp3s, Winamp > Pref > Input > MPEG > Title\r\n- %[rawtitle]	Window title from Winamp (if %[title] not working propertly)\r\n- %[percent]	Percentage (ex. 40%)\r\n- %[length]	Length in minutes:seconds (ex: 04:09)\r\n- %[elapsed]	Time elapsed in minutes:seconds (ex. 03:51)\r\n- %[bar]		ASCII progress bar, 10 characters wide no including brackets (ex. [----|-----])\r\n- %[bitrate]	Bitrate (ex. 128kbps)\r\n- %[sample]	Sample frequency (ex. 22kHz)\r\n- %[channels]	Number of channels (ex. stereo / mono)\r\n- %[path]	Playing full Filepath\r\n- %[directory]	Playing DirectoryName\r\n- %[filename]	Playing FileName\r\n Empty = Default String -> winamp(%[version]) %[state](%[title]) stats(%[percent] of %[length] %[bar])"
 	WINAMP_HELP_DESC, // "Winamp Help"
 	YES, // "Yes"
 	ZONEALARM_WARNING, // "ZoneAlarm was detected in your computer.  It is frequently responsible for corrupted downloads and is the cause of many \"rollback inconsistency\" errors.  Please uninstall it and use an alternate product.  "
@@ -1095,8 +1095,6 @@ enum Strings { // @DontAdd
 	PROPPAGE_OPERATOR, // "Operator"
 	PROPPAGE_NORM, // "Other users"
 	MAX_RESIZE_LINES, // "Max resize lines"
-	DONT_SHARE_EMPTY_DIRS, // "Don't share empty directories"
-	ONLY_SHARE_FULL_DIRS, // "Only share fully hashed directories"
 	SETTINGS_DUPE_SEARCH, // "Use Dupe Color in Search"
 	SETTINGS_LRUS, // "Russian"
 	FILE_ALREADY_SHARED, // "Trying to Download File already shared! File: "
@@ -1262,5 +1260,10 @@ enum Strings { // @DontAdd
 	LIST_HL_EXAMPLE, // "Example, *NORDIC* (this may slow down filelist loading...)"
 	SETTINGS_DUPES, // "Dupes Settings"
 	REPORT_SKIPLIST, // "Show Skiplist blocked files in systemlog"
+	MATCH_ADL, // "ADLSearch"
+	MATCHING_ADL, // "Matching Filelist with ADLSearch, this might take a while if the list is large..."
+	LOG_HASHING, // "Show Hashing Files in systemlog"
+	SAVE_SHARE, // "Automatically save shares every "
+	USE_FTP_LOGGER, // "Use external sfv checking (ex. FTPLogger, Enable this only if you know what you are doing)  "
 	LAST // @DontAdd
 };

@@ -83,7 +83,7 @@ public:
 	
    void save() { 
 		w.join();
-		LogManager::getInstance()->message("Creating share cache...");
+		//LogManager::getInstance()->message("Creating share cache...");
 		w.start();
 	}
 
@@ -103,7 +103,7 @@ public:
 	bool isDirShared(const string& directory);
 	tstring getDirPath(const string& directory);
 
-	bool loadCache() noexcept;
+	bool loadCache();
 
 	StringPairList getDirectories(int refreshOptions) const noexcept;
 	static bool checkType(const string& aString, int aType);
@@ -112,7 +112,7 @@ public:
 
 	AdcCommand getFileInfo(const string& aFile);
 
-	int64_t getShareSize() noexcept;
+	int64_t getShareSize() const noexcept;
 	int64_t getShareSize(const string& realPath) const noexcept;
 
 	size_t getSharedFiles() const noexcept;
@@ -242,7 +242,7 @@ private:
 
 		string getADCPath() const noexcept;
 		string getFullName() const noexcept; 
-		string getRealPath(const std::string& path) const;
+		string getRealPath(const std::string& path, bool loading = false) const;
 
 		int64_t getSize() const noexcept;
 		int64_t getSize(const string& realpath) const noexcept;
@@ -255,7 +255,7 @@ private:
 		void toXml(SimpleXML& aXml, bool fullList);
 		void filesToXml(SimpleXML& aXml) const;
 		//for filelist caching
-		void toXmlList(OutputStream& xmlFile, const string& path, string& indent) const;
+		void toXmlList(OutputStream& xmlFile, const string& path, string& indent);
 
 		File::Set::const_iterator findFile(const string& aFile) const { return find_if(files.begin(), files.end(), Directory::File::StringComp(aFile)); }
 
@@ -266,7 +266,6 @@ private:
 		GETSET(string, name, Name);
 		GETSET(string, rootpath, RootPath); //saved only for root items.
 		GETSET(Directory*, parent, Parent);
-		GETSET(bool, fullyHashed, FullyHashed); //ApexDC
 	private:
 		friend void intrusive_ptr_release(intrusive_ptr_base<Directory>*);
 
@@ -317,7 +316,8 @@ private:
 	bool xmlDirty;
 	bool ShareCacheDirty;
 	bool forceXmlRefresh; /// bypass the 15-minutes guard
-	
+	bool aShutdown;
+
 	PME releaseReg, subDirReg;
 	
 	int listN;
@@ -331,13 +331,15 @@ private:
 	uint64_t lastXmlUpdate;
 	uint64_t lastFullUpdate;
 	uint64_t lastIncomingUpdate;
+	uint64_t lastSave;
 	
 	//caching the share size so we dont need to loop tthindex everytime
-	int64_t	 c_shareSize;
-	bool	 c_size_dirty;
+	mutable int64_t	 c_shareSize;
+	mutable bool	 c_size_dirty;
+	bool xml_saving;
 
 	mutable SharedMutex cs;  // NON-recursive mutex BE Aware!!
-
+	mutable CriticalSection dirnamelist;
 	
 	StringList dirNameList;
 	//typedef std::multimap<string, string> DirNameMap;
@@ -349,14 +351,16 @@ private:
 	void sortReleaseList();
 
 	/*
-	List of root directory items mapped to realpath,
 	multimap to allow multiple same key values, needed to return from some functions.
 	*/
-	typedef multimap<string, Directory::Ptr> DirMap; 
-	DirMap directories;
+	typedef std::multimap<string, Directory::Ptr> DirMultiMap; 
 
 	//list to return multiple directory item pointers
 	typedef std::vector<Directory::Ptr> Dirs;
+
+	/*Map of root directory items mapped to realpath*/
+	typedef std::unordered_map<string, Directory::Ptr, noCaseStringHash, noCaseStringEq> DirMap; 
+	DirMap directories;
 
 	/** Map real name to virtual name - multiple real names may be mapped to a single virtual one */
 	StringMap shares;
@@ -384,7 +388,7 @@ private:
 	StringList incoming;
 
 	Dirs getByVirtual(const string& virtualName) const noexcept;
-	DirMap splitVirtual(const string& virtualPath) const;
+	DirMultiMap splitVirtual(const string& virtualPath) const;
 	string findRealRoot(const string& virtualRoot, const string& virtualLeaf) const;
 
 	Directory::Ptr getDirectory(const string& fname);
@@ -426,7 +430,7 @@ private:
 	
 		int run() {
 			ShareManager::getInstance()->saveXmlList();
-			LogManager::getInstance()->message("Share cache Created.");
+			//LogManager::getInstance()->message("Share cache Created.");
 			return 0;
 		}
 	};//worker end

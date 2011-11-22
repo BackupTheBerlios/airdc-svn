@@ -95,7 +95,7 @@ public:
 	ListLoader(DirectoryListing* aList, DirectoryListing::Directory* root, bool aUpdating, const UserPtr& aUser, bool aCheckDupe) : list(aList), cur(root), base("/"), inListing(false), updating(aUpdating), user(aUser), checkdupe(aCheckDupe), useCache(true) { 
 	}
 
-	~ListLoader() { }
+	virtual ~ListLoader() { }
 
 	void startTag(const string& name, StringPairList& attribs, bool simple);
 	void endTag(const string& name, const string& data);

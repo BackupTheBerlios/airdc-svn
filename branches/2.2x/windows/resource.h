@@ -435,6 +435,7 @@
 #define IDC_MAX_DOWNLOAD_SP             1218
 #define IDC_SKIP_SUBTRACT               1218
 #define IDC_FILELIST_HL                 1218
+#define IDC_SHARE_SAVE_TIME             1218
 #define IDC_CLIENT_VERSION              1219
 #define IDC_HIGH_PRIO_FILES             1219
 #define IDC_MAX_UPLOAD_SP               1219
@@ -761,6 +762,7 @@
 #define IDC_LANG_NOR                    1367
 #define IDC_SPIN1                       1367
 #define IDC_LOG_LINES_SPIN              1367
+#define IDC_SAVE_SPIN                   1367
 #define IDC_UPDATE_BL                   1368
 #define IDC_TEST                        1368
 #define IDC_POPUP_TITLE_FONT            1368
@@ -821,12 +823,14 @@
 #define IDC_COPY_EXACT_SIZE             1401
 #define IDC_DUPE_TEXT                   1402
 #define IDC_GROUPS                      1403
+#define IDC_SHARE_SAVE                  1405
 #define IDC_FILELIST_DIFF               1406
 #define IDC_SETTINGS_MEBIBYES           1406
 #define IDC_SETTINGS_MEBIBITS           1406
 #define IDC_SETTINGS_MEBIBITS2          1407
 #define IDC_STYLES                      1408
 #define IDC_AVAILABLE_STYLES            1409
+#define IDC_MATCH_ADL					1410
 #define IDC_SYSTEM_LOG                  1412
 #define IDC_OPEN_SYSTEM_LOG             1413
 #define IDC_TLS_PRIVATE_KEY_FILE        1414

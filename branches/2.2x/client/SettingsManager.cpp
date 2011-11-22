@@ -143,7 +143,7 @@ const string SettingsManager::settingTags[] =
 	"LangSwitch", "ExpandDefault",
 	"ShareSkiplistUseRegexp", "DownloadSkiplistUseRegexp", "HighestPriorityUseRegexp",
 	"OverlapChunks", "MinSegmentSize", "OpenLogsInternal", "UcSubMenu", "AutoSlots", "Coral", "OpenSystemLog",
-	"FirstRun", "LastSearchFiletype", "MaxResizeLines", "DontShareEmptyDirs", "OnlyShareFullDirs",
+	"FirstRun", "LastSearchFiletype", "MaxResizeLines", 
 	"DupeSearch", "passwd_protect", "passwd_protect_tray",
 	"DisAllowConnectionToPassedHubs", "BoldHubTabsOnKick", "searchSkiplist", "RefreshVnameOnSharePage",
 	"AutoAddSource", "KeepFinishedFiles", "AllowNATTraversal", "UseExplorerTheme", "TestWrite", "IncomingRefreshTime", "UseAdls", "UseAdlsOwnList",
@@ -156,6 +156,7 @@ const string SettingsManager::settingTags[] =
 	"DirlistLeft", "DirlistRight", "StatsTop", "StatsBottom", "StatsLeft", "StatsRight", "MaxMCNDownloads", "PartialMatchADC", "NoZeroByte", "MaxMCNUploads", "MCNAutoDetect",
 	"DLAutoDetect", "ULAutoDetect", "CheckUseSkiplist", "CheckIgnoreZeroByte", "SubtractlistSkip", "TextDupeBackColor", "TextDupeBold", "TextDupeItalic", "UnderlineLinks",
 	"UnderlineDupes", "DupesInFilelists", "DupesInChat", "ListHighlightBackColor", "ListHighlightColor", "ListHighlightBold", "ListHighlightItalic", "ReportSkiplist",
+	"logHashing", "ShareSaveTime", "UseFTPLogger",
 	"SENTRY",
 	// Int64
 	"TotalUpload", "TotalDownload",
@@ -164,6 +165,8 @@ const string SettingsManager::settingTags[] =
 
 SettingsManager::SettingsManager()
 {
+	//make sure it can fit our events without using push_back since
+	//that might cause them to be in the wrong position.
 	fileEvents.resize(2);
 
 	connectionSpeeds.push_back("0.1");
@@ -633,8 +636,6 @@ SettingsManager::SettingsManager()
 	setDefault(USE_OLD_SHARING_UI, true);
 	setDefault(LAST_SEARCH_FILETYPE, 0);
 	setDefault(MAX_RESIZE_LINES, 2);
-	setDefault(DONT_SHARE_EMPTY_DIRS, false);
-	setDefault(ONLY_SHARE_FULL_DIRS, false);
 	setDefault(DUPE_SEARCH, true);
 	setDefault(PASSWD_PROTECT, false);
 	setDefault(PASSWD_PROTECT_TRAY, false);
@@ -689,6 +690,10 @@ SettingsManager::SettingsManager()
 	setDefault(DUPES_IN_CHAT, true);
 	setDefault(HIGHLIGHT_LIST, "");
 	setDefault(REPORT_SKIPLIST, true);
+
+	setDefault(LOG_HASHING, true);
+	setDefault(SHARE_SAVE_TIME, 30);
+	setDefault(USE_FTP_LOGGER, false);
 
 #ifdef _WIN64
 	setDefault(DECREASE_RAM, false);  
@@ -786,7 +791,25 @@ void SettingsManager::load(string const& aFileName)
 			}
 			xml.stepOut();
 		}
-
+		
+		xml.resetCurrentChild();
+		if(xml.findChild("FileEvents")) {
+			xml.stepIn();
+			if(xml.findChild("OnFileComplete")) {
+				StringPair sp;
+				sp.first = xml.getChildAttrib("Command");
+				sp.second = xml.getChildAttrib("CommandLine");
+				fileEvents[ON_FILE_COMPLETE] = sp;
+			}
+			xml.resetCurrentChild();
+			if(xml.findChild("OnDirCreated")) {
+				StringPair sp;
+				sp.first = xml.getChildAttrib("Command");
+				sp.second = xml.getChildAttrib("CommandLine");
+				fileEvents[ON_DIR_CREATED] = sp;
+			}
+			xml.stepOut();
+		}
 
 		if(SETTING(PRIVATE_ID).length() != 39 || CID(SETTING(PRIVATE_ID)).isZero()) {
 			set(PRIVATE_ID, CID::generate().toBase32());
@@ -827,6 +850,15 @@ void SettingsManager::load(string const& aFileName)
 			set(AUTO_DETECT_CONNECTION, false); //Don't touch if it works
 		}
 
+		if(v <= 2.30) {
+		try {
+			if(Util::fileExists(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml.bz2"))			
+				File::deleteFile(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml.bz2");
+
+			if(Util::fileExists(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml"))			
+				File::deleteFile(Util::getPath(Util::PATH_USER_CONFIG) + "Share.xml");
+		}catch(...) { }
+		}
 
 		setDefault(UDP_PORT, SETTING(TCP_PORT));
 
@@ -917,6 +949,16 @@ void SettingsManager::save(string const& aFileName) {
 		xml.addChildAttrib("Id", i->first);
 	}
 	xml.stepOut();*/
+	xml.addTag("FileEvents");
+	xml.stepIn();
+	xml.addTag("OnFileComplete");
+	xml.addChildAttrib("Command", fileEvents[ON_FILE_COMPLETE].first);
+	xml.addChildAttrib("CommandLine", fileEvents[ON_FILE_COMPLETE].second);
+	xml.addTag("OnDirCreated");
+	xml.addChildAttrib("Command", fileEvents[ON_DIR_CREATED].first);
+	xml.addChildAttrib("CommandLine", fileEvents[ON_DIR_CREATED].second);
+	xml.stepOut();
+
 
 	fire(SettingsManagerListener::Save(), xml);
 

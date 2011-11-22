@@ -438,7 +438,6 @@ if(BOOLSETTING(PASSWD_PROTECT)) {
 	_Module.RemoveMessageLoop();
 
 	shutdown();
-	ExCImage::ReleaseGDIPlus();
 
 	return nRet;
 }

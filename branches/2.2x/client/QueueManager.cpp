@@ -748,7 +748,91 @@ string QueueManager::getListPath(const HintedUser& user) {
 	string nick = nicks.empty() ? Util::emptyString : Util::cleanPathChars(nicks[0]) + ".";
 	return checkTarget(Util::getListPath() + nick + user.user->getCID().toBase32(), /*checkExistence*/ false);
 }
-	
+
+//fuldc ftp logger support
+void QueueManager::fileEvent(const string& tgt, bool file /*false*/) {
+	string target = tgt;
+if(file) {
+		if(File::getSize(target) != -1) {
+			StringPair sp = SettingsManager::getInstance()->getFileEvent(SettingsManager::ON_FILE_COMPLETE);
+			if(sp.first.length() > 0) {
+				STARTUPINFO si = { sizeof(si), 0 };
+				PROCESS_INFORMATION pi = { 0 };
+				StringMap params;
+				params["file"] = target;
+				wstring cmdLine = Text::toT(Util::formatParams(sp.second, params, false));
+				wstring cmd = Text::toT(sp.first);
+
+				AutoArray<TCHAR> cmdLineBuf(cmdLine.length() + 1);
+				_tcscpy(cmdLineBuf, cmdLine.c_str());
+
+				AutoArray<TCHAR> cmdBuf(cmd.length() + 1);
+				_tcscpy(cmdBuf, cmd.c_str());
+
+				if(::CreateProcess(cmdBuf, cmdLineBuf, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+					::CloseHandle(pi.hThread);
+					::CloseHandle(pi.hProcess);
+				}
+			}
+		}
+} else {
+	if(File::createDirectory(target)) {
+		StringPair sp = SettingsManager::getInstance()->getFileEvent(SettingsManager::ON_DIR_CREATED);
+		if(sp.first.length() > 0) {
+			STARTUPINFO si = { sizeof(si), 0 };
+			PROCESS_INFORMATION pi = { 0 };
+			StringMap params;
+			params["dir"] = target;
+			wstring cmdLine = Text::toT(Util::formatParams(sp.second, params, true));
+			wstring cmd = Text::toT(sp.first);
+
+			AutoArray<TCHAR> cmdLineBuf(cmdLine.length() + 1);
+			_tcscpy(cmdLineBuf, cmdLine.c_str());
+
+			AutoArray<TCHAR> cmdBuf(cmd.length() + 1);
+			_tcscpy(cmdBuf, cmd.c_str());
+
+			if(::CreateProcess(cmdBuf, cmdLineBuf, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+				//wait for the process to finish executing
+				if(WAIT_OBJECT_0 == WaitForSingleObject(pi.hProcess, INFINITE)) {
+					DWORD code = 0;
+					//retrieve the error code to check if we should stop this download.
+					if(0 != GetExitCodeProcess(pi.hProcess, &code)) {
+						if(code != 0) { //assume 0 is the only valid return code, everything else is an error
+							string::size_type end = target.find_last_of("\\/");
+							if(end != string::npos) {
+								tstring tmp = Text::toT(target.substr(0, end));
+								RemoveDirectory(tmp.c_str());
+
+								//the directory we removed might be a sub directory of
+								//the real one, check to see if that's the case.
+								end = tmp.find_last_of(_T("\\/"));
+								if(end != string::npos) {
+									tstring dir = tmp.substr(end+1);
+									if( strnicmp(dir, _T("sample"), 6) == 0 ||
+										strnicmp(dir, _T("subs"), 4) == 0 ||
+										strnicmp(dir, _T("cover"), 5) == 0 ||
+										strnicmp(dir, _T("cd"), 2) == 0) {
+											RemoveDirectory(tmp.substr(0, end).c_str());
+									}
+								}
+								
+								::CloseHandle(pi.hThread);
+								::CloseHandle(pi.hProcess);
+
+								throw QueueException("An external sfv tool stopped the download of this file");
+							}
+						}
+					}
+				}
+				
+				::CloseHandle(pi.hThread);
+				::CloseHandle(pi.hProcess);
+				}
+			}
+		}
+	}
+}
 void QueueManager::add(const string& aTarget, int64_t aSize, const TTHValue& root, const HintedUser& aUser,
 					   Flags::MaskType aFlags /* = 0 */, bool addBad /* = true */) throw(QueueException, FileException)
 {
@@ -782,8 +866,14 @@ void QueueManager::add(const string& aTarget, int64_t aSize, const TTHValue& roo
 		}
 		tempTarget = aTarget;
 	} else {
-		target = checkTarget(aTarget, /*checkExistence*/ true);
+		if(BOOLSETTING(USE_FTP_LOGGER)) {
+			target = checkTarget(aTarget, /*checkExistence*/ false);
+			fileEvent(target);
+		} else
+			target = checkTarget(aTarget, /*checkExistence*/ true);
+	
 	}
+
 
 	// Check if it's a zero-byte file, if so, create and return...
 	if(aSize == 0) {
@@ -1027,8 +1117,10 @@ QueueItem::Priority QueueManager::hasDownload(const UserPtr& aUser, bool smallSl
 	}
 	return qi->getPriority();
 }
+
 namespace {
-typedef unordered_map<TTHValue, const DirectoryListing::File*> TTHMap;
+	//using vector for testing, atleast ram is cleared.
+typedef vector<pair<TTHValue, const DirectoryListing::File*>> TTHMap;
 
 // *** WARNING *** 
 // Lock(cs) makes sure that there's only one thread accessing this
@@ -1042,7 +1134,7 @@ void buildMap(const DirectoryListing::Directory* dir) noexcept {
 
 	for(DirectoryListing::File::List::const_iterator i = dir->files.begin(); i != dir->files.end(); ++i) {
 		const DirectoryListing::File* df = *i;
-		tthMap.insert(make_pair(df->getTTH(), df));
+		tthMap.push_back(make_pair(df->getTTH(), df));
 	}
 }
 }
@@ -1061,8 +1153,8 @@ int QueueManager::matchListing(const DirectoryListing& dl) noexcept {
 				continue;
 			if(qi->isSet(QueueItem::FLAG_USER_LIST))
 				continue;
-			TTHMap::iterator j = tthMap.find(qi->getTTH());
-			if(j != tthMap.end() && i->second->getSize() == qi->getSize()) {
+			TTHMap::iterator j = find_if(tthMap.begin(), tthMap.end(), CompareFirst<TTHValue, const DirectoryListing::File*>(qi->getTTH()));
+			if(j != tthMap.end() && j->second->getSize() == qi->getSize()) {
 				try {
 					wantConnection = addSource(qi, dl.getHintedUser(), QueueItem::Source::FLAG_FILE_NOT_AVAILABLE);    
 					} catch(const Exception&) {
@@ -1071,6 +1163,7 @@ int QueueManager::matchListing(const DirectoryListing& dl) noexcept {
 				matches++;
 			}
 		}
+	tthMap.clear();
 	}
 	if((matches > 0) && wantConnection)
 		ConnectionManager::getInstance()->getDownloadConnection(dl.getHintedUser());
@@ -1365,6 +1458,9 @@ void QueueManager::moveFile_(const string& source, const string& target) {
 			LogManager::getInstance()->message(STRING(UNABLE_TO_RENAME) + " " + source + ": " + e2.getError());
 		}
 	}
+	if(BOOLSETTING(USE_FTP_LOGGER))
+		getInstance()->fileEvent(target, true);
+
 }
 
 
@@ -1635,17 +1731,25 @@ void QueueManager::processList(const string& name, const HintedUser& user, const
 
 	if(flags & QueueItem::FLAG_DIRECTORY_DOWNLOAD) {
 		if (!path.empty()) {
+			DirectoryItem* d = NULL;
 			{
 				Lock l(cs);
 				auto dp = directories.equal_range(user);
 				for(auto i = dp.first; i != dp.second; ++i) {
 					if(stricmp(path.c_str(), i->second->getName().c_str()) == 0) {
-						dirList.download(i->second->getName(), i->second->getTarget(), false, i->second->getPriority(), true);
+						d = i->second;
 						directories.erase(i);
 						break;
 					}
 				}
 			}
+			if(d != NULL){
+				/* fix deadlock!!  cant call to download inside a lock, the lock time becomes too long and goes too deep,
+				threads in Queuemanager and Connectionmanager will lock each other. */
+				dirList.download(d->getName(), d->getTarget(), false, d->getPriority(), true);
+				delete d;
+			}
+
 		} else {
 			vector<DirectoryItemPtr> dl;
 			{
@@ -2130,6 +2234,8 @@ void QueueManager::noDeleteFileList(const string& path) {
 void QueueManager::on(SearchManagerListener::SR, const SearchResultPtr& sr) noexcept {
 	bool added = false;
 	bool wantConnection = false;
+	bool matchPartialADC = false;
+	bool matchPartialNMDC = false;
 	size_t users = 0;
 
 	{
@@ -2143,24 +2249,36 @@ void QueueManager::on(SearchManagerListener::SR, const SearchResultPtr& sr) noex
 			if(qi->getSize() == sr->getSize() && !qi->isSource(sr->getUser())) {
 				try {
 					
+					if(qi->isFinished())
+						break;  // don't add sources to already finished files
+
+					users = qi->countOnlineUsers(); 
+
 					if(BOOLSETTING(AUTO_ADD_SOURCE)) {
-						//first just add the source to the 1 file.
-						wantConnection = addSource(qi, HintedUser(sr->getUser(), sr->getHubURL()), 0);
-						added = true;
-						users = qi->countOnlineUsers();
-						
-						if(!BOOLSETTING(AUTO_SEARCH_AUTO_MATCH)) {
-						//if we are in adc hub match with partial list
-						if(BOOLSETTING(PARTIAL_MATCH_ADC) && !sr->getUser()->isSet(User::NMDC)) {
-							string path = Util::getDir(Util::getFilePath(sr->getFile()), true, false);
-							addList(HintedUser(sr->getUser(), sr->getHubURL()), QueueItem::FLAG_MATCH_QUEUE | QueueItem::FLAG_RECURSIVE_LIST |(path.empty() ? 0 : QueueItem::FLAG_PARTIAL_LIST), path);
-							}
-						//if its a rar release add the sources to all files.
-						else if(sr->getUser()->isSet(User::NMDC) && regexp.match(sr->getFile(), sr->getFile().length()-4) > 0) {
-							addAlternates(sr->getFile(), HintedUser(sr->getUser(), sr->getHubURL()));
-							}
+					
+						bool nmdcUser = sr->getUser()->isSet(User::NMDC);
+						/* match with partial list allways but decide if we are in nmdc hub here. 
+						( dont want to change the settings, would just break what user has set already, 
+						alltho would make a bit more sense to have just 1 match queue option, but since many have that disabled totally and we prefer to match partials in adchubs... ) */
+						if(BOOLSETTING(AUTO_SEARCH_AUTO_MATCH) && (users < (size_t)SETTING(MAX_AUTO_MATCH_SOURCES))) {
+							if(nmdcUser)							
+								matchPartialNMDC = true;
+							else
+								matchPartialADC = true;
+						//if we are in adc hub match with recursive partial list
+						} else if(BOOLSETTING(PARTIAL_MATCH_ADC) && !nmdcUser) {
+								matchPartialADC = true;
+							//if its a rar release add the sources to all files.
+						} else if (regexp.match(sr->getFile(), sr->getFile().length()-4) > 0) {
+								wantConnection = addAlternates(sr->getFile(), HintedUser(sr->getUser(), sr->getHubURL()));
+							// this is how sdc has it, dont add sources and receive wantconnection if we are about to match queue.
+						} else {
+								wantConnection = addSource(qi, HintedUser(sr->getUser(), sr->getHubURL()), 0);
 						}
 					}
+
+					added = true;
+
 					} catch(const Exception&) {
 					//...
 					}
@@ -2169,10 +2287,18 @@ void QueueManager::on(SearchManagerListener::SR, const SearchResultPtr& sr) noex
 		}
 	}
 
-	if(added && BOOLSETTING(AUTO_SEARCH_AUTO_MATCH) && (users < (size_t)SETTING(MAX_AUTO_MATCH_SOURCES))) {
+	//moved outside lock range.
+	if(added && matchPartialADC) {
+		try {
+			string path = Util::getDir(Util::getFilePath(sr->getFile()), true, false);
+			addList(HintedUser(sr->getUser(), sr->getHubURL()), QueueItem::FLAG_MATCH_QUEUE | QueueItem::FLAG_RECURSIVE_LIST |(path.empty() ? 0 : QueueItem::FLAG_PARTIAL_LIST), path);
+		}catch(...) { }
+	}
+
+	if(added && matchPartialNMDC) {
 		try {
 			string path = Util::getFilePath(sr->getFile());
-			addList(HintedUser(sr->getUser(), sr->getHubURL()), QueueItem::FLAG_MATCH_QUEUE | (path.empty() ? 0 : QueueItem::FLAG_PARTIAL_LIST), path);
+			addList(HintedUser(sr->getUser(), sr->getHubURL()), QueueItem::FLAG_MATCH_QUEUE |(path.empty() ? 0 : QueueItem::FLAG_PARTIAL_LIST), path);
 		} catch(const Exception&) {
 			// ...
 		}

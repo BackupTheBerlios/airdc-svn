@@ -297,6 +297,8 @@ private:
 	void moveStuckFile(QueueItem* qi);
 	void rechecked(QueueItem* qi);
 
+	void fileEvent(const string& tgt, bool file = false);
+
 	void setDirty();
 
 	typedef std::map<std::string, int64_t> StringIntMap;

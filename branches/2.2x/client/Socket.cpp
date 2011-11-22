@@ -343,12 +343,8 @@ int Socket::read(void* aBuffer, int aBufLen) {
 	dcassert(type == TYPE_TCP || type == TYPE_UDP);
 	do {
 		if(type == TYPE_TCP) {
-		if (sock == INVALID_SOCKET)
-				break;
 			len = ::recv(sock, (char*)aBuffer, aBufLen, 0);
 		} else {
-			if (sock == INVALID_SOCKET)
-				break;
 			len = ::recvfrom(sock, (char*)aBuffer, aBufLen, 0, NULL, NULL);
 		}
 	} while (len < 0 && getLastError() == EINTR);
@@ -637,11 +633,11 @@ string Socket::resolveName(const addr& serv_addr, uint16_t* port) {
 
 	switch(serv_addr.sas.ss_family) {
         case AF_INET:
-			if(port != NULL) *port = serv_addr.sai.sin_port;
+			if(port != NULL) *port = ntohs(serv_addr.sai.sin_port);
             break;
 
         case AF_INET6:
-			if(port != NULL) *port = serv_addr.sai6.sin6_port;
+			if(port != NULL) *port = ntohs(serv_addr.sai6.sin6_port);
 
 			// if it is IPv4 mapped address then convert to IPv4
 			if(IN6_IS_ADDR_V4MAPPED(&serv_addr.sai6.sin6_addr))

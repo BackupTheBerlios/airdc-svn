@@ -42,10 +42,11 @@ LRESULT TextFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	ctrlPad.SetEventMask(ctrlPad.GetEventMask() | ENM_LINK);
 	ctrlPad.Subclass();
 	ctrlPad.LimitText(0);
+	if(history || openlog) {
 	ctrlPad.SetFont(WinUtil::font);
 	ctrlPad.SetBackgroundColor(WinUtil::bgColor); 
 	ctrlPad.SetDefaultCharFormat(WinUtil::m_ChatTextGeneral);
-
+	}
 	string tmp;
 	try {
 
@@ -53,48 +54,64 @@ LRESULT TextFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		
 		if(history) {
 
-		int64_t size = f.getSize();
-	
-		if(size > 64*1024) {
-			f.setPos(size - 64*1024);
-		}
+			int64_t size = f.getSize();
+			if(size > 64*1024) {
+				f.setPos(size - 64*1024);
+				}
+			
 			tmp = f.read(64*1024);
-
 			StringList lines;
-
 			lines = StringTokenizer<string>(tmp, "\r\n").getTokens();
+			long totalLines = lines.size();
+			int i = totalLines > (SETTING(LOG_LINES) +1) ? totalLines - SETTING(LOG_LINES) : 0;
 
-		long totalLines = lines.size();
-		int i = totalLines > (SETTING(LOG_LINES) +1) ? totalLines - SETTING(LOG_LINES) : 0;
-
-		for(; i < totalLines; ++i){
-			ctrlPad.AppendText(Identity(NULL, 0), _T("- "), _T(""), Text::toT(lines[i]) + _T('\n'), WinUtil::m_ChatTextGeneral, true);
-		}
+			for(; i < totalLines; ++i){
+				ctrlPad.AppendText(Identity(NULL, 0), _T("- "), _T(""), Text::toT(lines[i]) + _T('\n'), WinUtil::m_ChatTextGeneral, true);
+			}
 
 		} else if(openlog) {
 			//if openlog just add the whole text
 			tmp = f.read();
 			ctrlPad.SetWindowText(Text::toT(tmp).c_str());
 		
+		
 		} else if(!openlog && !history) {
 
-		
+			tmp = Text::toDOS(f.read());
+			tmp = Text::toUtf8(tmp);
 
-		tmp = f.read();
-		Text::toUtf8(tmp);
-		 //add the line endings in nfo
-		string::size_type i = 0;
-		while((i = tmp.find('\n', i)) != string::npos) {
-			if(i == 0 || tmp[i-1] != '\r') {
-				tmp.insert(i, 1, '\r');
+			//add the line endings in nfo
+			string::size_type i = 0;
+			while((i = tmp.find('\n', i)) != string::npos) {
+				if(i == 0 || tmp[i-1] != '\r') {
+					tmp.insert(i, 1, '\r');
+					i++;
+				}
 				i++;
 			}
-			i++;
-		}
+
+		//edit text style, disable dwEffects, bold, italic etc. looks really bad with bold font.
+		CHARFORMAT2 cf;
+		cf.cbSize = 9;  //use fixed size for testing.
+		cf.dwEffects = 0;
+		cf.dwMask = CFM_BACKCOLOR | CFM_COLOR;
+		cf.crBackColor = SETTING(BACKGROUND_COLOR);
+		cf.crTextColor = SETTING(TEXT_COLOR);
+		cf.bCharSet = OEM_CHARSET;
+
+		//We need to disable autofont, otherwise it will mess up our new font.
+		LRESULT lres = ::SendMessage(ctrlPad.m_hWnd, EM_GETLANGOPTIONS, 0, 0);
+		lres &= ~IMF_AUTOFONT;
+		::SendMessage(ctrlPad.m_hWnd, EM_SETLANGOPTIONS, 0, lres);
 		
-		ctrlPad.AppendText(Identity(NULL, 0), _T("- "), _T(""), Text::toT(tmp) + _T('\n'), WinUtil::m_ChatTextGeneral, false);
-		}
+		ctrlPad.SetFont(WinUtil::OEMFont);
+		//set the colors...
+		ctrlPad.SetBackgroundColor(WinUtil::bgColor); 
+		ctrlPad.SetDefaultCharFormat(cf);
 		
+		//ctrlPad.SetTextEx((LPCTSTR)tmp.c_str(), ST_SELECTION, CP_UTF8);
+		ctrlPad.SetWindowText(Text::toT(tmp).c_str()); 
+		}
 		
 		SetWindowText(Text::toT(Util::getFileName(Text::fromT(file))).c_str());
 		f.close();

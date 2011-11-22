@@ -53,10 +53,12 @@
 
 namespace dcpp {
 
+#define SHARE_CACHE_VERSION "1"
+
 ShareManager::ShareManager() : hits(0), xmlListLen(0), bzXmlListLen(0),
 	xmlDirty(true), forceXmlRefresh(false), listN(0), refreshing(false),
 	lastXmlUpdate(0), lastFullUpdate(GET_TICK()), lastIncomingUpdate(GET_TICK()), bloom(1<<20), sharedSize(0), ShareCacheDirty(false), GeneratingXmlList(false),
-	c_size_dirty(true), c_shareSize(0)
+	c_size_dirty(true), c_shareSize(0), xml_saving(false), lastSave(GET_TICK()), aShutdown(false)
 { 
 	SettingsManager::getInstance()->addListener(this);
 	TimerManager::getInstance()->addListener(this);
@@ -95,20 +97,20 @@ void ShareManager::shutdown() {
 				bzXmlRef.reset(); 
 
 				if(!Util::fileExists(Util::getPath(Util::PATH_USER_CONFIG) + "files.xml.bz2"))				
-					File::renameFile(getBZXmlFile(), (Util::getPath(Util::PATH_USER_CONFIG), "files.xml.bz2")); 
+					File::renameFile(getBZXmlFile(), ( Util::getPath(Util::PATH_USER_CONFIG) + "files.xml.bz2") ); 
 				
 		} catch(...) {
 		//ignore, we just failed to delete
 		}
-			
-	}
+	//abort buildtree and refresh, we are shutting down.
+	aShutdown = true;		
+}
 
 ShareManager::Directory::Directory(const string& aName, const ShareManager::Directory::Ptr& aParent) :
 	size(0),
 	name(aName),
 	parent(aParent.get()),
-	fileTypes(1 << SearchManager::TYPE_DIRECTORY),
-	fullyHashed(true)//ApexDC
+	fileTypes(1 << SearchManager::TYPE_DIRECTORY)
 {
 }
 
@@ -132,12 +134,21 @@ void ShareManager::Directory::addType(uint32_t type) noexcept {
 	}
 }
 
-string ShareManager::Directory::getRealPath(const std::string& path) const {
+string ShareManager::Directory::getRealPath(const std::string& path, bool loading/*false*/) const {
 	if(getParent()) {
-		return getParent()->getRealPath(getName() + PATH_SEPARATOR_STR + path);
+		return getParent()->getRealPath(getName() + PATH_SEPARATOR_STR + path, loading);
 	}else if(!getRootPath().empty()) {
-		dcdebug("found rootPath: %s", getRootPath());
-		return (getRootPath() + path);
+		string root = getRootPath() + path;
+
+		if(loading) //no extra checks for finding the file while loading share cache.
+			return root;
+
+		/*check for the existance here if we have moved the file/folder and only refreshed the new location.
+		should we even look, what's moved is moved, user should refresh both locations.*/
+		if(Util::fileExists(root))
+			return root;
+		else
+			return ShareManager::getInstance()->findRealRoot(getName(), path);
 	} else { //shouldnt need to go here
 		return ShareManager::getInstance()->findRealRoot(getName(), path);
 	}
@@ -269,9 +280,9 @@ AdcCommand ShareManager::getFileInfo(const string& aFile) {
 	return cmd;
 }
 
-ShareManager::DirMap ShareManager::splitVirtual(const string& virtualPath) const throw(ShareException) {
+ShareManager::DirMultiMap ShareManager::splitVirtual(const string& virtualPath) const throw(ShareException) {
 	Dirs virtuals; //since we are mapping by realpath, we can have more than 1 same virtualnames
-	DirMap ret;
+	DirMultiMap ret;
 	if(virtualPath.empty() || virtualPath[0] != '/') {
 		throw ShareException(UserConnection::FILE_NOT_AVAILABLE);
 	}
@@ -292,7 +303,7 @@ ShareManager::DirMap ShareManager::splitVirtual(const string& virtualPath) const
 		string::size_type j = i + 1;
 		Directory::Ptr d = *k;
 
-	if(virtualPath.find('/', j) == string::npos) {          // we only have root virtualpaths.
+	if(virtualPath.find('/', j) == string::npos) {	  // we only have root virtualpaths.
 			ret.insert(make_pair(virtualPath.substr(j), d));
 		
 	} else {
@@ -331,8 +342,8 @@ ShareManager::Directory::File::Set::const_iterator ShareManager::findFile(const 
 		return i->second;
 	}
 
-	DirMap dirs = splitVirtual(virtualFile);
-	for(DirMap::iterator v = dirs.begin(); v != dirs.end(); ++v) {
+	DirMultiMap dirs = splitVirtual(virtualFile);
+	for(DirMultiMap::iterator v = dirs.begin(); v != dirs.end(); ++v) {
 	Directory::File::Set::const_iterator it = find_if(v->second->files.begin(), v->second->files.end(),
 		Directory::File::StringComp(v->first));
 	if(it != v->second->files.end())
@@ -347,10 +358,10 @@ StringList ShareManager::getRealPaths(const std::string path) {
 
 		StringList result;	
 		string dir;
-		DirMap dirs = splitVirtual(path);
+		DirMultiMap dirs = splitVirtual(path);
 
 		if(*(path.end() - 1) == '/') {
-		for(DirMap::iterator i = dirs.begin(); i != dirs.end(); ++i) {
+		for(DirMultiMap::iterator i = dirs.begin(); i != dirs.end(); ++i) {
 			Directory::Ptr d = i->second;
 		if(d->getParent()) {
 			dir = d->getParent()->getRealPath(d->getName());
@@ -447,7 +458,7 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 		if(name == SDIRECTORY) {
 			const string& name = getAttrib(attribs, SNAME, 0);
 			string path = getAttrib(attribs, PATH, 1);
-			string date = getAttrib(attribs, DATE, 2);
+			const string& date = getAttrib(attribs, DATE, 2);
 
 			if(path[path.length() - 1] != PATH_SEPARATOR)
 				path += PATH_SEPARATOR;
@@ -463,7 +474,9 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 					cur = ShareManager::Directory::create(name, cur);
 					cur->setLastWrite(date);
 					cur->getParent()->directories[cur->getName()] = cur;
+					try {
 					ShareManager::getInstance()->addReleaseDir(cur->getFullName());
+					}catch(...) { }
 				}
 			}
 
@@ -476,15 +489,21 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 			}
 		} else if(cur && name == SFILE) {
 			const string& fname = getAttrib(attribs, SNAME, 0);
-			const string& size = getAttrib(attribs, SSIZE, 1);
-			//const string& root = getAttrib(attribs, STTH, 2);    
-			if(fname.empty() || size.empty() /*|| (root.size() != 39)*/) {
+			const string& size = getAttrib(attribs, SSIZE, 1);   
+			if(fname.empty() || size.empty() ) {
 				dcdebug("Invalid file found: %s\n", fname.c_str());
 				return;
 			}
 			/*dont save TTHs, check them from hashmanager, just need path and size.
-			this will keep us sync to hashindex, alltho might take a bit longer to startup maybe? not too much for myself tho*/
-			cur->files.insert(ShareManager::Directory::File(fname, Util::toInt64(size), cur, HashManager::getInstance()->getTTH(cur->getRealPath(fname), Util::toInt64(size))));
+			this will keep us sync to hashindex */
+			string filepath;
+			try {
+				filepath = cur->getRealPath(fname, true);
+				TTHValue tth = HashManager::getInstance()->getTTH(filepath, Util::toInt64(size));
+				cur->files.insert(ShareManager::Directory::File(fname, Util::toInt64(size), cur, tth));
+			}catch(Exception& e) { 
+				dcdebug("Error loading filelist %s \n", e.getError().c_str());
+			}
 		}
 	}
 	void endTag(const string& name, const string&) {
@@ -503,33 +522,34 @@ private:
 	size_t depth;
 };
 
-bool ShareManager::loadCache() noexcept {
+bool ShareManager::loadCache() {
 	try {
 		ShareLoader loader(directories);
 		
-		try {
 		//look for shares.xml
-		dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml", dcpp::File::READ, dcpp::File::OPEN);
+		dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml", dcpp::File::READ, dcpp::File::OPEN, false);
+		
+		try {
+		
 		SimpleXMLReader(&loader).parse(ff);
-		}catch(...) 
-			//migrate the old bzipped cache, remove this at some point
-		{	
-			dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml.bz2", dcpp::File::READ, dcpp::File::OPEN);
-			FilteredInputStream<UnBZFilter, false> f(&ff);
-			SimpleXMLReader(&loader).parse(f);
+		}catch(SimpleXMLException& e) {
+			LogManager::getInstance()->message("Error Loading shares.xml: "+ e.getError());
+			return false;
 		}
 
 		for(DirMap::const_iterator i = directories.begin(); i != directories.end(); ++i) {
-			const Directory::Ptr& d = i->second;
-			updateIndices(*d);
+			updateIndices(*i->second);
 		}
-		
+		try { //not vital to our cache loading.
 		setBZXmlFile( Util::getPath(Util::PATH_USER_CONFIG) + "files.xml.bz2");
 		if(!Util::fileExists(getBZXmlFile())) //only generate if we dont find old filelist
 			generateXmlList(true);
+		}catch(...) { }
+
 		sortReleaseList();
 		return true;
 	} catch(const Exception& e) {
+		LogManager::getInstance()->message("Errors Loading share cache: " + e.getError());
 		dcdebug("%s\n", e.getError().c_str());
 	}
 	return false;
@@ -622,11 +642,13 @@ void ShareManager::addDirectory(const string& realPath, const string& virtualNam
 		shares.insert(std::make_pair(realPath, vName));
 		directories.insert(make_pair(realPath, dp));
 		updateIndices(*dp);
-		dp->findDirsRE(false);
-		sortReleaseList();
-		
+
 		setDirty();
 	}
+		//after the wlock on purpose, these have own locking
+		dp->findDirsRE(false);
+		sortReleaseList();
+
 }
 /*
 ShareManager::Directory::Ptr ShareManager::merge(const Directory::Ptr& directory) {
@@ -738,7 +760,7 @@ void ShareManager::renameDirectory(const string& realPath, const string& virtual
 		return;
 
 	j->second->setName(vName);
-
+	setDirty();
 }
 
 ShareManager::Dirs ShareManager::getByVirtual(const string& virtualName) const throw() {
@@ -769,17 +791,18 @@ int64_t ShareManager::getShareSize(const string& realPath) const noexcept {
 	return -1;
 }
 
-int64_t ShareManager::getShareSize() noexcept {
+int64_t ShareManager::getShareSize() const noexcept {
 	RLock l(cs);
 	/*store the updated sharesize so we dont need to count it on every myinfo update*/
 	if(c_size_dirty) {
+
 		int64_t tmp = 0;
 		for(HashFileMap::const_iterator i = tthIndex.begin(); i != tthIndex.end(); ++i) {
 			tmp += i->second->getSize();
 		}
 		c_shareSize = tmp;
 		c_size_dirty = false;
-		}
+	}
 
 	return c_shareSize;
 }
@@ -794,8 +817,8 @@ bool ShareManager::isDirShared(const string& directory) {
 	string dir = getReleaseDir(directory);
 	if (dir.empty())
 		return false;
-	/*we need to protect this, but same mutex used here is too much, it will freeze during refreshing even with chat releasenames
-	Todo add own mutex to protect dirnamelist*/
+	/*we need to protect this, but same mutex used here is too much, it will freeze during refreshing even with chat releasenames*/
+	Lock l(dirnamelist);
 	if (std::binary_search(dirNameList.begin(), dirNameList.end(), dir)) {
 		return true;
 	}
@@ -921,7 +944,7 @@ string ShareManager::getReleaseDir(const string& aName) {
 }
 
 void ShareManager::sortReleaseList() {
-	//Lock l(cs);
+	Lock l(dirnamelist);
 	sort(dirNameList.begin(), dirNameList.end());
 }
 
@@ -942,7 +965,7 @@ void ShareManager::addReleaseDir(const string& aName) {
 	if (dir.empty())
 		return;
 
-	//Lock l(cs);
+	Lock l(dirnamelist);
 	dirNameList.push_back(dir);
 }
 
@@ -952,9 +975,10 @@ void ShareManager::deleteReleaseDir(const string& aName) {
 	if (dir.empty())
 		return;
 
-//	Lock l(cs);
+//	hmm, dont see a situation when the name list could change during remove looping.
 	for(StringList::const_iterator i = dirNameList.begin(); i != dirNameList.end(); ++i) {
 		if ((*i) == dir) {
+			Lock l(dirnamelist);
 			dirNameList.erase(i);
 			return;
 		}
@@ -970,7 +994,7 @@ ShareManager::Directory::Ptr ShareManager::buildTree(const string& aName, const 
 
 
 #ifdef _WIN32
-		for(FileFindIter i(aName + "*"); i != end; ++i) {
+		for(FileFindIter i(aName + "*"); i != end && !aShutdown; ++i) {
 #else
 	//the fileiter just searches directorys for now, not sure if more 
 	//will be needed later
@@ -1063,14 +1087,10 @@ ShareManager::Directory::Ptr ShareManager::buildTree(const string& aName, const 
 #endif
 
 			if((stricmp(newName, SETTING(TEMP_DOWNLOAD_DIRECTORY)) != 0) && shareFolder(newName)) {
-				//ApexDC
 				Directory::Ptr tmpDir = buildTree(newName, dir);
 				//add the date to the last dir
 				tmpDir->setLastWrite(Util::getDateTime(i->getLastWriteTime()));
-
-				if((!BOOLSETTING(DONT_SHARE_EMPTY_DIRS) || tmpDir->countFiles() > 0) && (!BOOLSETTING(ONLY_SHARE_FULL_DIRS) || tmpDir->getFullyHashed())) {
-					dir->directories[name] = tmpDir;
-				}
+				dir->directories[name] = tmpDir;
 			}
 		} else {
 			// Not a directory, assume it's a file...make sure we're not sharing the settings file...
@@ -1088,12 +1108,8 @@ ShareManager::Directory::Ptr ShareManager::buildTree(const string& aName, const 
 					continue;
 				}
 				try {
-					//ApexDC
-					if(HashManager::getInstance()->checkTTH(fileName, size, i->getLastWriteTime())) {
+					if(HashManager::getInstance()->checkTTH(fileName, size, i->getLastWriteTime())) 
 						lastFileIter = dir->files.insert(lastFileIter, Directory::File(name, size, dir, HashManager::getInstance()->getTTH(fileName, size)));
-					} else {
-						dir->setFullyHashed(false);
-					}
 				} catch(const HashException&) {
 				}
 			}
@@ -1236,17 +1252,17 @@ int ShareManager::refresh( const string& aDir ){
 			LogManager::getInstance()->message(STRING(FILE_LIST_REFRESH_IN_PROGRESS));
 			return REFRESH_IN_PROGRESS;
 	}
-		//string path = Text::toLower(aDir);
+		string path = aDir;
 
-		//if(path[ path.length() -1 ] != PATH_SEPARATOR)
-			//path += PATH_SEPARATOR;
+		if(path[ path.length() -1 ] != PATH_SEPARATOR)
+			path += PATH_SEPARATOR;
 
 		{
 			RLock l(cs);
 			refreshPaths.clear();
 			
-				DirMap::iterator i = directories.find(aDir); //case sensitive for now...
-				if(i == directories.end()) {
+			DirMap::iterator i = directories.find(path); //case insensitive
+			if(i == directories.end()) {
 				//loopup the Virtualname selected from share and add it to refreshPaths List
 				for(StringMap::const_iterator j = shares.begin(); j != shares.end(); ++j) {
 					if( stricmp( j->second, aDir ) == 0 ) {
@@ -1336,6 +1352,7 @@ int ShareManager::run() {
 		for(StringPairIter i = dirs.begin(); i != dirs.end(); ++i) {
 				if (checkHidden(i->second)) {
 					Directory::Ptr dp = buildTree(i->second, Directory::Ptr());
+					if(aShutdown) goto end;  //abort refresh
 					dp->setName(i->first);
 					dp->setRootPath(i->second);
 					newDirs.insert(make_pair(i->second, dp));
@@ -1367,6 +1384,7 @@ int ShareManager::run() {
 
 			} else if(refreshOptions & REFRESH_ALL) {
 				directories.clear();
+				Lock l(dirnamelist);
 				dirNameList.clear();
 			}
 		
@@ -1400,6 +1418,8 @@ int ShareManager::run() {
 		generateXmlList(true);
 		saveXmlList();
 	}
+
+end:
 	refreshing.clear();
 	return 0;
 }
@@ -1503,34 +1523,48 @@ void ShareManager::generateXmlList(bool forced /*false*/) {
 #define LITERAL(n) n, sizeof(n)-1
 
 void ShareManager::saveXmlList(){
+
+	if(xml_saving)
+		return;
+
+	xml_saving = true;
+
+	LogManager::getInstance()->message("Saving shares.xml...");
+
 	RLock l(cs);
 	string indent;
+	try{
 	//create a backup first incase we get interrupted on creation.
 	string newCache = Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml.tmp";
 	File ff(newCache, File::WRITE, File::TRUNCATE | File::CREATE);
 	BufferedOutputStream<false> xmlFile(&ff);
 	//FilteredOutputStream<BZFilter, true> *xmlFile = new FilteredOutputStream<BZFilter, true>(new File(newCache, File::WRITE, File::TRUNCATE | File::CREATE));
-	try{
+	
 		xmlFile.write(SimpleXML::utf8Header);
-		xmlFile.write("<Share>\r\n");
+		xmlFile.write(LITERAL("<Share Version=\"" SHARE_CACHE_VERSION "\">\r\n"));
+		indent +='\t';
 
 		for(DirMap::const_iterator i = directories.begin(); i != directories.end(); ++i) {
 			i->second->toXmlList(xmlFile, i->first, indent);
 		}
-		xmlFile.write("</Share>");
+
+		xmlFile.write(LITERAL("</Share>"));
 		xmlFile.flush();
 		ff.close();
 		File::deleteFile(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml");
 		File::renameFile(newCache,  (Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml"));
-		File::deleteFile(newCache);
-	}catch(Exception&){}
+	}catch(Exception& e){
+		LogManager::getInstance()->message("Error Saving Shares.xml: " + e.getError());
+	}
 
 	//delete xmlFile;
-
+	xml_saving = false;
 	ShareCacheDirty = false;
+	lastSave = GET_TICK();
+	LogManager::getInstance()->message("shares.xml saved.");
 }
 
-void ShareManager::Directory::toXmlList(OutputStream& xmlFile, const string& path, string& indent) const{
+void ShareManager::Directory::toXmlList(OutputStream& xmlFile, const string& path, string& indent){
 	string tmp, tmp2;
 	
 	xmlFile.write(indent);
@@ -1558,9 +1592,6 @@ void ShareManager::Directory::toXmlList(OutputStream& xmlFile, const string& pat
 		xmlFile.write(SimpleXML::escape(f.getName(), tmp2, true));
 		xmlFile.write(LITERAL("\" Size=\""));
 		xmlFile.write(Util::toString(f.getSize()));
-		//xmlFile.write(LITERAL("\" TTH=\""));
-		tmp2.clear();
-		//xmlFile.write(f.getTTH().toBase32(tmp2));
 		xmlFile.write(LITERAL("\"/>\r\n"));
 	}
 
@@ -1603,16 +1634,20 @@ MemoryInputStream* ShareManager::generatePartialList(const string& dir, bool rec
 		}
 	} else {
 		dcdebug("wanted %s \n", dir);
-		DirMap result = splitVirtual(dir);
-		for(DirMap::const_iterator it = result.begin(); it != result.end(); ++it) {
+		try {
+		DirMultiMap result = splitVirtual(dir);
+
+		for(DirMultiMap::const_iterator it = result.begin(); it != result.end(); ++it) {
 			dcdebug("result name %s \n", it->second->getName());
 			Directory::Ptr root = it->second;
 			for(Directory::Map::const_iterator it2 = root->directories.begin(); it2 != root->directories.end(); ++it2) {
 				it2->second->toXml(sXml, recurse);
+			}
+			root->filesToXml(sXml);
+			}
+		} catch(...) {
+			return NULL;
 		}
-		root->filesToXml(sXml);
-		}
-
 	}
 	sXml.stepOut();
 	StringOutputStream sos(xml);
@@ -2134,6 +2169,11 @@ void ShareManager::on(HashManagerListener::TTHDone, const string& fname, const T
 }
 
 void ShareManager::on(TimerManagerListener::Minute, uint64_t tick) noexcept {
+
+	if(SETTING(SHARE_SAVE_TIME) > 0){
+		if(ShareCacheDirty && lastSave + SETTING(SHARE_SAVE_TIME) *60 *1000 <= tick)
+			saveXmlList();
+	}
 
 	if(SETTING(INCOMING_REFRESH_TIME) > 0 && !incoming.empty()){
 			if(lastIncomingUpdate + SETTING(INCOMING_REFRESH_TIME) * 60 * 1000 <= tick) {

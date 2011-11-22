@@ -43,6 +43,7 @@
 #include "TransferView.h"
 #include "WinUtil.h"
 #include "LineDlg.h"
+#include "HashProgressDlg.h"
 
 #include "picturewindow.h"
 
@@ -54,7 +55,7 @@ class MainFrame : public CMDIFrameWindowImpl<MainFrame>, public CUpdateUI<MainFr
 {
 public:
 	MainFrame();
-	~MainFrame();
+	virtual ~MainFrame();
 	DECLARE_FRAME_WND_CLASS(_T(APPNAME), IDR_MAINFRAME)
 
 	CMDICommandBarCtrl m_CmdBar;
@@ -465,6 +466,7 @@ private:
 	bool bAppMinimized;
 	bool bIsPM;
 
+	HashProgressDlg hashProgress;
 
 	static bool bShutdown;
 	static uint64_t iCurrentShutdownTime;

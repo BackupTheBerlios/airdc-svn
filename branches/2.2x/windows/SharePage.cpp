@@ -45,6 +45,7 @@ PropPage::TextItem SharePage::texts[] = {
 	{ IDC_SETTINGS_MBS, ResourceManager::MBPS },
 	{ IDC_REFRESH_VNAME_ON_SHAREPAGE, ResourceManager::REFRESH_VNAME_ON_SHAREPAGE},
 	{ IDC_SHARE_SFV, ResourceManager::SETTINGS_SHARE_SFV },
+	{ IDC_SHARE_SAVE, ResourceManager::SAVE_SHARE },
 	{ 0, ResourceManager::SETTINGS_AUTO_AWAY }
 };
 
@@ -55,6 +56,7 @@ PropPage::Item SharePage::items[] = {
 	{ IDC_INCOMING_REFRESH_TIME, SettingsManager::INCOMING_REFRESH_TIME, PropPage::T_INT },
 	{ IDC_MAX_HASH_SPEED, SettingsManager::MAX_HASH_SPEED, PropPage::T_INT },
 	{ IDC_REFRESH_VNAME_ON_SHAREPAGE, SettingsManager::REFRESH_VNAME_ON_SHAREPAGE, PropPage::T_BOOL },
+	{ IDC_SHARE_SAVE_TIME, SettingsManager::SHARE_SAVE_TIME, PropPage::T_INT },
 	{ 0, 0, PropPage::T_END }
 };
 
@@ -85,7 +87,7 @@ LRESULT SharePage::onInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 		for(StringPairIter j = directories.begin(); j != directories.end(); j++)
 		{
 			int i = ctrlDirectories.insert(ctrlDirectories.GetItemCount(), Text::toT(j->first));
-			ctrlDirectories.SetItemText(i, 1, Text::toT(j->second).c_str() );
+			ctrlDirectories.SetItemText(i, 1, Text::toT(j->second).c_str());
 			ctrlDirectories.SetItemText(i, 2, Util::formatBytesW(ShareManager::getInstance()->getShareSize(j->second)).c_str());
 			StringList incoming =  ShareManager::getInstance()->getIncoming();
 			for(StringIter k = incoming.begin(); k != incoming.end(); ++k) {
@@ -113,6 +115,10 @@ LRESULT SharePage::onInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	updown.SetRange32(0, 999);
 	updown.Detach();
 	
+	updown.Attach(GetDlgItem(IDC_SAVE_SPIN));
+	updown.SetRange32(0, 3000); 
+	updown.Detach();
+
 	ft.SubclassWindow(GetDlgItem(IDC_TREE1));
 	ft.SetStaticCtrl(&ctrlTotal);
 	if(!BOOLSETTING(USE_OLD_SHARING_UI))
@@ -225,7 +231,8 @@ LRESULT SharePage::onClickedAdd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndC
 	tstring target;
 	if(WinUtil::browseDirectory(target, m_hWnd)) {
 		addDirectory(target);
-		HashProgressDlg(true).DoModal();
+		::PostMessage( WinUtil::mainWnd, WM_COMMAND, IDC_HASH_PROGRESS, 0);
+		//HashProgressDlg(true).DoModal();
 	}
 	
 	return 0;

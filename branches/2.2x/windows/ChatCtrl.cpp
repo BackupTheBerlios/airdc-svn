@@ -38,7 +38,7 @@ ChatCtrl::ChatCtrl() : ccw(_T("edit"), this), client(NULL), m_bPopupMenu(false) 
 	if(emoticonsManager == NULL) {
 		emoticonsManager = new EmoticonsManager();
 	}
-	regRelease.Init(_T("((?=\\S*[A-Z]\\S*)(([A-Z0-9]|\\w[A-Z0-9])[A-Za-z0-9-]*)(\\.|_|(-(?=\\S*\\d{4}\\S+)))(\\S+)-(\\w{2,}))"));
+	regRelease.Init(_T("(^(?=\\S*[A-Z]\\S*)(([A-Z0-9]|\\w[A-Z0-9])[A-Za-z0-9-]*)(\\.|_|(-(?=\\S*\\d{4}\\S+)))(\\S+)-(\\w{2,})(?=(\\W)?)$)"));
 	regRelease.study();
 	regUrl.Init(_T("(((?:[a-z][\\w-]{0,10})?:/{1,3}|www\\d{0,3}[.]|magnet:\\?[^\\s=]+=|spotify:|[a-z0-9.\\-]+[.][a-z]{2,4}/)(?:[^\\s()<>]+|\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\))+(?:\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\)|[^\\s`!()\\[\\]{};:'\".,<>?«»“”‘’]))"), PCRE_CASELESS);
 	regUrl.study();
@@ -323,7 +323,7 @@ void ChatCtrl::FormatChatLine(const tstring& sMyNick, tstring& sText, CHARFORMAT
 	for(ColorIter i = cList->begin(); i != cList->end(); ++i) {
 		ColorSettings* cs = &(*i);
 	if(!cs->getIncludeNickList()) {
-		int pos;
+		size_t pos;
 		 tstring msg = sText;
 
 		//set start position for find
@@ -755,8 +755,18 @@ LRESULT ChatCtrl::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 
 	OMenu menu;
 	menu.CreatePopupMenu();
-	SearchMenu.CreatePopupMenu();
-	targetMenu.CreatePopupMenu();
+
+	if (targetMenu.m_hMenu != NULL) {
+		// delete target menu
+		targetMenu.DestroyMenu();
+		targetMenu.m_hMenu = NULL;
+	}
+
+	if (SearchMenu.m_hMenu != NULL) {
+		// delete search menu
+		SearchMenu.DestroyMenu();
+		SearchMenu.m_hMenu = NULL;
+	}
 
 	if (copyMenu.m_hMenu != NULL) {
 		// delete copy menu if it exists
@@ -797,6 +807,7 @@ LRESULT ChatCtrl::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 			}
 
 			//autosearch menus
+			targetMenu.CreatePopupMenu();
 			menu.AppendMenu(MF_SEPARATOR);
 			menu.AppendMenu(MF_STRING, IDC_DOWNLOAD, CTSTRING(DOWNLOAD));
 			menu.AppendMenu(MF_POPUP, (UINT_PTR)(HMENU)targetMenu, CTSTRING(DOWNLOAD_TO));
@@ -831,6 +842,7 @@ LRESULT ChatCtrl::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 				}
 			}
 		} else {
+			SearchMenu.CreatePopupMenu();
 			menu.AppendMenu(MF_STRING, IDC_SEARCH_BY_TTH, CTSTRING(SEARCH_BY_TTH));
 			menu.AppendMenu(MF_SEPARATOR);
 			menu.AppendMenu(MF_POPUP, (UINT)(HMENU)SearchMenu, CTSTRING(SEARCH_SITES));
@@ -1452,10 +1464,10 @@ void ChatCtrl::scrollToEnd() {
 	SetScrollPos(&pt);
 }
 
-int ChatCtrl::FullTextMatch(ColorSettings* cs, CHARFORMAT2 &hlcf, const tstring &line, int pos, long &lineIndex) {
+size_t ChatCtrl::FullTextMatch(ColorSettings* cs, CHARFORMAT2 &hlcf, const tstring &line, size_t pos, long &lineIndex) {
 	//this shit needs a total cleanup, we cant highlight authors or timestamps this way and we dont need to.
 	
-	int index = tstring::npos;
+	size_t index = tstring::npos;
 	tstring searchString;
 
 	if( cs->getMyNick() ) {
@@ -1580,7 +1592,7 @@ int ChatCtrl::FullTextMatch(ColorSettings* cs, CHARFORMAT2 &hlcf, const tstring 
 	
 	return pos;
 }
-int ChatCtrl::RegExpMatch(ColorSettings* cs, CHARFORMAT2 &hlcf, const tstring &line, long &lineIndex) {
+size_t ChatCtrl::RegExpMatch(ColorSettings* cs, CHARFORMAT2 &hlcf, const tstring &line, long &lineIndex) {
 	//TODO: Clean it up a bit
 	
 	long begin, end;	
