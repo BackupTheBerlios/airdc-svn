@@ -224,16 +224,19 @@ if(aType == Transfer::names[Transfer::TYPE_FILE]) {
 
 ok:
 
-	Lock l(cs);
+
 
 	uint8_t slotType = aSource.getSlotType();
 	
 	bool noSlots = false;
 	if (slotType != UserConnection::STDSLOT && slotType != UserConnection::MCNSLOT) {
-		bool hasReserved = reservedSlots.find(aSource.getUser()) != reservedSlots.end();
+		bool hasReserved = false;
 		bool isFavorite = FavoriteManager::getInstance()->hasSlot(aSource.getUser());
-		bool hasFreeSlot = (getFreeSlots() > 0) && ((uploadQueue.empty() && connectingUsers.empty()) || isConnecting(aSource.getUser()));
-
+		bool hasFreeSlot = false;
+		{
+		Lock l(cs);
+			hasReserved = reservedSlots.find(aSource.getUser()) != reservedSlots.end();
+			hasFreeSlot = (getFreeSlots() > 0) && ((uploadQueue.empty() && connectingUsers.empty()) || isConnecting(aSource.getUser()));
 		if ((type==Transfer::TYPE_PARTIAL_LIST || fileSize <= 65792) && smallSlots <= 8) {
 			slotType = UserConnection::SMALLSLOT;
 		} else if (aSource.isSet(UserConnection::FLAG_MCN1)) {
@@ -247,7 +250,7 @@ ok:
 		} else {
 			slotType = UserConnection::STDSLOT;
 		}
-
+		}//lock free
 		if (noSlots) {
 			bool supportsFree = aSource.isSet(UserConnection::FLAG_SUPPORTS_MINISLOTS);
 			bool allowedFree = (slotType == UserConnection::EXTRASLOT) || aSource.isSet(UserConnection::FLAG_OP) || getFreeExtraSlots() > 0;
@@ -276,13 +279,16 @@ ok:
 	// remove file from upload queue
 	clearUserFiles(aSource.getUser());
 	
+	bool resumed = false;
 	// remove user from connecting list
+	{
+		Lock l(cs);
 	SlotIter cu = connectingUsers.find(aSource.getUser());
 	if(cu != connectingUsers.end()) {
 		connectingUsers.erase(cu);
 	}
 
-	bool resumed = false;
+
 	for(UploadList::iterator i = delayUploads.begin(); i != delayUploads.end(); ++i) {
 		Upload* up = *i;
 		if(&aSource == &up->getUserConnection()) {
@@ -293,8 +299,9 @@ ok:
 			}
 			removeDelayUpload(aSource.getToken());
 			break;
+			}
 		}
-	}
+	} //lock free
 
 	Upload* u = new Upload(aSource, sourceFile, TTHValue());
 	//LogManager::getInstance()->message("Token2: " + aSource.getToken());
@@ -313,8 +320,10 @@ ok:
 	u->setFileSize(fileSize);
 	u->setType(type);
 
+	{
+	Lock l(cs);
 	uploads.push_back(u);
-
+	}
 	
 	aSource.getUser()->getCID();
 	if(aSource.getSlotType() != slotType) {
@@ -507,11 +516,13 @@ bool UploadManager::getAutoSlot() {
 }
 
 void UploadManager::removeUpload(Upload* aUpload, bool delay) {
+	{
 	Lock l(cs);
 	dcassert(find(uploads.begin(), uploads.end(), aUpload) != uploads.end());
 	uploads.erase(remove(uploads.begin(), uploads.end(), aUpload), uploads.end());
-	
+	}
 	if(delay) {
+		Lock l(cs);
 		delayUploads.push_back(aUpload);
 	} else {
 		delete aUpload;
@@ -870,7 +881,6 @@ void UploadManager::on(TimerManagerListener::Second, uint64_t /*aTick*/) noexcep
 
 void UploadManager::on(ClientManagerListener::UserDisconnected, const UserPtr& aUser) noexcept {
 	if(!aUser->isOnline()) {
-		Lock l(cs);
 		clearUserFiles(aUser);
 	}
 }

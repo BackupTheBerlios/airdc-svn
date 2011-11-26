@@ -21,7 +21,6 @@
 
 // Only need this for older ATL:s
 #if _ATL_VER < 0x0700
-#include <atlimage.h>
 #include <atlimpl.cpp>
 #endif
 

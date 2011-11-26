@@ -520,5 +520,5 @@ void BufferedSocket::addTask(Tasks task, TaskData* data) {
 
 /**
  * @file
- * $Id: BufferedSocket.cpp 575 2011-08-25 19:38:04Z bigmuscle $
+ * $Id: BufferedSocket.cpp 581 2011-11-02 18:59:46Z bigmuscle $
  */

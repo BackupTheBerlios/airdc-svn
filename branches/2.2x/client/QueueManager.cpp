@@ -1139,13 +1139,36 @@ void buildMap(const DirectoryListing::Directory* dir) noexcept {
 }
 }
 
-int QueueManager::matchListing(const DirectoryListing& dl) noexcept {
+int QueueManager::matchListing(const DirectoryListing& dl, bool partialList) noexcept {
 	int matches = 0;
 	bool wantConnection = false;
 	{
 		Lock l(cs);
 		tthMap.clear();
 		buildMap(dl.getRoot());
+
+		if (partialList) {
+			//LogManager::getInstance()->message("MATCHING PARTIAL LIST");
+ 			for (auto s = tthMap.begin(); s != tthMap.end(); ++s) {
+				QueueItemList ql = fileQueue.find(s->first);
+				if (!ql.empty()) {
+					for (auto i = ql.begin(); i != ql.end(); ++i) {
+						QueueItem* qi = (*i);
+						if(qi->isFinished())
+							continue;
+						if(qi->isSet(QueueItem::FLAG_USER_LIST))
+							continue;
+
+						try {	 
+							wantConnection = addSource(qi, dl.getHintedUser(), QueueItem::Source::FLAG_FILE_NOT_AVAILABLE);
+						} catch(...) {
+							// Ignore...
+						}
+						matches++;
+					}
+				}
+			}
+		} else {
 
 		for(auto i = fileQueue.getQueue().begin(); i != fileQueue.getQueue().end(); ++i) {
 			QueueItem* qi = i->second;
@@ -1163,6 +1186,7 @@ int QueueManager::matchListing(const DirectoryListing& dl) noexcept {
 				matches++;
 			}
 		}
+	}
 	tthMap.clear();
 	}
 	if((matches > 0) && wantConnection)
@@ -1769,7 +1793,7 @@ void QueueManager::processList(const string& name, const HintedUser& user, const
 		const size_t BUF_SIZE = STRING(MATCHED_FILES).size() + 16;
 		string tmp;
 		tmp.resize(BUF_SIZE);
-		snprintf(&tmp[0], tmp.size(), CSTRING(MATCHED_FILES), matchListing(dirList));
+		snprintf(&tmp[0], tmp.size(), CSTRING(MATCHED_FILES), matchListing(dirList, (flags & QueueItem::FLAG_PARTIAL_LIST ? true : false)));
 		if(flags & QueueItem::FLAG_PARTIAL_LIST) {
 			//no report
 		} else {

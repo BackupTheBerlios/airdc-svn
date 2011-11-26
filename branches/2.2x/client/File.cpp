@@ -196,7 +196,7 @@ void File::ensureDirectory(const string& aFile) noexcept {
 	}
 }
 
-bool File::createDirectory(const string& aFile) throw (FileException) {
+bool File::createDirectory(const string& aFile) {
 	// Skip the first dir...
 	int result = 0;
 	tstring file;

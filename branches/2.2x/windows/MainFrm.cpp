@@ -137,7 +137,7 @@ public:
 				dl.loadFile(*i, false);
 				string tmp;
 				tmp.resize(STRING(MATCHED_FILES).size() + 16);
-				tmp.resize(snprintf(&tmp[0], tmp.size(), CSTRING(MATCHED_FILES), QueueManager::getInstance()->matchListing(dl)));
+				tmp.resize(snprintf(&tmp[0], tmp.size(), CSTRING(MATCHED_FILES), QueueManager::getInstance()->matchListing(dl, false)));
 				LogManager::getInstance()->message(Util::toString(ClientManager::getInstance()->getNicks(user)) + ": " + tmp);
 			} catch(const Exception&) {
 
@@ -382,11 +382,12 @@ LRESULT MainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	
 
 	//background image
-	m_PictureWindow.SubclassWindow(m_hWndMDIClient);
-	m_PictureWindow.m_nMessageHandler = CPictureWindow::BackGroundPaint;
-	currentPic = SETTING(BACKGROUND_IMAGE);
-	m_PictureWindow.Load(Text::toT(currentPic).c_str());
-	
+	if(!SETTING(BACKGROUND_IMAGE).empty()) {
+		m_PictureWindow.SubclassWindow(m_hWndMDIClient);
+		m_PictureWindow.m_nMessageHandler = CPictureWindow::BackGroundPaint;
+		currentPic = SETTING(BACKGROUND_IMAGE);
+		m_PictureWindow.Load(Text::toT(currentPic).c_str());
+	}
 	if(BOOLSETTING(TESTWRITE)) {
 	TestWrite(true, true, true);
 	}
@@ -750,11 +751,24 @@ LRESULT MainFrame::onCopyData(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, B
 	return true;
 }
 
-LRESULT MainFrame::onHashProgress(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT MainFrame::onHashProgress(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	//HashProgressDlg(false).DoModal(m_hWnd);
-	if( !hashProgress.IsWindow() ){
-		hashProgress.Create( m_hWnd );
-		hashProgress.ShowWindow( SW_SHOW );
+	switch(wID) {
+		case IDC_HASH_PROGRESS:
+			if( !hashProgress.IsWindow() ){
+				hashProgress.setAutoClose(false);
+				hashProgress.Create( m_hWnd );
+				hashProgress.ShowWindow( SW_SHOW );
+			}
+			break;
+		case IDC_HASH_PROGRESS_AUTO_CLOSE:
+			if( !hashProgress.IsWindow() ){
+				hashProgress.setAutoClose(true);
+				hashProgress.Create( m_hWnd );
+				hashProgress.ShowWindow( SW_SHOW );
+			}
+			break;
+		default: break;
 	}
 	return 0;
 }

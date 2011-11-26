@@ -127,6 +127,7 @@ private:
 	//tstring getFile(tstring path);
 	tstring selWord;
 	tstring WordFromPos(const POINT& p);
+	boost::wregex reg;
 };
 
 #endif // !defined(SYSTEM_FRAME_H)

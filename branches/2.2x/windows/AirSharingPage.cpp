@@ -67,6 +67,8 @@ void AirSharingPage::write() {
 		 //set to the defaults
 	if(SETTING(SKIPLIST_SHARE).empty())
 		settings->set(SettingsManager::SHARE_SKIPLIST_USE_REGEXP, true);
+	
+		AirUtil::setSkiplist();
 
 }
  

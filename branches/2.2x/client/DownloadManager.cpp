@@ -244,9 +244,11 @@ void DownloadManager::checkDownloads(UserConnection* aConn) {
 			fire(DownloadManagerListener::Status(), aConn, errorMessage);
 		}
 		if (!checkIdle(aConn->getUser(), aConn->isSet(UserConnection::FLAG_SMALL_SLOT), true)) {
+		{
 			Lock l(cs);
 			aConn->setState(UserConnection::STATE_IDLE);
  			idlers.push_back(aConn);
+		}
 			ConnectionManager::getInstance()->changeCQIState(aConn, true);
 		} else {
 			aConn->disconnect(true);

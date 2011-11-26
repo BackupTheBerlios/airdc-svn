@@ -76,9 +76,10 @@ void ConnectionManager::getDownloadConnection(const HintedUser& aUser, bool smal
 	bool found=false,supportMcn=false;
 	queueAddTick = GET_TICK();
 	dcassert((bool)aUser.user);
-	{
-		//Lock l(cs); 
+
 	if (!DownloadManager::getInstance()->checkIdle(aUser.user, smallSlot)) {
+		
+		Lock l(cs); 
 		for(ConnectionQueueItem::Iter i = downloads.begin(); i != downloads.end(); ++i) {
 			ConnectionQueueItem* cqi = *i;
 			if (cqi->getUser() == aUser) {
@@ -104,26 +105,20 @@ void ConnectionManager::getDownloadConnection(const HintedUser& aUser, bool smal
 		ConnectionQueueItem* cqi = getCQI(aUser, true);
 		if (smallSlot)
 			cqi->setFlag(ConnectionQueueItem::FLAG_SMALL);
-	}
-	}
+	} //lock free
 }
 
 ConnectionQueueItem* ConnectionManager::getCQI(const HintedUser& aUser, bool download, const string& token) {
+	//allways called from inside a lock, safe.
 	cqiAddTick = GET_TICK();
 	ConnectionQueueItem* cqi = new ConnectionQueueItem(aUser, download);
 	if (!token.empty())
 		cqi->setToken(token);
 
 	if(download) {
-		{
-			Lock l(cs);
 			downloads.push_back(cqi);
-		}
 	} else {
-		
-			Lock l(cs);
 			uploads.push_back(cqi);
-		
 	}
 
 	fire(ConnectionManagerListener::Added(), cqi);
@@ -131,17 +126,16 @@ ConnectionQueueItem* ConnectionManager::getCQI(const HintedUser& aUser, bool dow
 }
 
 void ConnectionManager::putCQI(ConnectionQueueItem* cqi) {
+	//allways called from inside lock
 
 	fire(ConnectionManagerListener::Removed(), cqi);
 	if(cqi->getDownload()) {
 		dcassert(find(downloads.begin(), downloads.end(), cqi) != downloads.end());
 		{
-			Lock l(cs);
 			downloads.erase(remove(downloads.begin(), downloads.end(), cqi), downloads.end());
 			delayedTokens[cqi->getToken()] = GET_TICK();
 		}
 	} else {
-		Lock l(cs);
 		UploadManager::getInstance()->removeDelayUpload(cqi->getToken());
 		dcassert(find(uploads.begin(), uploads.end(), cqi) != uploads.end());
 		uploads.erase(remove(uploads.begin(), uploads.end(), cqi), uploads.end());
@@ -180,7 +174,7 @@ void ConnectionManager::on(TimerManagerListener::Second, uint64_t aTick) noexcep
 		uint16_t attempts = 0;
 		for(ConnectionQueueItem::Iter i = downloads.begin(); i != downloads.end(); ++i) {
 			ConnectionQueueItem* cqi = *i;
-			if(cqi == nullptr)
+			if(!cqi)
 				continue;
 			//maksis check this again if needed.
 			if(cqi->getState() != ConnectionQueueItem::ACTIVE && cqi->getState() != ConnectionQueueItem::RUNNING && cqi->getState() != ConnectionQueueItem::IDLE) {
@@ -194,7 +188,7 @@ void ConnectionManager::on(TimerManagerListener::Second, uint64_t aTick) noexcep
 					continue;
 				}
 
-				if(cqi->getLastAttempt() == 0 || ((attemptLimit == 0 || attempts < attemptLimit) &&
+				if((cqi->getLastAttempt() == 0 && attempts < attemptLimit*2) || ((attemptLimit == 0 || attempts < attemptLimit) &&
 					cqi->getLastAttempt() + 60 * 1000 * max(1, cqi->getErrors()) < aTick))
 				{
 					cqi->setLastAttempt(aTick);
@@ -316,6 +310,8 @@ void ConnectionManager::checkWaitingMCN() noexcept {
 
 void ConnectionManager::changeCQIState(const UserConnection *aSource, bool stateIdle) noexcept {
 	string token = aSource->getToken();
+	//need a lock, calls from downloadmanager
+	Lock l(cs);
 	for(ConnectionQueueItem::Iter i = downloads.begin(); i != downloads.end(); ++i) {
 		ConnectionQueueItem* cqi = *i;
 		if (cqi->getToken() == token) {
@@ -446,7 +442,7 @@ void ConnectionManager::accept(const Socket& sock, bool secure) noexcept {
 }
 
 bool ConnectionManager::checkIpFlood(const string& aServer, uint16_t aPort, const string& userInfo) {
-	Lock l(cs);
+
 
 	// Temporary fix to avoid spamming
 	if(aPort == 80 || aPort == 2501) {
@@ -456,6 +452,8 @@ bool ConnectionManager::checkIpFlood(const string& aServer, uint16_t aPort, cons
 	
 	// We don't want to be used as a flooding instrument
 	uint8_t count = 0;
+
+	Lock l(cs);
 	for(UserConnectionList::const_iterator j = userConnections.begin(); j != userConnections.end(); ++j) {
 		
 		const UserConnection& uc = **j;
@@ -770,8 +768,9 @@ void ConnectionManager::on(UserConnectionListener::Direction, UserConnection* aS
 void ConnectionManager::addDownloadConnection(UserConnection* uc) {
 	dcassert(uc->isSet(UserConnection::FLAG_DOWNLOAD));
 	bool addConn = false;
-	Lock l(cs);
+
 	if (!uc->isSet(UserConnection::FLAG_MCN1)) {
+		Lock l(cs);
 		ConnectionQueueItem::Iter i = std::find(downloads.begin(), downloads.end(), uc->getUser());
 		if(i != downloads.end()) {
 			ConnectionQueueItem* cqi = *i;
@@ -785,6 +784,7 @@ void ConnectionManager::addDownloadConnection(UserConnection* uc) {
 			}
 		}
 	} else {
+		Lock l(cs);
 		for(ConnectionQueueItem::Iter i = downloads.begin(); i != downloads.end(); ++i) {
 			ConnectionQueueItem* cqi = *i;
 			if (cqi->getToken() == uc->getToken()) {
@@ -816,10 +816,11 @@ void ConnectionManager::addDownloadConnection(UserConnection* uc) {
 
 void ConnectionManager::addUploadConnection(UserConnection* uc) {
 	dcassert(uc->isSet(UserConnection::FLAG_UPLOAD));
-	Lock l(cs);
+
 	bool addConn = false;
 
 		if (uc->isSet(UserConnection::FLAG_MCN1)) {
+			Lock l(cs);
 			//check that the token is unique so nasty clients can't mess up our transfers
 			for(ConnectionQueueItem::Iter i = uploads.begin(); i != uploads.end(); ++i) {
 				ConnectionQueueItem* cqi = *i;
@@ -831,6 +832,7 @@ void ConnectionManager::addUploadConnection(UserConnection* uc) {
 			addConn = true;
 		} else {
 			//no multiple connections for these
+			Lock l(cs);
 			ConnectionQueueItem::Iter i = find(uploads.begin(), uploads.end(), uc->getUser());
 			if(i == uploads.end()) {
 				addConn = true;
@@ -841,13 +843,14 @@ void ConnectionManager::addUploadConnection(UserConnection* uc) {
 	if(addConn) {
 	
 		string token = uc->getToken();
+		{
+		Lock l(cs);
 		ConnectionQueueItem* cqi = getCQI(uc->getHintedUser(), false, token);
-
 		cqi->setState(ConnectionQueueItem::ACTIVE);
-		uc->setFlag(UserConnection::FLAG_ASSOCIATED);
 
 		fire(ConnectionManagerListener::Connected(), cqi);
-
+		}
+		uc->setFlag(UserConnection::FLAG_ASSOCIATED);
 		dcdebug("ConnectionManager::addUploadConnection, leaving to uploadmanager\n");
 
 		UploadManager::getInstance()->addConnection(uc);

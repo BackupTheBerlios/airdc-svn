@@ -1380,6 +1380,14 @@ string Util::getDir(string dir, bool validate, bool cut) {
 
 		//boost::smatch result;
 		size_t dpos;
+		if(dir[dir.size() -1] != '\\') {
+			dpos = dir.rfind("\\");
+			if(dpos != string::npos) {
+				dir = dir.substr(0,dpos+1);
+			} else {
+				return dir;
+			}
+		}
 		//reg.assign(".*[^\\\\]+\\\\([^\\\\]+\\.[a-z0-9]{2,10})$");
 		//if (regex_match(dir, reg)) {
 		//	dpos = dir.rfind("\\");
@@ -1395,7 +1403,7 @@ string Util::getDir(string dir, bool validate, bool cut) {
 					if(dir[dir.size() -1] == '\\')
 						dir = dir.substr(0, dir.size()-1);
 					dpos = dir.rfind("\\");
-					if(dpos != tstring::npos) {
+					if(dpos != string::npos) {
 						dir = dir.substr(0,dpos+1);
 					} else {
 						break;
@@ -1410,7 +1418,7 @@ string Util::getDir(string dir, bool validate, bool cut) {
 			if(dir[dir.size() -1] == '\\')
 				dir = dir.substr(0, dir.size()-1);
 			size_t dpos = dir.rfind("\\");
-			if(dpos != tstring::npos) {
+			if(dpos != string::npos) {
 				dir = dir.substr(dpos+1,dir.size());
 			}
 		}

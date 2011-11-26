@@ -39,6 +39,7 @@
 #include "HashBloom.h"
 #include "SearchResult.h"
 #include "Wildcards.h"
+#include "AirUtil.h"
 
 #ifdef _WIN32
 # include <ShlObj.h>
@@ -64,10 +65,6 @@ ShareManager::ShareManager() : hits(0), xmlListLen(0), bzXmlListLen(0),
 	TimerManager::getInstance()->addListener(this);
 	QueueManager::getInstance()->addListener(this);
 	HashManager::getInstance()->addListener(this);
-	releaseReg.Init("(((?=\\S*[A-Za-z]\\S*)[A-Z0-9]\\S{3,})-([A-Za-z0-9]{2,}))");
-	releaseReg.study();
-	subDirReg.Init("(.*\\\\((((DVD)|(CD)|(DIS(K|C))).?([0-9](0-9)?))|(Sample)|(Proof)|(Cover(s)?)|(.{0,5}Sub(s|pack)?)))", PCRE_CASELESS);
-	subDirReg.study();
 }
 
 ShareManager::~ShareManager() {
@@ -144,7 +141,7 @@ string ShareManager::Directory::getRealPath(const std::string& path, bool loadin
 			return root;
 
 		/*check for the existance here if we have moved the file/folder and only refreshed the new location.
-		should we even look, what's moved is moved, user should refresh both locations.*/
+		or should we even look?, what's moved is moved, user should refresh both locations.*/
 		if(Util::fileExists(root))
 			return root;
 		else
@@ -469,11 +466,13 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 						if(i != dirs.end()) {
 							cur = i->second;
 							cur->setRootPath(path);
+							lastFileIter = cur->files.begin();
 						}
 				} else if(cur) {
 					cur = ShareManager::Directory::create(name, cur);
-					cur->setLastWrite(date);
 					cur->getParent()->directories[cur->getName()] = cur;
+					cur->setLastWrite(date);
+					lastFileIter = cur->files.begin();
 					try {
 					ShareManager::getInstance()->addReleaseDir(cur->getFullName());
 					}catch(...) { }
@@ -483,6 +482,8 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 			if(simple) {
 				if(cur) {
 					cur = cur->getParent();
+					if(cur)
+						lastFileIter = cur->files.begin();
 				}
 			} else {
 				depth++;
@@ -496,11 +497,8 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 			}
 			/*dont save TTHs, check them from hashmanager, just need path and size.
 			this will keep us sync to hashindex */
-			string filepath;
 			try {
-				filepath = cur->getRealPath(fname, true);
-				TTHValue tth = HashManager::getInstance()->getTTH(filepath, Util::toInt64(size));
-				cur->files.insert(ShareManager::Directory::File(fname, Util::toInt64(size), cur, tth));
+				lastFileIter = cur->files.insert(lastFileIter, ShareManager::Directory::File(fname, Util::toInt64(size), cur, HashManager::getInstance()->getTTH(cur->getRealPath(fname, true), Util::toInt64(size))));
 			}catch(Exception& e) { 
 				dcdebug("Error loading filelist %s \n", e.getError().c_str());
 			}
@@ -511,6 +509,8 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 			depth--;
 			if(cur) {
 				cur = cur->getParent();
+				if(cur)
+					lastFileIter = cur->files.begin();
 			}
 		}
 	}
@@ -518,6 +518,7 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 private:
 	ShareManager::DirMap& dirs;
 
+	ShareManager::Directory::File::Set::iterator lastFileIter;
 	ShareManager::Directory::Ptr cur;
 	size_t depth;
 };
@@ -650,59 +651,6 @@ void ShareManager::addDirectory(const string& realPath, const string& virtualNam
 		sortReleaseList();
 
 }
-/*
-ShareManager::Directory::Ptr ShareManager::merge(const Directory::Ptr& directory) {
-	for(DirList::const_iterator i = directories.begin(); i != directories.end(); ++i) {
-		if(stricmp((*i)->getName(), directory->getName()) == 0) {
-			dcdebug("Merging directory %s\n", directory->getName().c_str());
-			(*i)->merge(directory);
-			return *i;
-		}
-	}
-	
-	dcdebug("Adding new directory %s\n", directory->getName().c_str());
-	
-	directories.push_back(directory);
-	directory->findDirsRE(false);
-	return directory;
-}
-
-void ShareManager::Directory::merge(const Directory::Ptr& source) {
-	for(MapIter i = source->directories.begin(); i != source->directories.end(); ++i) {
-		Directory::Ptr subSource = i->second;
-		
-		MapIter ti = directories.find(subSource->getName());
-		if(ti == directories.end()) {
-			if(findFile(subSource->getName()) != files.end()) {
-				dcdebug("File named the same as directory");
-			} else {
-				directories.insert(std::make_pair(subSource->getName(), subSource));
-				subSource->findDirsRE(false);
-				subSource->parent = this;
-			}
-		} else {
-			Directory::Ptr subTarget = ti->second;
-			subTarget->merge(subSource);
-		}
-	}
-
-	// All subdirs either deleted or moved to target...
-	source->directories.clear();
-	source->findDirsRE(true);
-	
-	for(File::Set::iterator i = source->files.begin(); i != source->files.end(); ++i) {
-		if(findFile(i->getName()) == files.end()) {
-			if(directories.find(i->getName()) != directories.end()) {
-				dcdebug("Directory named the same as file");
-			} else {
-				 std::pair<File::Set::iterator, bool> added = files.insert(*i);
-                   if(added.second) {
-				   const_cast<File&>(*added.first).setParent(this);
-                  }
-			}
-		}
-	}
-}*/
 
 void ShareManager::removeDirectory(const string& realPath) {
 	if(realPath.empty())
@@ -725,26 +673,13 @@ void ShareManager::removeDirectory(const string& realPath) {
 	j->second->findDirsRE(true);
 	directories.erase(j);
 
-	/*
-	HashManager::HashPauser pauser;
-
-	// Readd all directories with the same vName
-	for(i = shares.begin(); i != shares.end(); ++i) {
-		if(stricmp(i->second, vName) == 0 && checkHidden(i->first)) {
-			Directory::Ptr dp = buildTree(i->first, 0);
-			dp->setName(i->second);
-			merge(dp);
-		}
-	}
-	*/
 	sortReleaseList();
 	rebuildIndices();
 	setDirty();
 }
 
 void ShareManager::renameDirectory(const string& realPath, const string& virtualName)  {
-	//removeDirectory(realPath);
-	//addDirectory(realPath, virtualName);
+
 	WLock l(cs);
 	string vName = validateVirtual(virtualName);
 	
@@ -814,7 +749,7 @@ size_t ShareManager::getSharedFiles() const noexcept {
 
 bool ShareManager::isDirShared(const string& directory) {
 
-	string dir = getReleaseDir(directory);
+	string dir = AirUtil::getReleaseDir(directory);
 	if (dir.empty())
 		return false;
 	/*we need to protect this, but same mutex used here is too much, it will freeze during refreshing even with chat releasenames*/
@@ -825,47 +760,56 @@ bool ShareManager::isDirShared(const string& directory) {
 		
 	return false;
 }
-
-tstring ShareManager::getDirPath(const string& directory) {
-	string dir = getReleaseDir(directory);
+tstring ShareManager::getDirPath(const string& directory, bool validateDir) {
+	string dir = directory;
+	if (validateDir) {
+		dir = AirUtil::getReleaseDir(directory);
 	if (dir.empty())
-		return Util::emptyStringT;
-
-	string found = Util::emptyString;
-	string dirNew;
-	for(DirMap::const_iterator j = directories.begin(); j != directories.end(); ++j) {
-		dirNew = getReleaseDir(j->second->getFullName());
-		if (!dirNew.empty()) {
-			if (dir == dirNew) {
-				found=dirNew;
-				break;
-			}
-		}
-		found = j->second->find(dir);
-		if(!found.empty())
-			break;
-	}
-
-	if (found.empty())
-		return Util::emptyStringT;
-
-	StringList ret;
-	try {
-		ret = getRealPaths(Util::toAdcFile(found));
-	} catch(const ShareException&) {
-		return Util::emptyStringT;
-	}
-
-	if (!ret.empty()) {
-		return Text::toT(ret[0]);
-	}
+ 		return Util::emptyStringT;
+ 	}
+ 	
+ 	string found = Util::emptyString;
+ 	string dirNew;
+ 	for(DirMap::const_iterator j = directories.begin(); j != directories.end(); ++j) {
+		dirNew = j->second->getFullName();
+ 	if (validateDir) {
+ 		dirNew = AirUtil::getReleaseDir(dirNew);
+ 	}
+ 	
+ 	if (!dirNew.empty()) {
+ 		if (dir == dirNew) {
+ 			found=dirNew;
+ 			break;
+ 			}
+ 		}
+ 	found = j->second->find(dir, validateDir);
+ 	if(!found.empty())
+ 		break;
+ 	}
+ 	
+ 	if (found.empty())
+ 		return Util::emptyStringT;
+ 	
+ 	StringList ret;
+ 	try {
+ 		ret = getRealPaths(Util::toAdcFile(found));
+ 	} catch(const ShareException&) {
+ 		return Util::emptyStringT;
+ 	}
+ 	
+ 	if (!ret.empty()) {
+ 		return Text::toT(ret[0]);
+ 	}
+ 	
 	return Util::emptyStringT;
-}
+ }
 
 
-string ShareManager::Directory::find(const string& dir) {
+string ShareManager::Directory::find(const string& dir, bool validateDir) {
 	string ret = Util::emptyString;
-	string dirNew = ShareManager::getInstance()->getReleaseDir(this->getFullName());
+	string dirNew = dir;
+	if (validateDir)
+		dirNew = AirUtil::getReleaseDir(this->getFullName());
 
 	if (!dirNew.empty()) {
 		if (dir == dirNew) {
@@ -874,74 +818,13 @@ string ShareManager::Directory::find(const string& dir) {
 	}
 
 	for(Directory::Map::const_iterator l = directories.begin(); l != directories.end(); ++l) {
-		ret = l->second->find(dir);
+		ret = l->second->find(dir, validateDir);
 		if(!ret.empty())
 			break;
 	}
 	return ret;
 }
 
-string ShareManager::getReleaseDir(const string& aName) {
-	//LogManager::getInstance()->message("aName: " + aName);
-	string dir=aName;
-	if(dir[dir.size() -1] == '\\') 
-		dir = dir.substr(0, (dir.size() -1));
-	string dirMatch=dir;
-
-	//check if the release name is the last one before checking subdirs
-	int dpos = dirMatch.rfind("\\");
-	if(dpos != string::npos) {
-		dpos++;
-		dirMatch = dirMatch.substr(dpos, dirMatch.size()-dpos);
-	} else {
-		dpos=0;
-	}
-
-	if (releaseReg.match(dirMatch) > 0) {
-		dir = Text::toLower(dir.substr(dpos, dir.size()));
-		return dir;
-	}
-
-
-	//check the subdirs then
-	dpos=dir.size();
-	dirMatch=dir;
-	bool match=false;
-	for (;;) {
-		if (subDirReg.match(dirMatch) > 0) {
-			dpos = dirMatch.rfind("\\");
-			if(dpos != string::npos) {
-				match=true;
-				dirMatch = dirMatch.substr(0,dpos);
-			} else {
-				break;
-			}
-		} else {
-			break;
-		}
-	}
-
-	if (!match)
-		return Util::emptyString;
-	
-	//check the release name again without subdirs
-	dpos = dirMatch.rfind("\\");
-	if(dpos != string::npos) {
-		dpos++;
-		dirMatch = dirMatch.substr(dpos, dirMatch.size()-dpos);
-	} else {
-		dpos=0;
-	}
-
-	if (releaseReg.match(dirMatch) > 0) {
-		dir = Text::toLower(dir.substr(dpos, dir.size()));
-		return dir;
-	} else {
-		return Util::emptyString;
-	}
-
-
-}
 
 void ShareManager::sortReleaseList() {
 	Lock l(dirnamelist);
@@ -961,7 +844,7 @@ void ShareManager::Directory::findDirsRE(bool remove) {
 }
 
 void ShareManager::addReleaseDir(const string& aName) {
-	string dir = getReleaseDir(aName);
+	string dir = AirUtil::getReleaseDir(aName);
 	if (dir.empty())
 		return;
 
@@ -971,7 +854,7 @@ void ShareManager::addReleaseDir(const string& aName) {
 
 void ShareManager::deleteReleaseDir(const string& aName) {
 
-	string dir = getReleaseDir(aName);
+	string dir = AirUtil::getReleaseDir(aName);
 	if (dir.empty())
 		return;
 
@@ -1002,82 +885,16 @@ ShareManager::Directory::Ptr ShareManager::buildTree(const string& aName, const 
 	for(FileFindIter i(aName); i != end; ++i) {
 #endif
 		string name = i->getFileName();
-
-		if(name.empty()) {
-			LogManager::getInstance()->message("Invalid file name found while hashing folder "+ aName + ".");
-			continue;
-		}
-		if(name == "." || name == "..")
-			continue;
-
-				//check for forbidden file patterns
-		if(BOOLSETTING(REMOVE_FORBIDDEN)) {
-			string::size_type nameLen = name.size();
-			string fileExt = Util::getFileExt(name);
-			if ((stricmp(fileExt.c_str(), ".tdc") == 0) ||
-				(stricmp(fileExt.c_str(), ".GetRight") == 0) ||
-				(stricmp(fileExt.c_str(), ".temp") == 0) ||
-				(stricmp(fileExt.c_str(), ".tmp") == 0) ||
-				(stricmp(fileExt.c_str(), ".jc!") == 0) ||	//FlashGet
-				(stricmp(fileExt.c_str(), ".dmf") == 0) ||	//Download Master
-				(stricmp(fileExt.c_str(), ".!ut") == 0) ||	//uTorrent
-				(stricmp(fileExt.c_str(), ".bc!") == 0) ||	//BitComet
-				(stricmp(fileExt.c_str(), ".missing") == 0) ||
-				(stricmp(fileExt.c_str(), ".bak") == 0) ||
-				(stricmp(fileExt.c_str(), ".bad") == 0) ||
-				(nameLen > 9 && name.rfind("part.met") == nameLen - 8) ||				
-				(name.find("__padding_") == 0) ||			//BitComet padding
-				(name.find("__INCOMPLETE__") == 0) ||		//winmx
-				(name.find("__incomplete__") == 0)		//winmx
-				) {		//kazaa temps
-					LogManager::getInstance()->message("Forbidden file will not be shared: " + name + " (" + STRING(SIZE) + ": " + Util::toString(File::getSize(name)) + " " + STRING(B) + ") (" + STRING(DIRECTORY) + ": \"" + aName + "\")");
-					continue;
-			}
-		}
-
 		if(!BOOLSETTING(SHARE_HIDDEN) && i->isHidden())
 			continue;
 
-		if(BOOLSETTING(SHARE_SKIPLIST_USE_REGEXP)){
-			string str1 = SETTING(SKIPLIST_SHARE);
-			string str2 = name;
-			try {
-				boost::regex reg(str1);
-				if(boost::regex_search(str2.begin(), str2.end(), reg)){
-					if(BOOLSETTING(REPORT_SKIPLIST))
-					LogManager::getInstance()->message("Share Skiplist blocked file, not shared: " + name + " (" + STRING(SIZE) + ": " + Util::toString(i->getSize()) + " " + STRING(B) + ") (" + STRING(DIRECTORY) + ": \"" + aName + "\")");
-					
-					continue;
-				};
-			} catch(...) {
-			}
-			/*PME regexp;
-			regexp.Init(Text::utf8ToAcp(SETTING(SKIPLIST_SHARE)));
-			if((regexp.IsValid()) && (regexp.match(Text::utf8ToAcp(name)))) {
-				continue;
-			}*/
-		}else{
-			try{
-			if( Wildcard::patternMatch( Text::utf8ToAcp(name), Text::utf8ToAcp(SETTING(SKIPLIST_SHARE)), '|' ) ){   // or validate filename for bad chars?
-				if(BOOLSETTING(REPORT_SKIPLIST))
-				LogManager::getInstance()->message("Share Skiplist blocked file, not shared: " + name + " (" + STRING(SIZE) + ": " + Util::toString(i->getSize()) + " " + STRING(B) + ") (" + STRING(DIRECTORY) + ": \"" + aName + "\")");
-				
-				continue;
-			}
-			}catch(...) { }
-			
-		}
-
-		
-/*
-		if(i->isLink())
- 			continue;
-*/ 			
 		if(i->isDirectory()) {
+			if (!AirUtil::checkSharedName(name, true)) {
+				continue;
+			}
+
 			string newName = aName + name + PATH_SEPARATOR;
 			
-			dir->setLastWrite(Util::getDateTime(i->getLastWriteTime()));
-
 #ifdef _WIN32
 			// don't share Windows directory
 			TCHAR path[MAX_PATH];
@@ -1088,30 +905,26 @@ ShareManager::Directory::Ptr ShareManager::buildTree(const string& aName, const 
 
 			if((stricmp(newName, SETTING(TEMP_DOWNLOAD_DIRECTORY)) != 0) && shareFolder(newName)) {
 				Directory::Ptr tmpDir = buildTree(newName, dir);
-				//add the date to the last dir
-				tmpDir->setLastWrite(Util::getDateTime(i->getLastWriteTime()));
+				tmpDir->setLastWrite(Util::getDateTime(i->getLastWriteTime())); //add the date starting from the found directory.
 				dir->directories[name] = tmpDir;
 			}
 		} else {
-			// Not a directory, assume it's a file...make sure we're not sharing the settings file...
-			if( (stricmp(name.c_str(), "DCPlusPlus.xml") != 0) && 
-				(stricmp(name.c_str(), "Favorites.xml") != 0) &&
-				(stricmp(Util::getFileExt(name).c_str(), ".dctmp") != 0) &&
-				(stricmp(Util::getFileExt(name).c_str(), ".antifrag") != 0) ){
+			// Not a directory, assume it's a file...make sure we're not sharing the settings file..
+			if (!AirUtil::checkSharedName(name, false)) {
+				continue;
+			}
+			int64_t size = i->getSize();
+			if(BOOLSETTING(NO_ZERO_BYTE) && !(size > 0))
+				continue;
 
-				int64_t size = i->getSize();
-				if(BOOLSETTING(NO_ZERO_BYTE) && !(size > 0))
-					continue;
-
-				string fileName = aName + name;
-				if(stricmp(fileName, SETTING(TLS_PRIVATE_KEY_FILE)) == 0) {
-					continue;
-				}
-				try {
-					if(HashManager::getInstance()->checkTTH(fileName, size, i->getLastWriteTime())) 
-						lastFileIter = dir->files.insert(lastFileIter, Directory::File(name, size, dir, HashManager::getInstance()->getTTH(fileName, size)));
-				} catch(const HashException&) {
-				}
+			string fileName = aName + name;
+			if(stricmp(fileName, SETTING(TLS_PRIVATE_KEY_FILE)) == 0) {
+				continue;
+			}
+			try {
+				if(HashManager::getInstance()->checkTTH(fileName, size, i->getLastWriteTime())) 
+					lastFileIter = dir->files.insert(lastFileIter, Directory::File(name, size, dir, HashManager::getInstance()->getTTH(fileName, size)));
+			} catch(const HashException&) {
 			}
 		}
 	}

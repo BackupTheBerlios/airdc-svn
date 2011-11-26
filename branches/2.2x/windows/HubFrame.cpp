@@ -1481,6 +1481,9 @@ LRESULT HubFrame::onChar(UINT uMsg, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHan
 	if(wParam == VK_TAB) {
 		onTab();
 		return 0;
+	}else if((GetFocus() == ctrlMessage.m_hWnd) && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000) && (wParam == 'A')){
+				ctrlMessage.SetSelAll();
+				return 0;
 	} else if (wParam == VK_ESCAPE) {
 		// Clear find text and give the focus back to the message box
 		ctrlMessage.SetFocus();

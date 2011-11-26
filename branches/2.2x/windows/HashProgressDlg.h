@@ -34,7 +34,7 @@ public:
 	HashProgressDlg(bool aAutoClose = false) : autoClose(aAutoClose), startTime(GET_TICK()), startBytes(0), startFiles(0), init(false) { // KUL - hash progress dialog patch
 
 	}
-	~HashProgressDlg() { }
+	virtual ~HashProgressDlg() { }
 
 	BEGIN_MSG_MAP(HashProgressDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -80,6 +80,10 @@ public:
 		SetTimer(1, 1000);
 		return TRUE;
 	}
+	void setAutoClose(bool val) {
+		autoClose = val;
+	}
+
 
 	// KUL - hash progress dialog patch (begin)
 	LRESULT onMaxHashSpeed(WORD /*wNotifyCode*/, WORD, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {

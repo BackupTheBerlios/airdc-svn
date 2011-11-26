@@ -78,7 +78,6 @@ HFONT WinUtil::font = NULL;
 int WinUtil::fontHeight = 0;
 HFONT WinUtil::boldFont = NULL;
 HFONT WinUtil::systemFont = NULL;
-HFONT WinUtil::smallBoldFont = NULL;
 HFONT WinUtil::tabFont = NULL;
 HFONT WinUtil::OEMFont = NULL;
 CMenu WinUtil::mainMenu;
@@ -497,7 +496,6 @@ void WinUtil::init(HWND hWnd) {
 	boldFont = ::CreateFontIndirect(&lf);
 	lf.lfHeight *= 5;
 	lf.lfHeight /= 6;
-	smallBoldFont = ::CreateFontIndirect(&lf);
 	tabFont = ::CreateFontIndirect(&lf);
 	systemFont = (HFONT)::GetStockObject(DEFAULT_GUI_FONT);
 	
@@ -662,12 +660,13 @@ void WinUtil::uninit() {
 	flagImages.Destroy();
 	::DeleteObject(font);
 	::DeleteObject(boldFont);
-	::DeleteObject(smallBoldFont);
 	::DeleteObject(bgBrush);
 	::DeleteObject(tabFont);
 
 	mainMenu.DestroyMenu();
 	grantMenu.DestroyMenu();
+	::DeleteObject(OEMFont);
+	::DeleteObject(systemFont);
 
 	UnhookWindowsHookEx(hook);	
 
@@ -2292,9 +2291,14 @@ return result;
 
 }
 string WinUtil::getSysUptime(){
-			//apexdc
+			
+		static HINSTANCE kernel32lib = NULL;
+		if(!kernel32lib)
+			kernel32lib = LoadLibrary(_T("kernel32"));
+		
+		//apexdc
 		typedef ULONGLONG (CALLBACK* LPFUNC2)(void);
-		LPFUNC2 _GetTickCount64 = (LPFUNC2)GetProcAddress(LoadLibrary(_T("kernel32")), "GetTickCount64");
+		LPFUNC2 _GetTickCount64 = (LPFUNC2)GetProcAddress(kernel32lib, "GetTickCount64");
 		time_t sysUptime = (_GetTickCount64 ? _GetTickCount64() : GetTickCount()) / 1000;
 
 		return formatTime(sysUptime);

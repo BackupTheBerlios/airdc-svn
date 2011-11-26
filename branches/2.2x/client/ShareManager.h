@@ -32,8 +32,9 @@
 #include "BloomFilter.h"
 #include "MerkleTree.h"
 #include "Pointer.h"
-#include "../client/LogManager.h"
+#include "LogManager.h"
 #include "pme.h"
+#include "AirUtil.h"
 
 namespace dcpp {
 
@@ -88,6 +89,9 @@ public:
 	}
 
 	void Startup() {
+
+		AirUtil::setSkiplist();
+	
 		if(!loadCache())
 			refresh(REFRESH_ALL | REFRESH_BLOCKING);
 	}
@@ -101,7 +105,7 @@ public:
 	void search(SearchResultList& l, const string& aString, int aSearchType, int64_t aSize, int aFileType, Client* aClient, StringList::size_type maxResults) noexcept;
 	void search(SearchResultList& l, const StringList& params, StringList::size_type maxResults) noexcept;
 	bool isDirShared(const string& directory);
-	tstring getDirPath(const string& directory);
+	tstring getDirPath(const string& directory, bool validate = true);
 
 	bool loadCache();
 
@@ -259,8 +263,8 @@ private:
 
 		File::Set::const_iterator findFile(const string& aFile) const { return find_if(files.begin(), files.end(), Directory::File::StringComp(aFile)); }
 
-	//	void merge(const Ptr& source);
-		string find(const string& dir);
+		string find(const string& dir, bool validateDir);
+
 
 		GETSET(string, lastwrite, LastWrite);
 		GETSET(string, name, Name);
@@ -342,12 +346,9 @@ private:
 	mutable CriticalSection dirnamelist;
 	
 	StringList dirNameList;
-	//typedef std::multimap<string, string> DirNameMap;
-	//DirNameMap dirNameList;
 
 	void addReleaseDir(const string& aName);
 	void deleteReleaseDir(const string& aName);
-	string getReleaseDir(const string& aName);
 	void sortReleaseList();
 
 	/*
@@ -381,8 +382,6 @@ private:
 
 	void updateIndices(Directory& aDirectory);
 	void updateIndices(Directory& dir, const Directory::File::Set::iterator& i);
-	
-	//Directory::Ptr merge(const Directory::Ptr& directory);
 	
 	StringList notShared;
 	StringList incoming;

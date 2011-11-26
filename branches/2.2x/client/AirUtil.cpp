@@ -13,10 +13,101 @@
 #include "SimpleXML.h"
 #include "Socket.h"
 #include "LogManager.h"
+#include "Wildcards.h"
 #include <locale.h>
 
 namespace dcpp {
+PME AirUtil::releaseReg;
+PME AirUtil::subDirReg;
+boost::regex AirUtil::skiplistReg;
 
+void AirUtil::init() {
+	releaseReg.Init("(((?=\\S*[A-Za-z]\\S*)[A-Z0-9]\\S{3,})-([A-Za-z0-9]{2,}))");
+	releaseReg.study();
+	subDirReg.Init("(.*\\\\((((DVD)|(CD)|(DIS(K|C))).?([0-9](0-9)?))|(Sample)|(Proof)|(Cover(s)?)|(.{0,5}Sub(s|pack)?)))", PCRE_CASELESS);
+	subDirReg.study();
+}
+void AirUtil::setSkiplist() {
+
+if(BOOLSETTING(SHARE_SKIPLIST_USE_REGEXP)){
+		try{
+			skiplistReg.assign(SETTING(SKIPLIST_SHARE));
+		}catch(...) {
+			skiplistReg.assign("(.*\\.(scn|asd|lnk|url|log|crc|dat|sfk|mxm))$|(rushchk.log)");
+			LogManager::getInstance()->message("Error setting Share skiplist! using default: (.*\\.(scn|asd|lnk|url|log|crc|dat|sfk|mxm))$|(rushchk.log) ");
+		}
+	}
+}
+bool AirUtil::matchSkiplist(const string& str) {
+	try {
+	if(boost::regex_search(str.begin(), str.end(), skiplistReg))
+		return true;
+	}catch(...) { }
+
+	return false;
+}
+
+string AirUtil::getReleaseDir(const string& aName) {
+	//LogManager::getInstance()->message("aName: " + aName);
+	string dir=aName;
+	if(dir[dir.size() -1] == '\\') 
+		dir = dir.substr(0, (dir.size() -1));
+	string dirMatch=dir;
+
+	//check if the release name is the last one before checking subdirs
+	int dpos = dirMatch.rfind("\\");
+	if(dpos != string::npos) {
+		dpos++;
+		dirMatch = dirMatch.substr(dpos, dirMatch.size()-dpos);
+	} else {
+		dpos=0;
+	}
+
+	if (releaseReg.match(dirMatch) > 0) {
+		dir = Text::toLower(dir.substr(dpos, dir.size()));
+		return dir;
+	}
+
+
+	//check the subdirs then
+	dpos=dir.size();
+	dirMatch=dir;
+	bool match=false;
+	for (;;) {
+		if (subDirReg.match(dirMatch) > 0) {
+			dpos = dirMatch.rfind("\\");
+			if(dpos != string::npos) {
+				match=true;
+				dirMatch = dirMatch.substr(0,dpos);
+			} else {
+				break;
+			}
+		} else {
+			break;
+		}
+	}
+
+	if (!match)
+		return Util::emptyString;
+	
+	//check the release name again without subdirs
+	dpos = dirMatch.rfind("\\");
+	if(dpos != string::npos) {
+		dpos++;
+		dirMatch = dirMatch.substr(dpos, dirMatch.size()-dpos);
+	} else {
+		dpos=0;
+	}
+
+	if (releaseReg.match(dirMatch) > 0) {
+		dir = Text::toLower(dir.substr(dpos, dir.size()));
+		return dir;
+	} else {
+		return Util::emptyString;
+	}
+
+
+}
 string AirUtil::getLocalIp() {
 	if(!SettingsManager::getInstance()->isDefault(SettingsManager::BIND_INTERFACE)) {
 		return Socket::getBindAddress();
@@ -399,5 +490,68 @@ void AirUtil::setProfile(int profile, bool setSkiplist) {
 	}
 }
 
+bool AirUtil::checkSharedName(const string& aName, bool dir, bool report /*true*/) {
+	if(aName.empty()) {
+		LogManager::getInstance()->message("Invalid file name found while hashing folder "+ aName + ".");
+		return false;
+	}
+
+	if(aName == "." || aName == "..")
+		return false;
+
+	if(BOOLSETTING(SHARE_SKIPLIST_USE_REGEXP)){
+		if(AirUtil::matchSkiplist(aName)) {
+			if(BOOLSETTING(REPORT_SKIPLIST) && report)
+				LogManager::getInstance()->message("Share Skiplist blocked file, not shared: " + aName + " (" + STRING(DIRECTORY) + ": \"" + aName + "\")");
+			return false;
+		}
+	} else {
+		try {
+			if (Wildcard::patternMatch( Text::utf8ToAcp(aName), Text::utf8ToAcp(SETTING(SKIPLIST_SHARE)), '|' )) {   // or validate filename for bad chars?
+				if(BOOLSETTING(REPORT_SKIPLIST) && report)
+					LogManager::getInstance()->message("Share Skiplist blocked file, not shared: " + aName + " (" + STRING(DIRECTORY) + ": \"" + aName + "\")");
+				return false;
+			}
+		} catch(...) { }
+	}
+
+	if (!dir) {
+		if( (stricmp(aName.c_str(), "DCPlusPlus.xml") == 0) || 
+			(stricmp(aName.c_str(), "Favorites.xml") == 0) ||
+			(stricmp(Util::getFileExt(aName).c_str(), ".dctmp") == 0) ||
+			(stricmp(Util::getFileExt(aName).c_str(), ".antifrag") == 0) ) 
+		{
+			return false;
+		}
+
+		//check for forbidden file patterns
+		if(BOOLSETTING(REMOVE_FORBIDDEN)) {
+			string::size_type nameLen = aName.size();
+			string fileExt = Util::getFileExt(aName);
+			if ((stricmp(fileExt.c_str(), ".tdc") == 0) ||
+				(stricmp(fileExt.c_str(), ".GetRight") == 0) ||
+				(stricmp(fileExt.c_str(), ".temp") == 0) ||
+				(stricmp(fileExt.c_str(), ".tmp") == 0) ||
+				(stricmp(fileExt.c_str(), ".jc!") == 0) ||	//FlashGet
+				(stricmp(fileExt.c_str(), ".dmf") == 0) ||	//Download Master
+				(stricmp(fileExt.c_str(), ".!ut") == 0) ||	//uTorrent
+				(stricmp(fileExt.c_str(), ".bc!") == 0) ||	//BitComet
+				(stricmp(fileExt.c_str(), ".missing") == 0) ||
+				(stricmp(fileExt.c_str(), ".bak") == 0) ||
+				(stricmp(fileExt.c_str(), ".bad") == 0) ||
+				(nameLen > 9 && aName.rfind("part.met") == nameLen - 8) ||				
+				(aName.find("__padding_") == 0) ||			//BitComet padding
+				(aName.find("__INCOMPLETE__") == 0) ||		//winmx
+				(aName.find("__incomplete__") == 0)		//winmx
+				) {
+					if (report) {
+						LogManager::getInstance()->message("Forbidden file will not be shared: " + aName + " (" + STRING(DIRECTORY) + ": \"" + aName + "\")");
+					}
+					return false;
+			}
+		}
+	}
+	return true;
+}
 
 }

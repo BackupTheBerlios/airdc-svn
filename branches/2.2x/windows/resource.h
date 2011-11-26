@@ -930,6 +930,7 @@
 #define IDC_PROGRESS_COLOR_DOWN_SHOW    1616
 #define IDC_PROGRESS_COLOR_UP_SHOW      1617
 #define IDC_PREVIEW_APP                 1700
+#define IDC_HASH_PROGRESS_AUTO_CLOSE    1701
 #define IDC_TOOLBAR_ADD                 2200
 #define IDC_HOTBROWSE                   2201
 #define IDC_TOOLBAR_REMOVE              2202
