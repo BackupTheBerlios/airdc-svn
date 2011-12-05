@@ -174,7 +174,7 @@ BEGIN
     PUSHBUTTON      "Download",IDC_UPDATE_DOWNLOAD,357,198,60,14,WS_DISABLED
     GROUPBOX        "Version",IDC_UPDATE_VERSION,7,7,181,66
     LTEXT           "Current version:",IDC_UPDATE_VERSION_CURRENT_LBL,43,19,89,12
-    LTEXT           "2.20",IDC_UPDATE_VERSION_CURRENT,146,19,35,12
+    LTEXT           "2.22",IDC_UPDATE_VERSION_CURRENT,146,19,35,12
     LTEXT           "Latest version:",IDC_UPDATE_VERSION_LATEST_LBL,43,32,86,12
     LTEXT           "2.30",IDC_UPDATE_VERSION_LATEST,146,31,40,12
     GROUPBOX        "History",IDC_UPDATE_HISTORY,200,7,296,181
@@ -1598,7 +1598,7 @@ END
 
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 0,7,8,2
- PRODUCTVERSION 2,2,0,8
+ PRODUCTVERSION 2,2,2,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -1620,7 +1620,7 @@ BEGIN
             VALUE "LegalCopyright", "Based on DC++"
             VALUE "OriginalFilename", "AirDC.exe"
             VALUE "ProductName", "AirDC++"
-            VALUE "ProductVersion", "2.20"
+            VALUE "ProductVersion", "2.22"
         END
     END
     BLOCK "VarFileInfo"

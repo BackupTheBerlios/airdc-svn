@@ -447,13 +447,13 @@ bool UploadManager::getMultiConn(const UserConnection& aSource) {
 }
 
 void UploadManager::checkMultiConn() {
-
+	Lock l(cs);
 	int extras = getSlots() - running - mcnSlots + multiUploads.size();
 	if ((int)extras > 0 || getAutoSlot()) {
 		return; //no reason to remove anything
 	}
 
-	Lock l(cs);
+
 	int uploadsStart=0, highest=0;
 	MultiConnMap compare=multiUploads;
 	while (extras < 0) {
@@ -516,13 +516,12 @@ bool UploadManager::getAutoSlot() {
 }
 
 void UploadManager::removeUpload(Upload* aUpload, bool delay) {
-	{
+	
 	Lock l(cs);
 	dcassert(find(uploads.begin(), uploads.end(), aUpload) != uploads.end());
 	uploads.erase(remove(uploads.begin(), uploads.end(), aUpload), uploads.end());
-	}
+	
 	if(delay) {
-		Lock l(cs);
 		delayUploads.push_back(aUpload);
 	} else {
 		delete aUpload;
@@ -530,23 +529,28 @@ void UploadManager::removeUpload(Upload* aUpload, bool delay) {
 }
 
 void UploadManager::reserveSlot(const HintedUser& aUser, uint64_t aTime) {
+	bool connect = false;
+	string token;
 	{
-		Lock l(cs);
-		reservedSlots[aUser] = GET_TICK() + aTime*1000;
-	}
-	if(aUser.user->isOnline())
-	{
-		string token;
+	Lock l(cs);
 		
+	reservedSlots[aUser] = GET_TICK() + aTime*1000;
+
+
+	if(aUser.user->isOnline()){
 		// find user in uploadqueue to connect with correct token
 		UploadQueueItem::SlotQueue::iterator it = find_if(uploadQueue.begin(), uploadQueue.end(), CompareFirst<UserPtr, UploadQueueItem::List>(aUser.user));
 		if(it != uploadQueue.end()) {
 			token = it->first.token;
-			ClientManager::getInstance()->connect(aUser, token);
+			connect = true;
 		}/* else {
 			token = Util::toString(Util::rand());
 		}*/
+		}
 	}
+
+	if(connect)
+		ClientManager::getInstance()->connect(aUser, token);
 }
 
 void UploadManager::unreserveSlot(const UserPtr& aUser) {
@@ -673,7 +677,7 @@ void UploadManager::logUpload(const Upload* u) {
 size_t UploadManager::addFailedUpload(const UserConnection& source, const string& file, int64_t pos, int64_t size) {
 	uint64_t currentTime = GET_TIME();
 	bool found = false;
-
+	Lock l(cs);
 	UploadQueueItem::SlotQueue::iterator it = find_if(uploadQueue.begin(), uploadQueue.end(), CompareFirst<UserPtr, UploadQueueItem::List>(source.getUser()));
 	if(it != uploadQueue.end()) {
 		it->first.token = source.getToken();

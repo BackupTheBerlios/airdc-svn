@@ -34,7 +34,7 @@ if(BOOLSETTING(SHARE_SKIPLIST_USE_REGEXP)){
 			skiplistReg.assign(SETTING(SKIPLIST_SHARE));
 		}catch(...) {
 			skiplistReg.assign("(.*\\.(scn|asd|lnk|url|log|crc|dat|sfk|mxm))$|(rushchk.log)");
-			LogManager::getInstance()->message("Error setting Share skiplist! using default: (.*\\.(scn|asd|lnk|url|log|crc|dat|sfk|mxm))$|(rushchk.log) ");
+			LogManager::getInstance()->message("Error in Share skiplist! Bad regexp or wildcard string with use regexp enabled, using default string: (.*\\.(scn|asd|lnk|url|log|crc|dat|sfk|mxm))$|(rushchk.log) ");
 		}
 	}
 }

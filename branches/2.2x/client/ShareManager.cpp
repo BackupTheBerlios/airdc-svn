@@ -524,23 +524,29 @@ private:
 };
 
 bool ShareManager::loadCache() {
-	try {
-		ShareLoader loader(directories);
-		
-		//look for shares.xml
-		dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml", dcpp::File::READ, dcpp::File::OPEN, false);
-		
-		try {
-		
-		SimpleXMLReader(&loader).parse(ff);
-		}catch(SimpleXMLException& e) {
-			LogManager::getInstance()->message("Error Loading shares.xml: "+ e.getError());
-			return false;
-		}
 
-		for(DirMap::const_iterator i = directories.begin(); i != directories.end(); ++i) {
-			updateIndices(*i->second);
-		}
+	try {
+		{
+			WLock l(cs);
+			ShareLoader loader(directories);
+
+			//look for shares.xml
+			dcpp::File ff(Util::getPath(Util::PATH_USER_CONFIG) + "Shares.xml", dcpp::File::READ, dcpp::File::OPEN, false);
+		
+			try {
+		
+			SimpleXMLReader(&loader).parse(ff);
+			}catch(SimpleXMLException& e) {
+				LogManager::getInstance()->message("Error Loading shares.xml: "+ e.getError());
+				return false;
+			}
+
+			for(DirMap::const_iterator i = directories.begin(); i != directories.end(); ++i) {
+				updateIndices(*i->second);
+			}
+			c_size_dirty = true;
+		} //lock free
+		
 		try { //not vital to our cache loading.
 		setBZXmlFile( Util::getPath(Util::PATH_USER_CONFIG) + "files.xml.bz2");
 		if(!Util::fileExists(getBZXmlFile())) //only generate if we dont find old filelist
@@ -657,7 +663,7 @@ void ShareManager::removeDirectory(const string& realPath) {
 		return;
 
 	HashManager::getInstance()->stopHashing(realPath);
-	
+	{
 	WLock l(cs);
 
 	StringMapIter i = shares.find(realPath);
@@ -673,8 +679,9 @@ void ShareManager::removeDirectory(const string& realPath) {
 	j->second->findDirsRE(true);
 	directories.erase(j);
 
-	sortReleaseList();
 	rebuildIndices();
+	}
+	sortReleaseList();
 	setDirty();
 }
 
