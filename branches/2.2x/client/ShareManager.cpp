@@ -466,12 +466,13 @@ struct ShareLoader : public SimpleXMLReader::CallBack {
 						if(i != dirs.end()) {
 							cur = i->second;
 							cur->setRootPath(path);
+							cur->setLastWrite(Util::toUInt32(date));
 							lastFileIter = cur->files.begin();
 						}
 				} else if(cur) {
 					cur = ShareManager::Directory::create(name, cur);
+					cur->setLastWrite(Util::toUInt32(date));
 					cur->getParent()->directories[cur->getName()] = cur;
-					cur->setLastWrite(date);
 					lastFileIter = cur->files.begin();
 					try {
 					ShareManager::getInstance()->addReleaseDir(cur->getFullName());
@@ -642,6 +643,7 @@ void ShareManager::addDirectory(const string& realPath, const string& virtualNam
 	string vName = validateVirtual(virtualName);
 	dp->setName(vName);
 	dp->setRootPath(realPath);
+	dp->setLastWrite(findLastWrite(realPath));
 
 	{
 		WLock l(cs);
@@ -816,15 +818,15 @@ string ShareManager::Directory::find(const string& dir, bool validateDir) {
 	string ret = Util::emptyString;
 	string dirNew = dir;
 	if (validateDir)
-		dirNew = AirUtil::getReleaseDir(this->getFullName());
+		dirNew = AirUtil::getReleaseDir(getFullName());
 
 	if (!dirNew.empty()) {
 		if (dir == dirNew) {
-			return this->getFullName();
+			return getFullName();
 		}
 	}
 
-	for(Directory::Map::const_iterator l = directories.begin(); l != directories.end(); ++l) {
+	for(auto l = directories.begin(); l != directories.end(); ++l) {
 		ret = l->second->find(dir, validateDir);
 		if(!ret.empty())
 			break;
@@ -839,7 +841,7 @@ void ShareManager::sortReleaseList() {
 }
 
 void ShareManager::Directory::findDirsRE(bool remove) {
-	for(Directory::Map::const_iterator l = directories.begin(); l != directories.end(); ++l) {
+	for(auto l = directories.begin(); l != directories.end(); ++l) {
 		 l->second->findDirsRE(remove);
 	}
 
@@ -912,7 +914,7 @@ ShareManager::Directory::Ptr ShareManager::buildTree(const string& aName, const 
 
 			if((stricmp(newName, SETTING(TEMP_DOWNLOAD_DIRECTORY)) != 0) && shareFolder(newName)) {
 				Directory::Ptr tmpDir = buildTree(newName, dir);
-				tmpDir->setLastWrite(Util::getDateTime(i->getLastWriteTime())); //add the date starting from the found directory.
+				tmpDir->setLastWrite(i->getLastWriteTime()); //add the date starting from the found directory.
 				dir->directories[name] = tmpDir;
 			}
 		} else {
@@ -946,6 +948,16 @@ bool ShareManager::checkHidden(const string& aName) const {
 	}
 
 	return true;
+}
+
+uint32_t ShareManager::findLastWrite(const string& aName) const {
+	FileFindIter ff = FileFindIter(aName.substr(0, aName.size() - 1));
+
+	if (ff != FileFindIter()) {
+		return ff->getLastWriteTime();
+	}
+
+	return 0;
 }
 
 void ShareManager::updateIndices(Directory& dir) {
@@ -1175,6 +1187,7 @@ int ShareManager::run() {
 					if(aShutdown) goto end;  //abort refresh
 					dp->setName(i->first);
 					dp->setRootPath(i->second);
+					dp->setLastWrite(findLastWrite(i->second));
 					newDirs.insert(make_pair(i->second, dp));
 				}
 		}
@@ -1393,7 +1406,7 @@ void ShareManager::Directory::toXmlList(OutputStream& xmlFile, const string& pat
 	xmlFile.write(LITERAL("\" Path=\""));
 	xmlFile.write(SimpleXML::escape(path, tmp, true));
 	xmlFile.write(LITERAL("\" Date=\""));
-	xmlFile.write(SimpleXML::escape(lastwrite, tmp, true));
+	xmlFile.write(SimpleXML::escape(Util::toString(lastwrite), tmp, true));
 	xmlFile.write(LITERAL("\">\r\n"));
 
 	indent += '\t';
@@ -1426,18 +1439,19 @@ MemoryInputStream* ShareManager::generatePartialList(const string& dir, bool rec
 		return 0;
 	
 	if(!isInSharingHub) {
-				string xml = SimpleXML::utf8Header;
-                string tmp;
-                xml += "<FileListing Version=\"1\" CID=\"" + ClientManager::getInstance()->getMe()->getCID().toBase32() + "\" Base=\"" + SimpleXML::escape(dir, tmp, false) + "\" Generator=\"" APPNAME " " VERSIONSTRING "\">\r\n";
-                StringOutputStream sos(xml);
-                xml += "</FileListing>";
-                return new MemoryInputStream(xml);
+		string xml = SimpleXML::utf8Header;
+		string tmp;
+		xml += "<FileListing Version=\"1\" CID=\"" + ClientManager::getInstance()->getMe()->getCID().toBase32() + "\" Base=\"" + SimpleXML::escape(dir, tmp, false) + "\" Generator=\"" APPNAME " " VERSIONSTRING "\">\r\n";
+		StringOutputStream sos(xml);
+		xml += "</FileListing>";
+		return new MemoryInputStream(xml);
 	 }
 
 	
 	RLock l(cs);
 	string xml;
 	xml = SimpleXML::utf8Header;
+	string basedate = Util::emptyString;
 
 	SimpleXML sXml;   //use simpleXML so we can easily add the end tags and check what virtuals have been created.
 	sXml.addTag("FileListing");
@@ -1460,6 +1474,10 @@ MemoryInputStream* ShareManager::generatePartialList(const string& dir, bool rec
 		for(DirMultiMap::const_iterator it = result.begin(); it != result.end(); ++it) {
 			dcdebug("result name %s \n", it->second->getName());
 			Directory::Ptr root = it->second;
+
+			if(basedate.empty() || (Util::toUInt32(basedate) < root->getLastWrite())) //compare the dates and add the last modified
+				basedate = Util::toString(root->getLastWrite());
+
 			for(Directory::Map::const_iterator it2 = root->directories.begin(); it2 != root->directories.end(); ++it2) {
 				it2->second->toXml(sXml, recurse);
 			}
@@ -1470,6 +1488,9 @@ MemoryInputStream* ShareManager::generatePartialList(const string& dir, bool rec
 		}
 	}
 	sXml.stepOut();
+
+	sXml.addChildAttrib("BaseDate", basedate);
+
 	StringOutputStream sos(xml);
 	sXml.toXML(&sos);
 
@@ -1488,6 +1509,10 @@ void ShareManager::Directory::toXml(SimpleXML& xmlFile, bool fullList){
 	
 	while( xmlFile.findChild("Directory") ){
 		if( stricmp(xmlFile.getChildAttrib("Name"), name) == 0 ){
+			string curdate = xmlFile.getChildAttrib("Date");
+			if(!curdate.empty() && Util::toUInt32(curdate) < lastwrite) //compare the dates and add the last modified
+				xmlFile.replaceChildAttrib("Date", Util::toString(lastwrite));
+			
 			create = false;
 			break;	
 		}
@@ -1497,7 +1522,7 @@ void ShareManager::Directory::toXml(SimpleXML& xmlFile, bool fullList){
 		xmlFile.addTag("Directory");
 		xmlFile.forceEndTag();
 		xmlFile.addChildAttrib("Name", name);
-		xmlFile.addChildAttrib("Date", lastwrite);
+		xmlFile.addChildAttrib("Date", Util::toString(lastwrite));
 	}
 
 	if(fullList) {

@@ -377,9 +377,9 @@ void ChatCtrl::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/ LO
 	 bool detectMagnet=false;
 
 	//Format URLs
-		string::size_type isMagnet, isSpotify;
+	string::size_type isMagnet, isSpotify;
 
-		try {
+	try {
 		tstring::const_iterator start = sMsg.begin();
 		tstring::const_iterator end = sMsg.end();
 		boost::match_results<tstring::const_iterator> result;
@@ -437,56 +437,57 @@ void ChatCtrl::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/ LO
 			start = result[0].second;
 		}
 
-	//replace shortlinks
-	for(TStringMapIter p = shortLinks.begin(); p != shortLinks.end(); p++) {
-		tstring::size_type found = 0;
-		while((found = sMsg.find(p->second, found)) != tstring::npos) {
-			size_t linkStart =  found;
-			size_t linkEnd =  found + p->second.length();
+		//replace shortlinks
+		for(TStringMapIter p = shortLinks.begin(); p != shortLinks.end(); p++) {
+			tstring::size_type found = 0;
+			while((found = sMsg.find(p->second, found)) != tstring::npos) {
+				size_t linkStart =  found;
+				size_t linkEnd =  found + p->second.length();
 
-			SetSel(lSelBegin + linkStart, lSelBegin + linkEnd);
-			sMsg.replace(linkStart, linkEnd - linkStart, p->first.c_str());
-			setText(p->first);
-			linkEnd = linkStart + p->first.size();
-			SetSel(lSelBegin + linkStart, lSelBegin + linkEnd);
+				SetSel(lSelBegin + linkStart, lSelBegin + linkEnd);
+				sMsg.replace(linkStart, linkEnd - linkStart, p->first.c_str());
+				setText(p->first);
+				linkEnd = linkStart + p->first.size();
+				SetSel(lSelBegin + linkStart, lSelBegin + linkEnd);
 
-			//dupe check and formating
-			string link = Text::fromT(p->second.c_str());
-			string::size_type tth = link.find("urn:tree:tiger:");
-			if(tth != tstring::npos && link.length() > tth+54) {
-				link=link.substr(tth+15, 39);
-				if (ShareManager::getInstance()->isTTHShared(TTHValue(link))) {
-					SetSelectionCharFormat(WinUtil::m_TextStyleDupe);
-				} else {
-					SetSelectionCharFormat(WinUtil::m_TextStyleURL);
+				//dupe check and formating
+				string link = Text::fromT(p->second.c_str());
+				string::size_type tth = link.find("urn:tree:tiger:");
+				if(tth != tstring::npos && link.length() > tth+54) {
+					link=link.substr(tth+15, 39);
+					if (ShareManager::getInstance()->isTTHShared(TTHValue(link))) {
+						SetSelectionCharFormat(WinUtil::m_TextStyleDupe);
+					} else {
+						SetSelectionCharFormat(WinUtil::m_TextStyleURL);
+					}
 				}
-			}
 
-		}
-	}
-
-	//Format release names
-	if(SETTING(FORMAT_RELEASE) || SETTING(DUPES_IN_CHAT)) {
-		if(!detectMagnet) {
-			tstring::const_iterator start = sMsg.begin();
-			tstring::const_iterator end = sMsg.end();
-			boost::match_results<tstring::const_iterator> result;
-			int pos=0;
-
-			while(boost::regex_search(start, end, result, regReleaseBoost, boost::match_default)) {
-				SetSel(pos + lSelBegin + result.position(), pos + lSelBegin + result.position() + result.length());
-				std::string link (result[0].first, result[0].second);
-				if (SETTING(DUPES_IN_CHAT) && ShareManager::getInstance()->isDirShared(link)) {
-					SetSelectionCharFormat(WinUtil::m_TextStyleDupe);
-				} else if (SETTING(FORMAT_RELEASE)) {
-					SetSelectionCharFormat(WinUtil::m_TextStyleURL);
-				}
-				start = result[0].second;
-				pos=pos+result.position() + result.length();
 			}
 		}
-	}
-	}catch(...) { }
+
+		//Format release names
+		if(SETTING(FORMAT_RELEASE) || SETTING(DUPES_IN_CHAT)) {
+			if(!detectMagnet) {
+				tstring::const_iterator start = sMsg.begin();
+				tstring::const_iterator end = sMsg.end();
+				boost::match_results<tstring::const_iterator> result;
+				int pos=0;
+
+				while(boost::regex_search(start, end, result, regReleaseBoost, boost::match_default)) {
+					SetSel(pos + lSelBegin + result.position(), pos + lSelBegin + result.position() + result.length());
+					std::string link (result[0].first, result[0].second);
+					if (SETTING(DUPES_IN_CHAT) && ShareManager::getInstance()->isDirShared(link)) {
+						SetSelectionCharFormat(WinUtil::m_TextStyleDupe);
+					} else if (SETTING(FORMAT_RELEASE)) {
+						SetSelectionCharFormat(WinUtil::m_TextStyleURL);
+					}
+					start = result[0].second;
+					pos=pos+result.position() + result.length();
+				}
+			}
+		}
+	} catch(...) { }
+
 	// insert emoticons
 	if(bUseEmo && emoticonsManager->getUseEmoticons()) {
 		const Emoticon::List& emoticonsList = emoticonsManager->getEmoticonsList();

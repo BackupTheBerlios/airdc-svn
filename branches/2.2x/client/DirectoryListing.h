@@ -99,9 +99,12 @@ public:
 		DirMap visitedDirs;
 
 		enum { NONE, PARTIAL_DUPE, DUPE };
-		Directory(Directory* aParent, const string& aName, bool _adls, bool aComplete, const string& Size = Util::emptyString, const string& Date = Util::emptyString) 
-			: name(aName), parent(aParent), adls(_adls), complete(aComplete), dupe(0), dirsize(Size), dirdate(Date) { }
-		
+		Directory(Directory* aParent, const string& aName, bool _adls, bool aComplete, int64_t aSize = 0, const string& aDate = Util::emptyString) 
+			: name(aName), parent(aParent), adls(_adls), complete(aComplete), dupe(0), size(aSize) { 
+			setDate(aDate);
+		}
+		void setDate(const string& aDate);
+		time_t getDate() { return date; }
 		virtual ~Directory();
 
 		size_t getTotalFileCount(bool adls = false);		
@@ -131,12 +134,13 @@ public:
 		uint8_t checkDupes();
 		
 		GETSET(string, name, Name);
-		GETSET(string, dirsize, DirSize);
-		GETSET(string, dirdate, DirDate);
+		GETSET(int64_t, size, Size);
 		GETSET(Directory*, parent, Parent);		
 		GETSET(bool, adls, Adls);		
 		GETSET(bool, complete, Complete);
 		GETSET(uint8_t, dupe, Dupe)
+	private:
+		time_t date;
 	};
 
 	class AdlDirectory : public Directory {
