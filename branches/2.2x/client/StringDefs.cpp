@@ -1038,7 +1038,7 @@ std::string dcpp::ResourceManager::strings[] = {
 "Romanian", 
 "Danish", 
 "English", 
-"Portuguese", 
+"Port/Bra", 
 "Polish", 
 "French", 
 "Dutch", 
@@ -1258,6 +1258,7 @@ std::string dcpp::ResourceManager::strings[] = {
 "Show Hashing Files in systemlog", 
 "Automatically save shares every ", 
 "Use external sfv checking (ex. FTPLogger, Enable this only if you know what you are doing)  ", 
+"Match partialList", 
 };
 std::string dcpp::ResourceManager::names[] = {
 "AairdcppLanguageFile", 
@@ -2516,4 +2517,5 @@ std::string dcpp::ResourceManager::names[] = {
 "LogHashing", 
 "SaveShare", 
 "UseFtpLogger", 
+"MatchPartial", 
 };

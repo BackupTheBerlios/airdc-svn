@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<Language Name="Example Language" Author="BigMuscle" Version="2.22 Beta 3" Revision="1">
+<Language Name="Example Language" Author="BigMuscle" Version="2.22" Revision="1">
 	<Strings>
 		<String Name="AairdcppLanguageFile">EN_Example.xml</String>
 		<String Name="AairdcppLanguageVersion">1.00</String>
@@ -1149,7 +1149,7 @@ Empty = Default String -&gt; +me playing: %[title] &lt;Media Player Classic&gt;<
 		<String Name="SettingsLro">Romanian</String>
 		<String Name="SettingsLdan">Danish</String>
 		<String Name="SettingsLeng">English</String>
-		<String Name="SettingsLpor">Portuguese</String>
+		<String Name="SettingsLpor">Port/Bra</String>
 		<String Name="SettingsLpol">Polish</String>
 		<String Name="SettingsLfr">French</String>
 		<String Name="SettingsLd">Dutch</String>
@@ -1373,5 +1373,6 @@ Empty = Default String -&gt; /me playing on Spotify: %[title] %[link]</String>
 		<String Name="LogHashing">Show Hashing Files in systemlog</String>
 		<String Name="SaveShare">Automatically save shares every </String>
 		<String Name="UseFtpLogger">Use external sfv checking (ex. FTPLogger, Enable this only if you know what you are doing)  </String>
+		<String Name="MatchPartial">Match partialList</String>
 	</Strings>
 </Language>

@@ -1043,7 +1043,7 @@ enum Strings { // @DontAdd
 	SETTINGS_LRO, // "Romanian"
 	SETTINGS_LDAN, // "Danish"
 	SETTINGS_LENG, // "English"
-	SETTINGS_LPOR, // "Portuguese"
+	SETTINGS_LPOR, // "Port/Bra"
 	SETTINGS_LPOL, // "Polish"
 	SETTINGS_LFR, // "French"
 	SETTINGS_LD, // "Dutch"
@@ -1265,5 +1265,6 @@ enum Strings { // @DontAdd
 	LOG_HASHING, // "Show Hashing Files in systemlog"
 	SAVE_SHARE, // "Automatically save shares every "
 	USE_FTP_LOGGER, // "Use external sfv checking (ex. FTPLogger, Enable this only if you know what you are doing)  "
+	MATCH_PARTIAL, // "Match partialList"
 	LAST // @DontAdd
 };

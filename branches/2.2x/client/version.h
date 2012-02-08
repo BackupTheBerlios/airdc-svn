@@ -18,7 +18,7 @@
 
 
 #define APPNAME "AirDC++"
-#define VERSIONSTRING "2.22 Beta 3"
+#define VERSIONSTRING "2.22"
 
 #define VERSIONFLOAT "2.221"
 
@@ -32,7 +32,7 @@
 #define INSTALLER "AirDC_Installer.exe"
 #endif
 
-#define BETADATE
+//#define BETADATE
 
 #ifdef BETADATE
 #define VERSION_URL "http://version.airdcpp.net/beta_airdcversion.php"

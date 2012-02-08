@@ -156,7 +156,7 @@ public:
 		RLock l(cs);
 		return tthIndex.find(tth) != tthIndex.end();
 	}
-
+	
 	StringList getRealPaths(const std::string path);
 
 

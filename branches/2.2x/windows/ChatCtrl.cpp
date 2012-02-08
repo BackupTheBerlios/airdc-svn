@@ -379,7 +379,7 @@ void ChatCtrl::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/ LO
 	//Format URLs
 		string::size_type isMagnet, isSpotify;
 
-
+		try {
 		tstring::const_iterator start = sMsg.begin();
 		tstring::const_iterator end = sMsg.end();
 		boost::match_results<tstring::const_iterator> result;
@@ -486,7 +486,7 @@ void ChatCtrl::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/ LO
 			}
 		}
 	}
-
+	}catch(...) { }
 	// insert emoticons
 	if(bUseEmo && emoticonsManager->getUseEmoticons()) {
 		const Emoticon::List& emoticonsList = emoticonsManager->getEmoticonsList();

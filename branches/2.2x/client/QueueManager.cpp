@@ -847,7 +847,7 @@ void QueueManager::add(const string& aTarget, int64_t aSize, const TTHValue& roo
 	// Check if we're not downloading something already in our share
 	if (BOOLSETTING(DONT_DL_ALREADY_SHARED)){
 		if (!(aFlags & QueueItem::FLAG_CLIENT_VIEW) && !(aFlags & QueueItem::FLAG_USER_LIST) && !(aFlags & QueueItem::FLAG_PARTIAL_LIST)) {
-			if (ShareManager::getInstance()->isTTHShared(root)){
+			if(ShareManager::getInstance()->isTTHShared(root)){
 				LogManager::getInstance()->message(STRING(FILE_ALREADY_SHARED) + " " + aTarget );
 				throw QueueException(STRING(TTH_ALREADY_SHARED));
 			}
@@ -1119,8 +1119,8 @@ QueueItem::Priority QueueManager::hasDownload(const UserPtr& aUser, bool smallSl
 }
 
 namespace {
-	//using vector for testing, atleast ram is cleared.
-typedef vector<pair<TTHValue, const DirectoryListing::File*>> TTHMap;
+
+typedef std::unordered_map<TTHValue, const DirectoryListing::File*> TTHMap;
 
 // *** WARNING *** 
 // Lock(cs) makes sure that there's only one thread accessing this
@@ -1134,7 +1134,7 @@ void buildMap(const DirectoryListing::Directory* dir) noexcept {
 
 	for(DirectoryListing::File::List::const_iterator i = dir->files.begin(); i != dir->files.end(); ++i) {
 		const DirectoryListing::File* df = *i;
-		tthMap.push_back(make_pair(df->getTTH(), df));
+		tthMap.insert(make_pair(df->getTTH(), df));
 	}
 }
 }
@@ -1176,7 +1176,7 @@ int QueueManager::matchListing(const DirectoryListing& dl, bool partialList) noe
 				continue;
 			if(qi->isSet(QueueItem::FLAG_USER_LIST))
 				continue;
-			TTHMap::iterator j = find_if(tthMap.begin(), tthMap.end(), CompareFirst<TTHValue, const DirectoryListing::File*>(qi->getTTH()));
+			TTHMap::iterator j = tthMap.find(qi->getTTH());
 			if(j != tthMap.end() && j->second->getSize() == qi->getSize()) {
 				try {
 					wantConnection = addSource(qi, dl.getHintedUser(), QueueItem::Source::FLAG_FILE_NOT_AVAILABLE);    
