@@ -488,6 +488,19 @@ size_t DirectoryListing::Directory::getTotalFileCount(bool adl) {
 	}
 	return x;
 }
+
+void DirectoryListing::Directory::clearAdls() {
+
+	for(Iter i = directories.begin(); i != directories.end(); ++i) {
+			if((*i)->getAdls()) {
+				delete *i;
+				directories.erase(i);
+				--i;
+			}
+	}
+}
+
+
 uint8_t DirectoryListing::Directory::checkDupes() {
 	uint8_t result = Directory::NONE;
 	bool first = true;

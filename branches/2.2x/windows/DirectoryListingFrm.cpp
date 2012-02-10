@@ -674,7 +674,7 @@ LRESULT DirectoryListingFrame::onGoToDirectory(WORD /*wNotifyCode*/, WORD /*wID*
 	} else if(ii->type == ItemInfo::DIRECTORY)	{
 		if(!(ii->dir->getAdls() && ii->dir->getParent() != dl->getRoot()))
 			return 0;
-		fullPath = Text::toT(((DirectoryListing::AdlDirectory*)ii->dir)->getFullPath());
+		fullPath = Text::toT(((DirectoryListing::AdlDirectory*)ii->dir)->getFullPath()).substr(1);
 	}
 
 	if(!fullPath.empty())
@@ -834,11 +834,12 @@ LRESULT DirectoryListingFrame::onContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARA
 					//do we need to see anything else on own list?
 					copyMenu.CreatePopupMenu();
 					SearchMenu.CreatePopupMenu();
-					if(ii->file->getAdls())			{
+					if(ctrlList.GetSelectedCount() == 1 && ii->type == ItemInfo::FILE && ii->file->getAdls()) {
 						pShellMenu->AppendMenu(MF_STRING, IDC_GO_TO_DIRECTORY, CTSTRING(GO_TO_DIRECTORY));
 					}
 					if(ctrlList.GetSelectedCount() == 1/* && ii->type == ItemInfo::FILE*/ ) {				
 						pShellMenu->AppendMenu(MF_STRING, IDC_OPEN_FOLDER, CTSTRING(OPEN_FOLDER));
+						pShellMenu->AppendMenu(MF_SEPARATOR);
 					}
 					
 					pShellMenu->AppendMenu(MF_POPUP, (UINT)(HMENU)copyMenu, CTSTRING(COPY));
@@ -896,22 +897,19 @@ clientmenu:
 		copyMenu.AppendMenu(MF_STRING, IDC_COPY_LINK, CTSTRING(COPY_MAGNET_LINK));
 		copyMenu.AppendMenu(MF_STRING, IDC_COPY_PATH, CTSTRING(PATH));
 		
-		if (ii->type == ItemInfo::DIRECTORY) {
-			if (ShareManager::getInstance()->isDirShared(ii->dir->getPath())) {
-				fileMenu.AppendMenu(MF_STRING, IDC_OPEN_FOLDER, CTSTRING(OPEN_FOLDER));
-			}
-		}
 		fileMenu.AppendMenu(MF_STRING, IDC_DOWNLOAD, CTSTRING(DOWNLOAD));
 		fileMenu.AppendMenu(MF_POPUP, (UINT)(HMENU)targetMenu, CTSTRING(DOWNLOAD_TO));
 		fileMenu.AppendMenu(MF_POPUP, (UINT)(HMENU)priorityMenu, CTSTRING(DOWNLOAD_WITH_PRIORITY));
 		fileMenu.AppendMenu(MF_STRING, IDC_VIEW_AS_TEXT, CTSTRING(VIEW_AS_TEXT));
 		
-		if(mylist) {
-		fileMenu.AppendMenu(MF_STRING, IDC_FINDMISSING, CTSTRING(SCAN_FOLDER_MISSING));
-		fileMenu.AppendMenu(MF_STRING, IDC_CHECKSFV, CTSTRING(RUN_SFV_CHECK)); //sfv checker
-		if(ctrlList.GetSelectedCount() == 1 /*&& ii->type == ItemInfo::FILE */) {				
+		if(mylist && !(ii->type == ItemInfo::DIRECTORY && ii->dir->getAdls())) {
+			fileMenu.AppendMenu(MF_SEPARATOR);
+			fileMenu.AppendMenu(MF_STRING, IDC_FINDMISSING, CTSTRING(SCAN_FOLDER_MISSING));
+			fileMenu.AppendMenu(MF_STRING, IDC_CHECKSFV, CTSTRING(RUN_SFV_CHECK)); //sfv checker
+			if(ctrlList.GetSelectedCount() == 1 /*&& ii->type == ItemInfo::FILE */) {				
 					fileMenu.AppendMenu(MF_STRING, IDC_OPEN_FOLDER, CTSTRING(OPEN_FOLDER));
-				}
+			}
+			fileMenu.AppendMenu(MF_SEPARATOR);
 		}
 
 		fileMenu.AppendMenu(MF_STRING, IDC_SEARCH_ALTERNATES, CTSTRING(SEARCH_FOR_ALTERNATES));
