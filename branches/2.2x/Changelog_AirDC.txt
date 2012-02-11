@@ -522,4 +522,16 @@ Fix Many crashes on ownlist functions
 Removed:
 
 #Refresh delay setting (client wont refresh on startup unless couldnt load share cache)
-#The options "Extra slots for fellow AirDC users" and "Maximum simultaneous files" 
+#The options "Extra slots for fellow AirDC users" and "Maximum simultaneous files"
+
+
+2.23
+
+Fixed:
+
+#Prevent a crash with chat formating, which can be triggered remotely
+#"Download with priority" in filelists
+
+Changed:
+
+#Use a different format for the modify dates in filelists
