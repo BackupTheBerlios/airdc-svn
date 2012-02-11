@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<Language Name="Swedish for AirDC++" Author="BigMuscle" Version="2.09 Beta 2" Revision="1">
+<Language Name="Swedish for AirDC++" Author="Qwyrioxz" Version="2.22b2" Revision="1">
 	<Strings>
 		<String Name="AairdcppLanguageFile">Swedish_for_AirDC.xml</String>
-		<String Name="AairdcppLanguageVersion">2.091</String>
+		<String Name="AairdcppLanguageVersion">2.22b2</String>
 		<String Name="Active">Aktiv</String>
 		<String Name="ActiveSearchString">Aktiv / Söksträng</String>
 		<String Name="Add">&amp;Lägg till</String>
@@ -218,7 +218,7 @@
 		<String Name="ForceAttempt">Försök hämta igen</String>
 		<String Name="Gib">GiB</String>
 		<String Name="GenerateCertificates">Skapa certifikat</String>
-		<String Name="GetFileList">Hämta fillista</String>
+		<String Name="GetFileList">Hämta hela fillistan</String>
 		<String Name="GoToDirectory">Gå till katalog</String>
 		<String Name="GrantExtraSlot">Bevilja extra slot (10 min)</String>
 		<String Name="GrantExtraSlotDay">Bevilja extra slot (1 dag)</String>
@@ -279,7 +279,7 @@
 		<String Name="JoinShowingOn">Anslutningsmeddelanden på</String>
 		<String Name="Joins">Ansluter: </String>
 		<String Name="Kib">KiB</String>
-		<String Name="Kbps">KiB/s</String>
+		<String Name="Kbps">kB/s</String>
 		<String Name="KeepFinishedFiles">Behåll avslutade filer i kön</String>
 		<String Name="KickUser">Kicka användare</String>
 		<String Name="KickUserFile">Kicka användare med filnamn</String>
@@ -485,7 +485,7 @@
 		<String Name="Queued">Köad: </String>
 		<String Name="QuickConnect">Snabb anslutning</String>
 		<String Name="Rating">Betyg</String>
-		<String Name="Ratio">Ratio</String>
+		<String Name="Ratio">Förhållande</String>
 		<String Name="ReaddSource">Lägg till källa igen</String>
 		<String Name="ReallyExit">Är du säker på att du vill avsluta?</String>
 		<String Name="ReallyRemove">Är du säker på att du vill ta bort?</String>
@@ -885,31 +885,31 @@ Standard: %H:%M:%S</String>
 		<String Name="UserCmdUserMenu">Användarmeny</String>
 		<String Name="UserCmdWindow">Skapa / Modifiera kommando</String>
 		<String Name="UserCmdDescription">Kommandotyper:
-Avgränsare: Skapar en avgränsning i menyn.
-Raw: Skickar raw-kommando till hubben (expert enbart, avsluta med '|'!).
-Chatt: Skickar kommandot likadant som om du hade skrivit det i chatten.
-PM: Skickar kommandot likadant som om du hade skrivit ett PM.
+ Avgränsare: Skapar en avgränsning i menyn.
+ Raw: Skickar raw-kommando till hubben (expert enbart, avsluta med '|'!).
+ Chatt: Skickar kommandot likadant som om du hade skrivit det i chatten.
+ PM: Skickar kommandot likadant som om du hade skrivit ett PM.
 Sammanhanget avgör var ett kommando visas:
-Hub meny: Hubflik (längst ner på skärmen) höger-klicksmeny.
-Användarmeny: Vid högerklick på användare i chatten eller användarlistan.
-Sök meny: Höger-klicksmeny i sökfönstret.
+ Hub meny: Vid högerklick på hubfliken.
+ Användarmeny: Vid högerklick på användare i chatten eller användarlistan.
+ Sök meny: Vid högerklick i sökfönstret.
 Parametrar:
-Namn: Namn (använd '\' för att skapa undermenyer)
-Kommando: Kommandotext (kan innehålla parametrar)
-Hub: Hub IP/DNS som används vid anslutning (tom = alla hubbar, 'op' = hubbar där du är op/har nyckel)
-Till: Mottagare av PM
-Skicka en gång per användarnamn: Kommandot skickas bara en gång per användare vid markering i sökfönstret
+ Namn: Namn (använd '\' för att skapa undermenyer)
+ Kommando: Kommandotext (kan innehålla parametrar)
+ Hub: Hub IP/DNS som används vid anslutning (tom = alla hubbar, 'op' = hubbar där du är op/har nyckel)
+ Till: Mottagare av PM
+ Skicka en gång per användarnamn: Kommandot skickas bara en gång per användare vid markering i sökfönstret
 Som parametrar kan du använda %[xxx] variabler and datum/tid variabler (%Y, %m, ...). Följande alternativ finns:
-%[myNI]: eget användarnamn
-%[userNI]: användarens namn (användarlista &amp;&amp; sökfönster enbart)
-%[userTAG]: användarens tag (användarlista &amp;&amp; sökfönster enbart)
-%[userDE]: användarens beskrivning (användarlista &amp;&amp; sökfönster enbart)
-%[userEM]: användarens e-post (användarlista &amp;&amp; sökfönster enbart)
-%[userSS]: användarens utdelning i bytes (exakt) (användarlista &amp;&amp; sökfönster enbart)
-%[userSSshort]: användarens utdelning i bytes (formaterad) (användarlista &amp;&amp; sökfönster enbart)
-%[userI4]: användarens ip (om hubben tillåter)
-%[fileFN]: filename (sökfönster enbart)
-%[line:anledning]: öppnar ett fönster och frågar efter 'anledning'</String>
+ %[myNI]: eget användarnamn
+ %[userNI]: användarens namn (användarlista &amp;&amp; sökfönster enbart)
+ %[userTAG]: användarens tag (användarlista &amp;&amp; sökfönster enbart)
+ %[userDE]: användarens beskrivning (användarlista &amp;&amp; sökfönster enbart)
+ %[userEM]: användarens e-post (användarlista &amp;&amp; sökfönster enbart)
+ %[userSS]: användarens utdelning i bytes (exakt) (användarlista &amp;&amp; sökfönster enbart)
+ %[userSSshort]: användarens utdelning i bytes (formaterad) (användarlista &amp;&amp; sökfönster enbart)
+ %[userI4]: användarens ip (om hubben tillåter)
+ %[fileFN]: filename (sökfönster enbart)
+ %[line:anledning]: öppnar ett fönster och frågar efter 'anledning'</String>
 		<String Name="UserDescription">Användarbeskrivning</String>
 		<String Name="UserOffline">Användare frånkopplad</String>
 		<String Name="UserOnline">Laddar ner... (användare ansluten)</String>
@@ -951,7 +951,7 @@ Tom = Standardsträng -&gt; Winamp(%[version]) %[state](%[title]) statistik(%[pe
 		<String Name="WinampHelpDesc">Winamp hjälp</String>
 		<String Name="Yes">Ja</String>
 		<String Name="ZonealarmWarning">ZoneAlarm finns installerad på din dator. ZoneAlarm är ofta ansvarig för trasiga eller skadade filer som laddas ner/upp när man använder DC++ protokollet. Vänligen avinstallera det och använd ett annat program som brandvägg på din dator.</String>
-		<String Name="AdlsRegexp">Regexp</String>
+		<String Name="AdlsRegexp">RegExp</String>
 		<String Name="BackgroundImage">Bakgrundsbild</String>
 		<String Name="MenuReconnectDisconnected">Återanslut frånkopplade</String>
 		<String Name="SettingsFulTabs">AirDC++\Flikar</String>
@@ -1142,17 +1142,17 @@ Tom = Standardsträng -&gt; +me playing: %[title] &lt;Media Player Classic&gt;</
 		<String Name="SettingsDupeDescription">Bakgrundsfärg används i fillistor för att visa filer som du redan har utdelade</String>
 		<String Name="SettingsShowQueueBars">Visa förloppsindikator i nerladdningskön</String>
 		<String Name="SettingsLanguage">Språk</String>
-		<String Name="SettingsLswe">Swedish</String>
-		<String Name="SettingsLfin">Finnish</String>
-		<String Name="SettingsLita">Italian</String>
-		<String Name="SettingsLhun">Hungarian</String>
-		<String Name="SettingsLro">Romanian</String>
-		<String Name="SettingsLdan">Danish</String>
-		<String Name="SettingsLeng">English</String>
-		<String Name="SettingsLpor">Portuguese</String>
-		<String Name="SettingsLpol">Polish</String>
-		<String Name="SettingsLfr">French</String>
-		<String Name="SettingsLd">Dutch</String>
+		<String Name="SettingsLswe">Svenska</String>
+		<String Name="SettingsLfin">Finska</String>
+		<String Name="SettingsLita">Italienska</String>
+		<String Name="SettingsLhun">Ungerska</String>
+		<String Name="SettingsLro">Rumänska</String>
+		<String Name="SettingsLdan">Danska</String>
+		<String Name="SettingsLeng">Engelska</String>
+		<String Name="SettingsLpor">Portugisiska</String>
+		<String Name="SettingsLpol">Polska</String>
+		<String Name="SettingsLfr">Franska</String>
+		<String Name="SettingsLd">Holländska</String>
 		<String Name="OpenFirst">Öppna de första X hubbarna vid uppstart</String>
 		<String Name="SearchByTth">Sök med TTH</String>
 		<String Name="Paste">Klistra in</String>
@@ -1162,7 +1162,7 @@ Tom = Standardsträng -&gt; +me playing: %[title] &lt;Media Player Classic&gt;</
 		<String Name="ExportTheme">Exportera Tema</String>
 		<String Name="SettingsLnor">Norwegian</String>
 		<String Name="RefreshFileList">Uppdatera fillistan</String>
-		<String Name="UseRegexp">Använd Regexp</String>
+		<String Name="UseRegExp">Använd RegExp</String>
 		<String Name="FavDlSpeed">Lägg till användare till Favoriter om nerladdningshastigheten är över</String>
 		<String Name="Filewdir">Filenamn med sökväg</String>
 		<String Name="CaseSensitive">Skiftlägeskänslig</String>
@@ -1199,7 +1199,7 @@ Tom = Standardsträng -&gt; +me playing: %[title] &lt;Media Player Classic&gt;</
 		<String Name="ProppageUrl">URL</String>
 		<String Name="ProppageFavUser">Favoritanvändare</String>
 		<String Name="ProppageOperator">Operatör</String>
-		<String Name="ProppageNorm">Other users</String>
+		<String Name="ProppageNorm">Andra användare</String>
 		<String Name="MaxResizeLines">Antal rader att expandera chat/PM textfält</String>
 		<String Name="DontShareEmptyDirs">Dela inte ut tomma kataloger</String>
 		<String Name="OnlyShareFullDirs">Dela bara ut kataloger som indexerats klart</String>
@@ -1264,5 +1264,116 @@ Tom = Standardsträng -&gt; +me playing: %[title] &lt;Media Player Classic&gt;</
 		<String Name="SearchImdb">Sök på Imdb</String>
 		<String Name="SearchMetacritic">Sök på Metacritic</String>
 		<String Name="FavLogChat">Logga chat</String>
+		<String Name="MaxLogLines">Max visade historiska rader</String>
+		<String Name="ViewHistory">Visa chat historia</String>
+		<String Name="UnableToMove">Kunde inte flytta färdig fil</String>
+		<String Name="AsReport">Rapport träff i huvudchatten</String>
+		<String Name="SettingsLger">Tyska</String>
+		<String Name="FileMissing">FIL SAKNAS: </String>
+		<String Name="MenuScanMissing">Sök i fillista efter saknade/extra filer</String>
+		<String Name="MissingFinished">Skanning färdig, hittade %d saknade filer, %d ogiltliga kataloger, %d saknade SFV filer, %d saknade NFO filer och %d kataloger med extra filer</String>
+		<String Name="ScanFolderMissing">Skanna katalog efter missade/extra filer</String>
+		<String Name="ExtraFilesSampledir">Extra filer i "Sample" katalog: </String>
+		<String Name="ExtraFilesRlsdir">Extra filer i "Release" katalog: </String>
+		<String Name="NfoMissing">NFO fil saknas förmodligen: </String>
+		<String Name="SfvMissing">SFV fil saknas förmodligen: </String>
+		<String Name="MultipleNfo">Flera NFO filer hittade: </String>
+		<String Name="MultipleSfv">Flera SFV filer hittade: </String>
+		<String Name="ScanStarted">Skanning efter saknade/extra filer startad...</String>
+		<String Name="DupeFound">Ogiltlig "Release" hittad: </String>
+		<String Name="DupeIsSame">är samma som</String>
+		<String Name="CheckMissing">Kolla saknade "Release" filer</String>
+		<String Name="CheckSfv">Kolla saknade SFV filer</String>
+		<String Name="CheckNfo">Kolla saknade NFO filer</String>
+		<String Name="CheckMp3Dir">Kolla saknade NFO/SFV i musik kataloger (om påslaget)</String>
+		<String Name="CheckExtraSfvNfo">Kolla efter extra NFO/SFV filer</String>
+		<String Name="CheckExtraFiles">Kolla efter extra filer i "Release" kataloger</String>
+		<String Name="CheckDupes">Kolla efter duplicerade kataloger</String>
+		<String Name="SettingsScanOptions">Skannings-inställningar för saknade/extra filer</String>
+		<String Name="RebuildStarted">Hash Databas återuppbyggnad Startad</String>
+		<String Name="SortDirs">Sortera kataloger först i Sökfönster</String>
+		<String Name="DecreaseRam">Förminska "Ram WorkingSet" storlek vid minimering</String>
+		<String Name="RunSfvCheck">Utför SFV test</String>
+		<String Name="SfvCheckFolder">Utför SFV test (hela katalogen)</String>
+		<String Name="SfvCheckFile">Utför SFV test (fil endast)</String>
+		<String Name="CrcFailed">CRC Fel: </String>
+		<String Name="CrcOk">CRC OK: </String>
+		<String Name="CrcRemaining">återstående filer: </String>
+		<String Name="CrcFinished">SFV test klart: det var %d filer med korrekt kontrollsumma och %d filer med ogiltlig kontrollsumma (misslyckades att testa %d filer)</String>
+		<String Name="CrcStarted">SFV test startat, skriv /stop i chatten för att stoppa</String>
+		<String Name="CrcStopped">SFV test stoppad</String>
+		<String Name="CrcFileError">Kunde ej testa filen: </String>
+		<String Name="NoSfvFile">Ingen SFV fil hittad</String>
+		<String Name="NoCrc32">Ingen SFV fil hittad eller så finns ej filen i katalogen</String>
+		<String Name="NoFilesInFolder">Det finns inga filer i denna katalog</String>
+		<String Name="CantOpenSfv">Kan ej öppna SFV fil: </String>
+		<String Name="SeeSyslogForResults">Oppna System Loggen för att se skanningsresultaten</String>
+		<String Name="Stop">Stop</String>
+		<String Name="ChatNotify">Visa Notifierings Ikon vid chat meddelanden</String>
+		<String Name="Notify">Använd Notifierings Ikon</String>
+		<String Name="ViewNfo">Hitta och visa NFO</String>
+		<String Name="NoNfoFound">Inga NFO filer hittade!</String>
+		<String Name="ScanRunning">Söker...</String>
+		<String Name="NoPartialSupport">Den andra klienten stödjer ej denna funktion</String>
+		<String Name="NoPartialSupportRetry">Den andra klienten är för gammal, provar igen med hela fillistan...</String>
+		<String Name="MenuCustomize">Ladda hem anpassningar</String>
+		<String Name="MenuGuides">Guider</String>
+		<String Name="SpotifyHelp">/spotify - För Spotify media spamning
+- %[title]		Artist och titel på låt som spelas
+- %[link]		Spotify länk till låt som spelas
+
+Empty = Default String -&gt; /me spelar på Spotify: %[title] %[link]</String>
+		<String Name="SpotifyHelpDesc">Spotify Hjälp</String>
+		<String Name="SpotifyTrack">Spela denna låt på Spotify</String>
+		<String Name="SpotifyArtist">Visa denna artist på Spotify</String>
+		<String Name="SpotifyAlbum">Visa detta album på Spotify</String>
+		<String Name="BigFileNotShared">Filen för stor, ej delad:</String>
+		<String Name="DontShareBiggerThan">Dela ej filer större än (0=avstängt)</String>
+		<String Name="DirEmpty">Katalogen är tom:</String>
+		<String Name="SearchForAlternatesFile">Sök på filnamn för altenativ</String>
+		<String Name="ReleaseFilesMissing">NFO/SFV hittade, men det finns ej några andra filer:</String>
+		<String Name="CheckEmptyReleases">Kolla om katalogen innehåller NFO/SFV filer</String>
+		<String Name="CheckEmptyDirs">Kolla om katalogen är tom</String>
+		<String Name="Date">Senast modifierad</String>
+		<String Name="SettingsMcnslots">Begränsning per användare (endast i ADC hubbar)</String>
+		<String Name="SettingsMaxMcnDl">Max nedladdningar per användare</String>
+		<String Name="SettingsMaxMcnUl">Max uppladdningar per användare</String>
+		<String Name="PartialMatchAdc">Lägg till källor genom att använda bläddringsbara fillistor (endast ADC)</String>
+		<String Name="SettingsNoZeroByte">Dela ej 0 Byte filer</String>
+		<String Name="SettingsDownloadLineSpeed">Nedladdningshastighet</String>
+		<String Name="Autodetect">Upptäck automatiskt</String>
+		<String Name="LineSpeed">Uppkopplingshastighet</String>
+		<String Name="SettingsSpeedLimits">Hastighets &amp; Begränsningar</String>
+		<String Name="UploadLimits">Upladdnings Begränsningar (med auto upptäckning)</String>
+		<String Name="UploadLimitsAdd">Uppladdnings Begränsningar (manuella)</String>
+		<String Name="DownloadLimits">Nedladdnings Begränsningar</String>
+		<String Name="SettingsProfile">Profil inställningar</String>
+		<String Name="ProfilePublic">Publika Hubbar (standard)</String>
+		<String Name="ProfileRar">Rar Hubbar</String>
+		<String Name="ProfilePrivate">Privata Hubbar</String>
+		<String Name="SettingsMcnNote">* Att sänka uppladdnings anslutningar från standardvärdet kommer att resultera i att nedladdnings anslutningarna sätts som samma värde</String>
+		<String Name="SettingsTargetdriveNote">* Using target drive means that unfinished files are always being saved to an own folder on the same drive where the final destination is</String>
+		<String Name="SettingsUseTargetdrive">Use Target Drive for unfinished files</String>
+		<String Name="RemoveOnHit">Remove after found</String>
+		<String Name="SearchAdded">Search Added to Autosearch List: </String>
+		<String Name="CheckUseSkiplist">Ignore items matching the share skiplist</String>
+		<String Name="CheckIgnoreZeroByte">Ignore zero byte files</String>
+		<String Name="NoFilesAvailable">No files to download</String>
+		<String Name="MatchingFileList">Matching File lists, this may take a while if the lists are large.</String>
+		<String Name="SkipSubtractText">Subtract list: Skip Dirs with ONLY 2 or less files smaller than</String>
+		<String Name="ProppageDupeText">Dupe folders/files</String>
+		<String Name="ProppageDupeMsg">Release.Example-AIRDC</String>
+		<String Name="ProppageUnderlineLinks">Underline links</String>
+		<String Name="ProppageUnderlineDupes">Underline dupes</String>
+		<String Name="SettingsDupeFilelist">Use dupe color in filelists</String>
+		<String Name="SettingsDupeChat">Use dupe color in chat"</String>
+		<String Name="ClientVersion">Client version</String>
+		<String Name="LanguageVersion">Language version</String>
+		<String Name="ProppageListHl">FileList Highlight</String>
+		<String Name="ProppageListHlMsg">Highlight-AIRDC</String>
+		<String Name="ListHlText">HighLight matches in Filelists (wildcards, | separate)</String>
+		<String Name="ListHlExample">Example, *NORDIC* (this may slow down filelist loading...)</String>
+		<String Name="SettingsDupes">Dupes Settings</String>
+		<String Name="ReportSkiplist">Show Skiplist blocked files in systemlog</String>
 	</Strings>
 </Language>

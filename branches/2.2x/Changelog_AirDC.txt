@@ -529,8 +529,9 @@ Removed:
 
 Fixed:
 
-#Prevent a crash with chat formating, which can be triggered remotely
-#"Download with priority" in filelists
+#Prevent a crash which can be triggered remotely
+#Fix "Download with priority" in filelists
+#Clean old results when applying ADL search multiple times in a filelist
 
 Changed:
 

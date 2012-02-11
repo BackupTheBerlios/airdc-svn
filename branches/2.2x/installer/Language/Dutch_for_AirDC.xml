@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<Language Name="Dutch_for_AirDC" Author="Kaas" Version="2.20" Revision="3">
+<Language Name="Dutch_for_AirDC" Author="Kaas" Version="2.22" Revision="1">
 	<Strings>
 		<String Name="AairdcppLanguageFile">Dutch_for_AirDC.xml</String>
-		<String Name="AairdcppLanguageVersion">2.203</String>
+		<String Name="AairdcppLanguageVersion">2.221</String>
 		<String Name="AcceptedDisconnects">Geaccepteerde verbroken verbindingen</String>
 		<String Name="AcceptedTimeouts">Geaccepteerde timeouts</String>
 		<String Name="Active">Actief</String>
@@ -1391,7 +1391,7 @@ Leeg = Standaardregel -&gt; +me luistert nu naar: %[title] &lt;Media Player Clas
 - %[title]		Artiest en titel van het afgespeelde item
 - %[link]		Spotify link voor het nummer dat afgespeeld wordt
 
-Empty = Default String -&gt; /me playing on Spotify: %[title] %[link]</String>
+Empty = Default String -&gt; /me speelt op Spotify: %[title] %[link]</String>
 		<String Name="SpotifyHelpDesc">Spotify Help</String>
 		<String Name="SpotifyTrack">Speel dit nummer op Spotify</String>
 		<String Name="SpotifyArtist">Bekijk deze artiest op Spotify</String>
@@ -1420,7 +1420,7 @@ Empty = Default String -&gt; /me playing on Spotify: %[title] %[link]</String>
 		<String Name="ProfilePublic">Publieke Hubs (standaard)</String>
 		<String Name="ProfileRar">Rar Hubs</String>
 		<String Name="ProfilePrivate">Prive Hubs</String>
-		<String Name="SettingsMcnNote">* Verlagen van de upload anders dan de andaard instelling resulteerd in het instellen van de download instelling in dezelfde waarde</String>
+		<String Name="SettingsMcnNote">* Verlagen van de upload anders dan de standaard instelling resulteerd in het instellen van de download instelling in dezelfde waarde</String>
 		<String Name="SettingsTargetdriveNote">* Gebruik doelschijf betekend dat onvolledige bestanden ALTIJD opgeslagen worden in een eigen map op de schijf waar de DOEL map ook staat</String>
 		<String Name="SettingsUseTargetdrive">Gebruik doelschijf voor lopende files</String>
 		<String Name="RemoveOnHit">Verwijder na gevonden</String>
@@ -1444,8 +1444,11 @@ Empty = Default String -&gt; /me playing on Spotify: %[title] %[link]</String>
 		<String Name="ListHlExample">(Dit kan het laden van de bestandslijst vertragen...)</String>
 		<String Name="SettingsDupes">Dubbele instellingen</String>
 		<String Name="ReportSkiplist">Laat door skiplist geblokkereerde bestanden zien in de system log</String> 
-		
-		
-		
+		<String Name="MatchAdl">ADL vergelijken</String>
+		<String Name="MatchingAdl">Vgelijk bestandslijst met ADLSearch, dit kan lang duren bij grote bestandslijsten...</String>
+		<String Name="LogHashing">Laat Hashende Files zien in systemlog</String>
+		<String Name="SaveShare">Sla shares automatisch op elke </String>
+		<String Name="UseFtpLogger">Gebruik alternatieve sfv check (Bijv. FTPLogger, Alleen aan zetten als je begrijpt wat je hiermee doet.)  </String>
+		<String Name="MatchPartial">Vergelijk gedeeltelijke lijst</String>
 	</Strings>
-</Language>
+</Language>
