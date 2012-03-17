@@ -323,36 +323,35 @@ void AutoSearchManager::addToQueue(SearchResultPtr sr, bool pausePrio/* = false*
 	Lock l(cs);
 	string fullpath;
 
-		try {
-			if(sr->getType() == SearchResult::TYPE_DIRECTORY) {
+	try {
+		if(sr->getType() == SearchResult::TYPE_DIRECTORY) {
 
-				if((dTarget != Util::emptyString) && Util::fileExists(dTarget)) {
-						fullpath = dTarget;
-					} else {
-						fullpath = SETTING(DOWNLOAD_DIRECTORY);
-					}
-
-				if(pausePrio) //add with paused priority
-					QueueManager::getInstance()->addDirectory(sr->getFile(), HintedUser(sr->getUser(), sr->getHubURL()), fullpath, QueueItem::PAUSED);
-				else // start downloading
-					QueueManager::getInstance()->addDirectory(sr->getFile(), HintedUser(sr->getUser(), sr->getHubURL()), fullpath);
-
+			if((dTarget != Util::emptyString) && Util::fileExists(dTarget)) {
+				fullpath = dTarget;
 			} else {
-			
-				if((dTarget != Util::emptyString) && Util::fileExists(dTarget)) {
-						fullpath = dTarget + Util::getFileName(sr->getFile());
-				} else {
-						fullpath = SETTING(DOWNLOAD_DIRECTORY) + Util::getFileName(sr->getFile());
-				}
+				fullpath = SETTING(DOWNLOAD_DIRECTORY);
+			}
 
-				QueueManager::getInstance()->add(fullpath, sr->getSize(), sr->getTTH(), HintedUser(sr->getUser(), sr->getHubURL()));
+			if(pausePrio) //add with paused priority
+				QueueManager::getInstance()->addDirectory(sr->getFile(), HintedUser(sr->getUser(), sr->getHubURL()), fullpath, QueueItem::PAUSED);
+			else // start downloading
+				QueueManager::getInstance()->addDirectory(sr->getFile(), HintedUser(sr->getUser(), sr->getHubURL()), fullpath);
+
+		} else {
 			
+			if((dTarget != Util::emptyString) && Util::fileExists(dTarget)) {
+				fullpath = dTarget + Util::getFileName(sr->getFile());
+			} else {
+				fullpath = SETTING(DOWNLOAD_DIRECTORY) + Util::getFileName(sr->getFile());
+			}
+
+			QueueManager::getInstance()->add(fullpath, sr->getSize(), sr->getTTH(), HintedUser(sr->getUser(), sr->getHubURL()));
 			if(pausePrio)
 				QueueManager::getInstance()->setPriority(fullpath, QueueItem::PAUSED);
-			}
-		} catch(...) {
-			LogManager::getInstance()->message("AutoSearch Failed to Queue: " + sr->getFile());
 		}
+	} catch(...) {
+		LogManager::getInstance()->message("AutoSearch Failed to Queue: " + sr->getFile());
+	}
 	
 }
 
