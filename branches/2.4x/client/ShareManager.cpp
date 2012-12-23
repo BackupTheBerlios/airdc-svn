@@ -2513,7 +2513,6 @@ void ShareManager::cleanIndices(Directory::Ptr& dir) {
 			tthIndex.erase(p.base());
 	}
 
-	removeDir(dir);
 	dir->files.clear();
 	dir->directories.clear();
 }
