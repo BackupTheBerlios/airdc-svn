@@ -18,9 +18,13 @@
 
 #include "stdinc.h"
 
+#include <boost/range/algorithm/for_each.hpp>
+#include <boost/range/algorithm_ext/for_each.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/fusion/include/count_if.hpp>
+#include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/numeric.hpp>
 
 #include "BundleQueue.h"
@@ -33,6 +37,8 @@
 namespace dcpp {
 
 using boost::range::find_if;
+using boost::range::for_each;
+using boost::adaptors::map_values;
 
 BundleQueue::BundleQueue() : 
 	nextSearch(0),
@@ -275,7 +281,8 @@ pair<string, BundlePtr> BundleQueue::findRemoteDir(const string& aDir) const {
 
 void BundleQueue::getInfo(const string& aPath, BundleList& retBundles, int& finishedFiles, int& fileBundles) const {
 	//find the matching bundles
-	for(auto b: bundles | map_values) {
+	for(auto j = bundles.cbegin(), iend = bundles.cend(); j != iend; ++j) {
+		BundlePtr b = j->second;
 		if (b->isFinished()) {
 			//don't modify those
 			continue;
@@ -298,7 +305,8 @@ void BundleQueue::getInfo(const string& aPath, BundleList& retBundles, int& fini
 
 BundlePtr BundleQueue::getMergeBundle(const string& aTarget) const {
 	/* Returns directory bundles that are in sub or parent dirs (or in the same location), in which we can merge to */
-	for(auto compareBundle: bundles | map_values) {
+	for(auto i = bundles.cbegin(), iend = bundles.cend(); i != iend; ++i) {
+		BundlePtr compareBundle = i->second;
 		if (!compareBundle->isFileBundle() && (AirUtil::isSub(aTarget, compareBundle->getTarget()) || AirUtil::isParentOrExact(aTarget, compareBundle->getTarget()))) {
 			return compareBundle;
 		}
@@ -308,11 +316,11 @@ BundlePtr BundleQueue::getMergeBundle(const string& aTarget) const {
 
 void BundleQueue::getSubBundles(const string& aTarget, BundleList& retBundles) const {
 	/* Returns bundles that are inside aTarget */
-	for(auto compareBundle: bundles | map_values) {
+	for_each(bundles | map_values, [&](BundlePtr compareBundle) {
 		if (AirUtil::isSub(compareBundle->getTarget(), aTarget)) {
 			retBundles.push_back(compareBundle);
 		}
-	}
+	});
 }
 
 void BundleQueue::addBundleItem(QueueItemPtr qi, BundlePtr aBundle) {
@@ -328,7 +336,7 @@ void BundleQueue::removeBundleItem(QueueItemPtr qi, bool finished) {
 }
 
 void BundleQueue::addDirectory(const string& aPath, BundlePtr aBundle) {
-	bundleDirs.emplace(Util::getLastDir(aPath), make_pair(aPath, aBundle));
+	bundleDirs.insert(make_pair(Util::getLastDir(aPath), make_pair(aPath, aBundle)));
 }
 
 void BundleQueue::removeDirectory(const string& aPath) {
@@ -340,7 +348,7 @@ void BundleQueue::removeDirectory(const string& aPath) {
 
 Bundle::BundleDirMap::iterator BundleQueue::findLocalDir(const string& aPath) {
 	auto bdr = bundleDirs.equal_range(Util::getLastDir(aPath));
-	auto s = find_if(bdr | map_values, CompareFirst<string, BundlePtr>(aPath));
+	auto s = find_if(bdr | map_values, [&aPath](pair <string, BundlePtr> sbp) { return aPath == sbp.first; });
 	return s.base() != bdr.second ? s.base() : bundleDirs.end();
 }
 
@@ -361,9 +369,9 @@ void BundleQueue::removeBundle(BundlePtr aBundle) {
 		return;
 	}
 
-	for(auto d: aBundle->getBundleDirs() | map_keys) {
-		removeDirectory(d);
-	}
+	for_each(aBundle->getBundleDirs(), [this](pair<string, pair<uint32_t, uint32_t>> d) {
+		removeDirectory(d.first);
+	});
 
 	//make sure that everything will be freed from the memory
 	dcassert(aBundle->getFinishedFiles().empty());
@@ -397,24 +405,24 @@ void BundleQueue::getDiskInfo(TargetUtil::TargetInfoMap& dirMap, const TargetUti
 		tempVol = TargetUtil::getMountPath(SETTING(TEMP_DOWNLOAD_DIRECTORY), volumes);
 	}
 
-	for(auto b: bundles | map_values) {
+	for_each(bundles | map_values, [&](BundlePtr b) {
 		string mountPath = TargetUtil::getMountPath(b->getTarget(), volumes);
 		if (!mountPath.empty()) {
 			auto s = dirMap.find(mountPath);
 			if (s != dirMap.end()) {
 				bool countAll = (useSingleTempDir && (mountPath != tempVol));
-				for(auto q: b->getQueueItems()) {
+				for_each(b->getQueueItems(), [countAll, &s](const QueueItemPtr q) {
 					if (countAll || q->getDownloadedBytes() == 0) {
 						s->second.queued += q->getSize();
 					}
-				}
+				});
 			}
 		}
-	}
+	});
 }
 
 void BundleQueue::saveQueue(bool force) noexcept {
-	for(auto b: bundles | map_values) {
+	for_each(bundles | map_values, [force](BundlePtr b) {
 		if (!b->isFinished() && (b->getDirty() || force)) {
 			try {
 				b->save();
@@ -422,7 +430,7 @@ void BundleQueue::saveQueue(bool force) noexcept {
 				LogManager::getInstance()->message("Failed to save the bundle " + b->getName(), LogManager::LOG_ERROR);
 			}
 		}
-	}
+	});
 }
 
 } //dcpp
