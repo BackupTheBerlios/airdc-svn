@@ -113,11 +113,11 @@ public:
 	vector<Segment> getChunksVisualisation(const QueueItemPtr qi, int type) const { RLock l(cs); return qi->getChunksVisualisation(type); }
 
 	bool getQueueInfo(const HintedUser& aUser, string& aTarget, int64_t& aSize, int& aFlags, string& bundleToken) noexcept;
-	Download* getDownload(UserConnection& aSource, const HubSet& onlineHubs, string& aMessage, string& newUrl, bool smallSlot) noexcept;
+	Download* getDownload(UserConnection& aSource, const OrderedStringSet& onlineHubs, string& aMessage, string& newUrl, bool smallSlot) noexcept;
 	void putDownload(Download* aDownload, bool finished, bool noAccess=false, bool rotateQueue=false) noexcept;
 	
 	/** @return The highest priority download the user has, PAUSED may also mean no downloads */
-	QueueItem::Priority hasDownload(const UserPtr& aUser, const HubSet& onlineHubs, bool smallSlot) noexcept;
+	QueueItem::Priority hasDownload(const UserPtr& aUser, const OrderedStringSet& onlineHubs, bool smallSlot) noexcept;
 	/** The same thing but only used before any connect requests */
 	QueueItem::Priority hasDownload(const UserPtr& aUser, string& hubUrl, bool smallSlot, string& bundleToken) noexcept;
 	
@@ -149,7 +149,7 @@ public:
 	void removeBundle(BundlePtr aBundle, bool finished, bool removeFinished, bool moved = false);
 	uint8_t isDirQueued(const string& aDir) const;
 	tstring getDirPath(const string& aDir) const;
-	void getDiskInfo(TargetUtil::TargetInfoMap& dirMap, const StringSet& volumes) const { RLock l (cs); bundleQueue.getDiskInfo(dirMap, volumes); }
+	void getDiskInfo(TargetUtil::TargetInfoMap& dirMap, const TargetUtil::VolumeSet& volumes) const { RLock l (cs); bundleQueue.getDiskInfo(dirMap, volumes); }
 	void getUnfinishedPaths(StringList& bundles);
 	void getForbiddenPaths(StringList& bundlePaths, const StringList& sharePaths);
 
