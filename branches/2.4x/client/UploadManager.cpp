@@ -237,13 +237,7 @@ checkslots:
 		case Transfer::TYPE_FILE:
 			{
 				if(partialFileSharing) {
-					int flags = File::OPEN | File::SHARED;
-					if (aBytes+aStartPos != fileSize) {
-						//segmented download
-						flags |= File::NO_CACHE_HINT;
-					}
-
-					auto ss = new SharedFileStream(sourceFile, File::READ, flags);
+					auto ss = new File(sourceFile, File::READ, File::OPEN);
 
 					start = aStartPos;
 					fileSize = ss->getSize();
@@ -1259,6 +1253,14 @@ void UploadManager::abortUpload(const string& aFile, bool waiting){
 
 	{
 		Lock l(cs);
+		for(auto i = delayUploads.begin(); i != delayUploads.end(); i++){
+			Upload* u = (*i);
+
+			if(u->getPath() == aFile){
+				u->getUserConnection().disconnect(true);
+				nowait = false;
+			}
+		}
 
 		for(auto i = uploads.begin(); i != uploads.end(); i++){
 			Upload* u = (*i);
@@ -1284,6 +1286,17 @@ void UploadManager::abortUpload(const string& aFile, bool waiting){
 
 				if(u->getPath() == aFile){
 					dcdebug("upload %s is not removed\n", aFile.c_str());
+					nowait = false;
+					break;
+				}
+			}
+
+			nowait = true;
+			for(auto i = delayUploads.begin(); i != delayUploads.end(); i++){
+				Upload* u = (*i);
+
+				if(u->getPath() == aFile){
+					dcdebug("delayUpload %s is not removed\n", aFile.c_str());
 					nowait = false;
 					break;
 				}

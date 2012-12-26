@@ -210,7 +210,8 @@ void Download::open(int64_t bytes, bool z, bool hasDownloadedBytes) {
 			flags |= File::NO_CACHE_HINT;
 		}
 
-		unique_ptr<SharedFileStream> f(new SharedFileStream(target, File::WRITE, flags));
+		//unique_ptr<SharedFileStream> f(new SharedFileStream(target, File::WRITE, flags));
+		unique_ptr<File> f(new File(target, File::WRITE, File::OPEN | File::CREATE | File::SHARED));
 
 		if(f->getSize() != fullSize) {
 			f->setSize(fullSize);
