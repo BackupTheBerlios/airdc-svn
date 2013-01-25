@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,14 @@
 #include "Text.h"
 
 namespace dcpp {
+
+//Away modes
+enum AwayMode {
+	AWAY_OFF,
+	AWAY_IDLE,
+	AWAY_MINIMIZE,
+	AWAY_MANUAL //highest value
+};
 
 enum DupeType { 
 	DUPE_NONE, 
@@ -89,11 +97,20 @@ class AirUtil {
 		static bool isAdcHub(const string& hubUrl);
 		static bool isHubLink(const string& hubUrl);
 
-		static string stripHubUrl(const string& url);
-
 		static string convertMovePath(const string& aPath, const string& aParent, const string& aTarget);
 		static string regexEscape(const string& aStr, bool isWildcard);
+
+		static bool getAway() { return away > 0; }
+		static AwayMode getAwayMode() { return away; }
+		static void setAway(AwayMode aAway);
+		static string getAwayMessage(ParamMap& params);
+		static void setAwayMessage(const string& aMsg) { awayMsg = aMsg; }
+
 	private:
+
+		static AwayMode away;
+		static string awayMsg;
+		static time_t awayTime;
 
 	};
 }

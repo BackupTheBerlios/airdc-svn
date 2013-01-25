@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,22 +21,54 @@
 
 #include "UserConnection.h"
 #include "Streams.h"
+#include "FilteredFile.h"
+#include "ZUtils.h"
 
 namespace dcpp {
 
-Upload::Upload(UserConnection& conn, const string& path, const TTHValue& tth) : Transfer(conn, path, tth), stream(0), fileSize(-1), delayTime(0) { 
+Upload::Upload(UserConnection& conn, const string& path, const TTHValue& tth, unique_ptr<InputStream> aIS) : 
+	Transfer(conn, path, tth), fileSize(-1), delayTime(0), stream(move(aIS)) { 
+
 	conn.setUpload(this);
 }
 
+InputStream* Upload::getStream() { 
+	return stream.get(); 
+}
+
+void Upload::setFiltered() {
+	stream.reset(new FilteredInputStream<ZFilter, true>(stream.release()));
+	setFlag(Upload::FLAG_ZUPLOAD);
+}
+
 Upload::~Upload() {
-	dcassert(!bundle);
-	getUserConnection().setUpload(0);
-	delete stream; 
+	if (bundle) {
+		bundle->removeUpload(this);
+		bundle = nullptr;
+	}
+
+	getUserConnection().setUpload(nullptr);
 }
 
 void Upload::getParams(const UserConnection& aSource, ParamMap& params) const {
 	Transfer::getParams(aSource, params);
 	params["source"] = (getType() == TYPE_PARTIAL_LIST ? STRING(PARTIAL_FILELIST) : getPath());
 }
+
+void Upload::resume(int64_t aStart, int64_t aSize) noexcept {
+	setSegment(Segment(aStart, aSize));
+	setFlag(Upload::FLAG_RESUMED);
+	delayTime = 0;
+
+	auto s = stream.get()->releaseRootStream();
+	s->setPos(aStart);
+	stream.reset(s);
+	resetPos();
+
+	if((aStart + aSize) < fileSize) {
+		stream.reset(new LimitedInputStream<true>(stream.release(), aSize));
+	}
+}
+
 
 } // namespace dcpp

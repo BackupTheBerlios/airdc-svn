@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 
 #include "MainFrm.h"
@@ -62,7 +61,6 @@
 #include "../client/StringTokenizer.h"
 #include "../client/ShareManager.h"
 #include "../client/LogManager.h"
-#include "../client/Thread.h"
 #include "../client/FavoriteManager.h"
 #include "../client/MappingManager.h"
 #include "../client/AirUtil.h"
@@ -98,6 +96,11 @@ statusContainer(STATUSCLASSNAME, this, STATUS_MESSAGE_MAP)
 	anyMF = this;
 }
 
+LRESULT MainFrame::onOpenDownloads(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	WinUtil::openFile(Text::toT(SETTING(DOWNLOAD_DIRECTORY)));
+	return 0;
+}
+
 MainFrame::~MainFrame() {
 	m_CmdBar.m_hImageList = NULL;
 
@@ -113,10 +116,15 @@ MainFrame::~MainFrame() {
 		FreeLibrary(user32lib);
 }
 
+void MainFrame::addThreadedTask(std::function<void ()> aF) {
+	threadedTasks.run(aF);
+}
+
 DWORD WINAPI MainFrame::stopper(void* p) {
 	MainFrame* mf = (MainFrame*)p;
 	HWND wnd, wnd2 = NULL;
 
+	mf->threadedTasks.wait();
 	while( (wnd=::GetWindow(mf->m_hWndMDIClient, GW_CHILD)) != NULL) {
 		if(wnd == wnd2)
 			Sleep(100);
@@ -137,15 +145,15 @@ public:
 
 	}
 	int run() {
-		for(StringIter i = files.begin(); i != files.end(); ++i) {
-			UserPtr u = DirectoryListing::getUserFromFilename(*i);
+		for(auto& i: files) {
+			UserPtr u = DirectoryListing::getUserFromFilename(i);
 			if(!u)
 				continue;
 				
 			HintedUser user(u, Util::emptyString);
-			DirectoryListing* dl = new DirectoryListing(user, false, *i, false, false);
+			unique_ptr<DirectoryListing> dl(new DirectoryListing(user, false, i, false, false));
 			try {
-				dl->loadFile(*i);
+				dl->loadFile(i);
 				int matches=0, newFiles=0;
 				BundleList bundles;
 				QueueManager::getInstance()->matchListing(*dl, matches, newFiles, bundles);
@@ -154,7 +162,6 @@ public:
 			} catch(const Exception&) {
 
 			}
-			delete dl;
 		}
 		delete this;
 		return 0;
@@ -321,7 +328,7 @@ LRESULT MainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 
 	ctrlTab.Create(m_hWnd, rcDefault);
 	WinUtil::tabCtrl = &ctrlTab;
-	tabsontop = BOOLSETTING(TABS_ON_TOP);
+	tabsontop = SETTING(TABS_ON_TOP);
 
 	transferView.Create(m_hWnd);
 
@@ -346,25 +353,25 @@ LRESULT MainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	pLoop->AddMessageFilter(this);
 	pLoop->AddIdleHandler(this);
 
-	if(BOOLSETTING(OPEN_PUBLIC)) PostMessage(WM_COMMAND, ID_FILE_CONNECT);
-	if(BOOLSETTING(OPEN_FAVORITE_HUBS)) PostMessage(WM_COMMAND, IDC_FAVORITES);
-	if(BOOLSETTING(OPEN_FAVORITE_USERS)) PostMessage(WM_COMMAND, IDC_FAVUSERS);
-	if(BOOLSETTING(OPEN_QUEUE)) PostMessage(WM_COMMAND, IDC_QUEUE);
-	if(BOOLSETTING(OPEN_FINISHED_DOWNLOADS)) PostMessage(WM_COMMAND, IDC_FINISHED);
-	if(BOOLSETTING(OPEN_WAITING_USERS)) PostMessage(WM_COMMAND, IDC_UPLOAD_QUEUE);
-	if(BOOLSETTING(OPEN_FINISHED_UPLOADS)) PostMessage(WM_COMMAND, IDC_FINISHED_UL);
-	if(BOOLSETTING(OPEN_SEARCH_SPY)) PostMessage(WM_COMMAND, IDC_SEARCH_SPY);
-	if(BOOLSETTING(OPEN_NETWORK_STATISTICS)) PostMessage(WM_COMMAND, IDC_NET_STATS);
-	if(BOOLSETTING(OPEN_NOTEPAD)) PostMessage(WM_COMMAND, IDC_NOTEPAD);
+	if(SETTING(OPEN_PUBLIC)) PostMessage(WM_COMMAND, ID_FILE_CONNECT);
+	if(SETTING(OPEN_FAVORITE_HUBS)) PostMessage(WM_COMMAND, IDC_FAVORITES);
+	if(SETTING(OPEN_FAVORITE_USERS)) PostMessage(WM_COMMAND, IDC_FAVUSERS);
+	if(SETTING(OPEN_QUEUE)) PostMessage(WM_COMMAND, IDC_QUEUE);
+	if(SETTING(OPEN_FINISHED_DOWNLOADS)) PostMessage(WM_COMMAND, IDC_FINISHED);
+	if(SETTING(OPEN_WAITING_USERS)) PostMessage(WM_COMMAND, IDC_UPLOAD_QUEUE);
+	if(SETTING(OPEN_FINISHED_UPLOADS)) PostMessage(WM_COMMAND, IDC_FINISHED_UL);
+	if(SETTING(OPEN_SEARCH_SPY)) PostMessage(WM_COMMAND, IDC_SEARCH_SPY);
+	if(SETTING(OPEN_NETWORK_STATISTICS)) PostMessage(WM_COMMAND, IDC_NET_STATS);
+	if(SETTING(OPEN_NOTEPAD)) PostMessage(WM_COMMAND, IDC_NOTEPAD);
 
-	if(!BOOLSETTING(SHOW_STATUSBAR)) PostMessage(WM_COMMAND, ID_VIEW_STATUS_BAR);
-	if(!BOOLSETTING(SHOW_TOOLBAR)) PostMessage(WM_COMMAND, ID_VIEW_TOOLBAR);
-	if(!BOOLSETTING(SHOW_TRANSFERVIEW))	PostMessage(WM_COMMAND, ID_VIEW_TRANSFER_VIEW);
+	if(!SETTING(SHOW_STATUSBAR)) PostMessage(WM_COMMAND, ID_VIEW_STATUS_BAR);
+	if(!SETTING(SHOW_TOOLBAR)) PostMessage(WM_COMMAND, ID_VIEW_TOOLBAR);
+	if(!SETTING(SHOW_TRANSFERVIEW))	PostMessage(WM_COMMAND, ID_VIEW_TRANSFER_VIEW);
 
-	if(!BOOLSETTING(SHOW_WINAMP_CONTROL)) PostMessage(WM_COMMAND, ID_TOGGLE_TOOLBAR);
-	if(!BOOLSETTING(SHOW_TBSTATUS)) PostMessage(WM_COMMAND, ID_TOGGLE_TBSTATUS);
-	if(BOOLSETTING(LOCK_TB)) PostMessage(WM_COMMAND, ID_LOCK_TB);
-	if(BOOLSETTING(OPEN_SYSTEM_LOG)) PostMessage(WM_COMMAND, IDC_SYSTEM_LOG);
+	if(!SETTING(SHOW_WINAMP_CONTROL)) PostMessage(WM_COMMAND, ID_TOGGLE_TOOLBAR);
+	if(!SETTING(SHOW_TBSTATUS)) PostMessage(WM_COMMAND, ID_TOGGLE_TBSTATUS);
+	if(SETTING(LOCK_TB)) PostMessage(WM_COMMAND, ID_LOCK_TB);
+	if(SETTING(OPEN_SYSTEM_LOG)) PostMessage(WM_COMMAND, IDC_SYSTEM_LOG);
 
 	if(!WinUtil::isShift() && !Util::hasParam("/noautoconnect"))
 		PostMessage(WM_SPEAKER, AUTO_CONNECT);
@@ -390,9 +397,9 @@ LRESULT MainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 
 	updateTray(true);
 
-	Util::setAway(BOOLSETTING(AWAY));
-	ctrlToolbar.CheckButton(IDC_AWAY,BOOLSETTING(AWAY));
-	ctrlToolbar.CheckButton(IDC_DISABLE_SOUNDS, BOOLSETTING(SOUNDS_DISABLED));
+	AirUtil::setAway(SETTING(AWAY) ? AWAY_MANUAL : AWAY_OFF);
+	ctrlToolbar.CheckButton(IDC_AWAY,SETTING(AWAY));
+	ctrlToolbar.CheckButton(IDC_DISABLE_SOUNDS, SETTING(SOUNDS_DISABLED));
 
 	if(SETTING(NICK).empty()) {
 		PostMessage(WM_COMMAND, ID_FILE_SETTINGS);
@@ -406,7 +413,7 @@ LRESULT MainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	warningIcon = ResourceLoader::loadIcon(IDI_IWARNING, 16);
 	errorIcon = ResourceLoader::loadIcon(IDI_IERROR, 16);;
 
-	ctrlStatus.SetIcon(STATUS_AWAY, Util::getAway() ? awayIconON : awayIconOFF);
+	ctrlStatus.SetIcon(STATUS_AWAY, AirUtil::getAway() ? awayIconON : awayIconOFF);
 	ctrlStatus.SetIcon(STATUS_SHARED, ResourceLoader::loadIcon(IDI_SHARED, 16));
 	ctrlStatus.SetIcon(STATUS_SLOTS, slotsIcon);
 	ctrlStatus.SetIcon(STATUS_HUBS, ResourceLoader::loadIcon(IDI_HUB, 16));
@@ -423,7 +430,7 @@ LRESULT MainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		currentPic = SETTING(BACKGROUND_IMAGE);
 		m_PictureWindow.Load(Text::toT(currentPic).c_str());
 	}
-	if(BOOLSETTING(TESTWRITE)) {
+	if(SETTING(TESTWRITE)) {
 		TestWrite(true, true, true);
 	}
 
@@ -492,8 +499,7 @@ HWND MainFrame::createTBStatusBar() {
 
 
 void MainFrame::showPortsError(const string& port) {
-	MessageBox(Text::toT(str(boost::format(STRING(PORT_BYSY)) % port)).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_OK | MB_ICONEXCLAMATION);
-	//MessageBox(CTSTRING_F(PORT_BYSY, port), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_OK | MB_ICONEXCLAMATION);
+	showMessageBox(Text::toT(str(boost::format(STRING(PORT_BYSY)) % port)).c_str(), MB_OK | MB_ICONEXCLAMATION);
 }
 
 HWND MainFrame::createWinampToolbar() {
@@ -647,7 +653,7 @@ HWND MainFrame::createToolbar() {
 			}
 		} else { //default ones are .ico
 			int i = 0;
-			int size = SETTING(TB_IMAGE_SIZE);
+			const int size = SETTING(TB_IMAGE_SIZE);
 			int buttonsCount = sizeof(ToolbarButtons) / sizeof(ToolbarButtons[0]);
 			ToolbarImages.Create(size, size, ILC_COLOR32 | ILC_MASK,  0, buttonsCount+1);
 			ToolbarImagesHot.Create(size, size, ILC_COLOR32 | ILC_MASK,  0, buttonsCount+1);
@@ -708,30 +714,22 @@ HWND MainFrame::createToolbar() {
 }
 
 LRESULT MainFrame::onSpeaker(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/) {
-	if(wParam == PROMPT_SIZE_ACTION) {
-		auto_ptr<SizeConfirmInfo> i(reinterpret_cast<SizeConfirmInfo*>(lParam));
-		bool accept = MessageBox(i.get()->msg.c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES;
-		DirectoryListingManager::getInstance()->handleSizeConfirmation(i.get()->name, accept);
-	} else if(wParam == OPEN_FILELIST) {
-		auto_ptr<DirectoryListInfo> i(reinterpret_cast<DirectoryListInfo*>(lParam));
-		DirectoryListingFrame::openWindow(i->dirList, i->dir);
-	} else if(wParam == VIEW_FILE_AND_DELETE) {
+	if(wParam == VIEW_FILE_AND_DELETE) {
 		auto_ptr<tstring> file(reinterpret_cast<tstring*>(lParam));
 		TextFrame::openWindow(*file, TextFrame::NORMAL);
 		File::deleteFile(Text::fromT(*file));
-	} else if(wParam == VIEW_TEXT) {
-		auto_ptr<TStringPair> tp(reinterpret_cast<TStringPair*>(lParam));
-		TextFrame::openWindow(tp->first, tp->second, TextFrame::REPORT);
 	} else if(wParam == STATS) {
+		checkAwayIdle();
+
 		auto_ptr<TStringList> pstr(reinterpret_cast<TStringList*>(lParam));
 		const TStringList& str = *pstr;
 		if(ctrlStatus.IsWindow()) {
 			bool u = false;
-			ctrlStatus.SetIcon(STATUS_AWAY, Util::getAway() ? awayIconON : awayIconOFF);
+			ctrlStatus.SetIcon(STATUS_AWAY, AirUtil::getAway() ? awayIconON : awayIconOFF);
 			auto pos = 0;
 			for(int i = STATUS_SHARED; i < STATUS_SHUTDOWN; i++) {
 				
-				int w = WinUtil::getTextWidth(str[pos], ctrlStatus.m_hWnd);
+				const int w = WinUtil::getTextWidth(str[pos], ctrlStatus.m_hWnd);
 				
 				if(i == STATUS_SLOTS) {
 					if(str[pos][0] == '0') // a hack, do this some other way.
@@ -820,14 +818,8 @@ LRESULT MainFrame::onSpeaker(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& 
 			}
 		}
 		delete msg;
-	} else if(wParam == SHOW_POPUP) {
-		Popup* msg = (Popup*)lParam;
-		PopupManager::getInstance()->Show(msg->Message, msg->Title, msg->Icon, msg->hIcon, msg->force);
-		delete msg;
 	} else if(wParam == WM_CLOSE) {
 		PopupManager::getInstance()->Remove((int)lParam);
-	} else if(wParam == REMOVE_POPUP){
-		PopupManager::getInstance()->AutoRemove();
 	} else if(wParam == SET_PM_TRAY_ICON) {
 		if((!bIsPM) && (!WinUtil::isAppActive || bAppMinimized)) {
 			bIsPM = true;
@@ -862,10 +854,6 @@ LRESULT MainFrame::onSpeaker(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& 
 				::Shell_NotifyIcon(NIM_MODIFY, &nid);
 			}
 		}
-	} else if(wParam == UPDATE_TBSTATUS_HASHING) {
-		HashInfo *tmp = (HashInfo*)lParam;
-		updateTBStatusHashing(*tmp);
-		delete tmp;
 	} else if(wParam == UPDATE_TBSTATUS_REFRESHING) {
 		updateTBStatusRefreshing();
     } else if(wParam == ASYNC) {
@@ -975,10 +963,10 @@ void MainFrame::openSettings(uint16_t initialPage /*0*/) {
 	auto prevProxy = CONNSETTING(OUTGOING_CONNECTIONS);
 
 
-	auto prevGeo = BOOLSETTING(GET_USER_COUNTRY);
+	auto prevGeo = SETTING(GET_USER_COUNTRY);
 	auto prevGeoFormat = SETTING(COUNTRY_FORMAT);
 
-	bool lastSortFavUsersFirst = BOOLSETTING(SORT_FAVUSERS_FIRST);
+	bool lastSortFavUsersFirst = SETTING(SORT_FAVUSERS_FIRST);
 
 	auto prevHighPrio = SETTING(HIGH_PRIO_FILES);
 	auto prevHighPrioRegex = SETTING(HIGHEST_PRIORITY_USE_REGEXP);
@@ -1035,8 +1023,8 @@ void MainFrame::openSettings(uint16_t initialPage /*0*/) {
 		}
 
 		bool rebuildGeo = prevGeo && SETTING(COUNTRY_FORMAT) != prevGeoFormat;
-		if(BOOLSETTING(GET_USER_COUNTRY) != prevGeo) {
-			if(BOOLSETTING(GET_USER_COUNTRY)) {
+		if(SETTING(GET_USER_COUNTRY) != prevGeo) {
+			if(SETTING(GET_USER_COUNTRY)) {
 				GeoManager::getInstance()->init();
 				UpdateManager::getInstance()->checkGeoUpdate();
 			} else {
@@ -1048,10 +1036,10 @@ void MainFrame::openSettings(uint16_t initialPage /*0*/) {
 			GeoManager::getInstance()->rebuild();
 		}
  
-		if(BOOLSETTING(SORT_FAVUSERS_FIRST) != lastSortFavUsersFirst)
+		if(SETTING(SORT_FAVUSERS_FIRST) != lastSortFavUsersFirst)
 			HubFrame::resortUsers();
 
-		if(BOOLSETTING(URL_HANDLER)) {
+		if(SETTING(URL_HANDLER)) {
 			WinUtil::registerDchubHandler();
 			WinUtil::registerADChubHandler();
 		WinUtil::registerADCShubHandler();
@@ -1062,7 +1050,7 @@ void MainFrame::openSettings(uint16_t initialPage /*0*/) {
 			WinUtil::unRegisterADCShubHandler();
 			WinUtil::urlDcADCRegistered = false;
 		}
-		if(BOOLSETTING(MAGNET_REGISTER)) {
+		if(SETTING(MAGNET_REGISTER)) {
 			WinUtil::registerMagnetHandler();
 			WinUtil::urlMagnetRegistered = true; 
 		} else if(WinUtil::urlMagnetRegistered) {
@@ -1072,14 +1060,14 @@ void MainFrame::openSettings(uint16_t initialPage /*0*/) {
 
 
 
-		if(Util::getAway()) ctrlToolbar.CheckButton(IDC_AWAY, true);
+		if(AirUtil::getAway()) ctrlToolbar.CheckButton(IDC_AWAY, true);
 		else ctrlToolbar.CheckButton(IDC_AWAY, false);
 
 		if(getShutDown()) ctrlToolbar.CheckButton(IDC_SHUTDOWN, true);
 		else ctrlToolbar.CheckButton(IDC_SHUTDOWN, false);
 	
-		if(tabsontop != BOOLSETTING(TABS_ON_TOP)) {
-			tabsontop = BOOLSETTING(TABS_ON_TOP);
+		if(tabsontop != SETTING(TABS_ON_TOP)) {
+			tabsontop = SETTING(TABS_ON_TOP);
 			UpdateLayout();
 		}
 	}
@@ -1091,8 +1079,8 @@ LRESULT MainFrame::onGetToolTip(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/) {
 
 	if(idCtrl == STATUS_LASTLINES+POPUP_UID) {
 		lastLines.clear();
-		for(TStringIter i = lastLinesList.begin(); i != lastLinesList.end(); ++i) {
-			lastLines += *i;
+		for(const auto& i : lastLinesList) {
+			lastLines += i;
 			lastLines += _T("\r\n");
 		}
 		if(lastLines.size() > 2) {
@@ -1101,23 +1089,17 @@ LRESULT MainFrame::onGetToolTip(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/) {
 		pDispInfo->lpszText = const_cast<TCHAR*>(lastLines.c_str());
 
 	} else if(idCtrl == STATUS_AWAY+POPUP_UID) {
-		pDispInfo->lpszText = Util::getAway() ? (LPWSTR)CTSTRING(AWAY_ON) : (LPWSTR)CTSTRING(AWAY_OFF);
+		pDispInfo->lpszText = AirUtil::getAway() ? (LPWSTR)CTSTRING(AWAY_ON) : (LPWSTR)CTSTRING(AWAY_OFF);
 	}
 	return 0;
 }
 
 void MainFrame::autoConnect(const FavoriteHubEntry::List& fl) {
 		
-	int left = SETTING(OPEN_FIRST_X_HUBS);
-	auto& fh = FavoriteManager::getInstance()->getFavoriteHubs();
-	if(left > static_cast<int>(fh.size())) {
-		left = fh.size();
-	}
 	missedAutoConnect = false;
-	for(auto i = fl.begin(); i != fl.end(); ++i) {
-		FavoriteHubEntry* entry = *i;
+	for(const auto entry: fl) {
 		if(entry->getConnect()) {
- 			if(!entry->getNick().empty() || !SETTING(NICK).empty()) {
+ 			if(!SETTING(NICK).empty()) {
 				RecentHubEntry r;
 				r.setName(entry->getName());
 				r.setDescription(entry->getDescription());
@@ -1169,25 +1151,21 @@ LRESULT MainFrame::onSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 	if(wParam == SIZE_MINIMIZED) {
 		/*maybe make this an option? with large amount of ram this is kinda obsolete,
 		will look good in taskmanager ram usage tho :) */
-		if(BOOLSETTING(DECREASE_RAM)) {
+		if(SETTING(DECREASE_RAM)) {
 			if(!SetProcessWorkingSetSize(GetCurrentProcess(), (SIZE_T)-1, (SIZE_T)-1))
 				LogManager::getInstance()->message("Minimize Process WorkingSet Failed: "+ Util::translateError(GetLastError()), LogManager::LOG_WARNING);
 		}
 
-		if(BOOLSETTING(AUTO_AWAY) && (bAppMinimized == false) ) {
+		if(SETTING(AUTO_AWAY) && (bAppMinimized == false) ) {
 			
-			if(Util::getAway()) {
-				awaybyminimize = false;
-			} else {
-				awaybyminimize = true;
-				Util::setAway(true, true);
+			if(AirUtil::getAwayMode() < AWAY_MANUAL) {
+				AirUtil::setAway(AWAY_MINIMIZE);
 				setAwayButton(true);
-				ClientManager::getInstance()->infoUpdated();
 			}
 		}
 		bAppMinimized = true; //set this here, on size is called twice if minimize to tray.
 
-		if(BOOLSETTING(MINIMIZE_TRAY) != WinUtil::isShift()) {
+		if(SETTING(MINIMIZE_TRAY) != WinUtil::isShift()) {
 			ShowWindow(SW_HIDE);
 			SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
 		}
@@ -1195,12 +1173,10 @@ LRESULT MainFrame::onSize(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 		maximized = IsZoomed() > 0;
 	} else if( (wParam == SIZE_RESTORED || wParam == SIZE_MAXIMIZED) ) {
 		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
-		if(BOOLSETTING(AUTO_AWAY)) {
-			if(awaybyminimize == true) {
-				awaybyminimize = false;
-				Util::setAway(false, true);
+		if(SETTING(AUTO_AWAY)) {
+			if(AirUtil::getAwayMode() < AWAY_MANUAL) {
+				AirUtil::setAway(AWAY_OFF);
 				setAwayButton(false);
-				ClientManager::getInstance()->infoUpdated();
 			}
 		}
 		if(bIsPM) {
@@ -1251,10 +1227,14 @@ LRESULT MainFrame::onEndSession(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPara
 	return 0;
 }
 
+void MainFrame::showMessageBox(const tstring& aMsg, UINT aFlags, const tstring& aTitle) {
+	::MessageBox(WinUtil::splash ? WinUtil::splash->getHWND() : m_hWnd, aMsg.c_str(), (!aTitle.empty() ? aTitle.c_str() : _T(APPNAME) _T(" ") _T(VERSIONSTRING)), aFlags);
+}
+
 LRESULT MainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
 	if(!closing) {
 		if(UpdateManager::getInstance()->isUpdating()) {
-			MessageBox(CTSTRING(UPDATER_IN_PROGRESS), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_OK | MB_ICONINFORMATION);
+			showMessageBox(CTSTRING(UPDATER_IN_PROGRESS), MB_OK | MB_ICONINFORMATION);
 
 			bHandled = TRUE;
 			return 0;
@@ -1280,7 +1260,7 @@ LRESULT MainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, 
 
 			CRect rc;
 			GetWindowRect(rc);
-			if(BOOLSETTING(SHOW_TRANSFERVIEW)) {
+			if(SETTING(SHOW_TRANSFERVIEW)) {
 				SettingsManager::getInstance()->set(SettingsManager::TRANSFER_SPLIT_SIZE, m_nProportionalPos);
 			}
 			if(wp.showCmd == SW_SHOW || wp.showCmd == SW_SHOWNORMAL) {
@@ -1336,7 +1316,7 @@ LRESULT MainFrame::onLink(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL
 	tstring site;
 	bool isFile = false;
 	switch(wID) {
-	case IDC_HELP_HOMEPAGE: site = Text::toT(UpdateManager::getInstance()->links.homepage); break;
+		case IDC_HELP_HOMEPAGE: site = Text::toT(UpdateManager::getInstance()->links.homepage); break;
 		case IDC_HELP_GUIDES: site = Text::toT(UpdateManager::getInstance()->links.guides); break;
 		case IDC_HELP_DISCUSS: site = Text::toT(UpdateManager::getInstance()->links.discuss); break;
 		case IDC_HELP_CUSTOMIZE: site = Text::toT(UpdateManager::getInstance()->links.customize); break;
@@ -1351,29 +1331,33 @@ LRESULT MainFrame::onLink(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL
 	return 0;
 }
 
-int MainFrame::run() {
+void MainFrame::getMagnetForFile() {
 	tstring file;
 	if(WinUtil::browseFile(file, m_hWnd, false, lastTTHdir) == IDOK) {
 		WinUtil::mainMenu.EnableMenuItem(ID_GET_TTH, MF_GRAYED);
-		Thread::setThreadPriority(Thread::LOW);
+		//Thread::setThreadPriority(Thread::LOW);
 
-		int64_t size = 0;
+		auto path = Text::fromT(file);
 		TTHValue tth;
 		try {
-			HashManager::getInstance()->getFileTTH(Text::fromT(file), false, tth, size);
-			string magnetlink = WinUtil::makeMagnet(tth, Util::getFileName(Text::fromT(file)), size);
+			auto size = File::getSize(path);
+			auto sizeLeft = size;
+			HashManager::getInstance()->getFileTTH(path, size, false, tth, sizeLeft, closing);
+			if (closing)
+				return;
+
+			string magnetlink = WinUtil::makeMagnet(tth, Util::getFileName(path), size);
 
 			CInputBox ibox(m_hWnd);
 			ibox.DoModal(_T("Tiger Tree Hash"), file.c_str(), Text::toT(tth.toBase32()).c_str(), Text::toT(magnetlink).c_str());
 		} catch(...) { }
-		Thread::setThreadPriority(Thread::NORMAL);
+		//SetThreadPriority(NORMAL);
 		WinUtil::mainMenu.EnableMenuItem(ID_GET_TTH, MF_ENABLED);
 	}
-	return 0;
 }
 
 LRESULT MainFrame::onGetTTH(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	Thread::start();
+	addThreadedTask([this] { getMagnetForFile(); });
 	return 0;
 }
 
@@ -1446,7 +1430,7 @@ LRESULT MainFrame::onOpenOwnList(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*
 	return 0;
 }
 
-LRESULT MainFrame::onOpenFileList(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+LRESULT MainFrame::onOpenFileList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	const TCHAR types[] = _T("File Lists\0*.DcLst;*.xml.bz2\0All Files\0*.*\0");
 
 	tstring file;
@@ -1475,7 +1459,7 @@ LRESULT MainFrame::onScanMissing(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 LRESULT MainFrame::onTrayIcon(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
 	if (lParam == WM_LBUTTONUP) {
 		if(bAppMinimized) {
-			if(BOOLSETTING(PASSWD_PROTECT_TRAY)) {
+			if(SETTING(PASSWD_PROTECT_TRAY)) {
 				if(hasPassdlg) //prevent dialog from showing twice, findwindow doesnt seem to work with this??
 					return 0;
 
@@ -1548,12 +1532,16 @@ void MainFrame::onTrayMenu() {
 void MainFrame::fillLimiterMenu(OMenu* limiterMenu, bool upload) {
 	const auto title = upload ? CTSTRING(UPLOAD_LIMIT) : CTSTRING(DOWNLOAD_LIMIT);
 	limiterMenu->InsertSeparatorFirst(title);
-
 	//menu->setTitle(title, menuIcon);
 
 	const auto setting = ThrottleManager::getCurSetting(
 		upload ? SettingsManager::MAX_UPLOAD_SPEED_MAIN : SettingsManager::MAX_DOWNLOAD_SPEED_MAIN);
-	const auto x = SettingsManager::getInstance()->get(setting);
+	auto x = SettingsManager::getInstance()->get(setting);
+	bool disabled = x > 0 ? false : true;
+	auto lineSpeed = upload ? Util::toDouble(SETTING(UPLOAD_SPEED))*1024/8 : Util::toDouble(SETTING(DOWNLOAD_SPEED))*1024/8;
+	if(!x) {
+		x = lineSpeed;
+	}
 
 	int arr[] = { 0 /* disabled */, x /* current value */,
 		x + 1, x + 2, x + 5, x + 10, x + 20, x + 50, x + 100,
@@ -1562,19 +1550,22 @@ void MainFrame::fillLimiterMenu(OMenu* limiterMenu, bool upload) {
 		x * 10 / 11, x * 5 / 6, x * 2 / 3, x / 2, x / 3, x / 4, x / 5, x / 10, x / 100 };
 
 	// set ensures ordered unique members; remove_if performs range and relevancy checking.
-	auto minDelta = (x >= 1024) ? (20 * pow(1024, floor(log(static_cast<float>(x)) / log(1024.)) - 1)) : 0;
-	set<int> values(arr, std::remove_if(arr, arr + sizeof(arr) / sizeof(int), [x, minDelta](int i) {
-		return i < 0 || i > ThrottleManager::MAX_LIMIT ||
+	auto minDelta = (x >= 1024) ? (20 * pow(1024, floor(log(static_cast<float>(x)) / log(1024.)) - 1)) : 
+		(x >= 100) ? 5 : 0; // aint 5KB/s accurate enough?
+	
+	set<int> values(arr, std::remove_if(arr, arr + sizeof(arr) / sizeof(int), [x, minDelta, lineSpeed](int i) {
+		return i < 0 || 
+			i > ThrottleManager::MAX_LIMIT || 
+			(x == lineSpeed && (i > (lineSpeed*1.2))) || // dont show over 1.2 * connectionspeed as default
 			(minDelta && i != x && abs(i - x) < minDelta); // not too close to the original value
 	}));
 
-	for(auto i = values.cbegin(), iend = values.cend(); i != iend; ++i) {
-		auto value = *i;
-		auto same = value == x;
+	for(auto value: values) {
+		auto enabled = (disabled && !value) || (!disabled && value == x);
 		auto formatted = Text::toT(Util::formatBytes(value * 1024));
 		auto pos = limiterMenu->appendItem(value ? formatted + _T("/s") : CTSTRING(DISABLED),
-			[setting, value] { ThrottleManager::setSetting(setting, value); }, !same);
-		if(same)
+			[setting, value] { ThrottleManager::setSetting(setting, value); }, !enabled);
+		if(enabled)
 			limiterMenu->CheckMenuItem(pos, MF_BYPOSITION | MF_CHECKED);
 		if(!value)
 			limiterMenu->AppendMenu(MF_SEPARATOR);
@@ -1591,7 +1582,7 @@ void MainFrame::fillLimiterMenu(OMenu* limiterMenu, bool upload) {
 	});
 }
 
-LRESULT MainFrame::onStatusBarClick(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+LRESULT MainFrame::onStatusBarClick(UINT uMsg, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
 	OMenu menu;
 	POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 	CRect DLrect;
@@ -1622,26 +1613,25 @@ LRESULT MainFrame::onStatusBarClick(UINT uMsg, WPARAM wParam, LPARAM lParam, BOO
 					SettingsManager::getInstance()->set(SettingsManager::DEFAULT_AWAY_MESSAGE, msg); 
 			
 				//set the away mode on if its not already.
-				if(!Util::getAway()) {
+				if(!AirUtil::getAway()) {
 					setAwayButton(true);
-					Util::setAway(true);
+					AirUtil::setAway(AWAY_MANUAL);
 					ctrlStatus.SetIcon(STATUS_AWAY, awayIconON);
-					ClientManager::getInstance()->infoUpdated();
 				}
 			}
 		} else {
-			if(Util::getAway()) { 
+			if(AirUtil::getAway()) { 
 				setAwayButton(false);
-				Util::setAway(false);
+				AirUtil::setAway(AWAY_OFF);
 				ctrlStatus.SetIcon(STATUS_AWAY, awayIconOFF);
 			} else {
 				setAwayButton(true);
-				Util::setAway(true);
+				AirUtil::setAway(AWAY_MANUAL);
 				ctrlStatus.SetIcon(STATUS_AWAY, awayIconON);
 			}
-			ClientManager::getInstance()->infoUpdated();
 		}
 	}
+	bHandled = TRUE;
 	return 0;
 }
 
@@ -1654,7 +1644,7 @@ LRESULT MainFrame::OnViewToolBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	rebar.ShowBand(nBandIndex, bVisible);
 	UISetCheck(ID_VIEW_TOOLBAR, bVisible);
 	UpdateLayout();
-	SettingsManager::getInstance()->set(SettingsManager::SHOW_TOOLBAR, bVisible);
+	SettingsManager::getInstance()->set(SettingsManager::SHOW_TOOLBAR, bVisible ? true : false);
 	return 0;
 }
 
@@ -1667,7 +1657,7 @@ LRESULT MainFrame::OnViewWinampBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	rebar.ShowBand(nBandIndex, bVisible);
 	UISetCheck(ID_TOGGLE_TOOLBAR, bVisible);
 	UpdateLayout();
-	SettingsManager::getInstance()->set(SettingsManager::SHOW_WINAMP_CONTROL, bVisible);
+	SettingsManager::getInstance()->set(SettingsManager::SHOW_WINAMP_CONTROL, bVisible ? true : false);
 	return 0;
 }
 LRESULT MainFrame::OnViewTBStatusBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
@@ -1679,7 +1669,7 @@ LRESULT MainFrame::OnViewTBStatusBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*
 	rebar.ShowBand(nBandIndex, bVisible);
 	UISetCheck(ID_TOGGLE_TBSTATUS, bVisible);
 	UpdateLayout();
-	SettingsManager::getInstance()->set(SettingsManager::SHOW_TBSTATUS, bVisible);
+	SettingsManager::getInstance()->set(SettingsManager::SHOW_TBSTATUS, bVisible ? true : false);
 	return 0;
 }
 LRESULT MainFrame::OnLockTB(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
@@ -1691,7 +1681,7 @@ LRESULT MainFrame::OnLockTB(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/
 
 	UISetCheck(ID_LOCK_TB, locked);
 	UpdateLayout();
-	SettingsManager::getInstance()->set(SettingsManager::LOCK_TB, locked);
+	SettingsManager::getInstance()->set(SettingsManager::LOCK_TB, locked ? true : false);
 	return 0;
 }
 
@@ -1703,7 +1693,7 @@ LRESULT MainFrame::onWinampStart(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWnd
 	return 0;
 }
 
-void MainFrame::updateTBStatusHashing(HashInfo m_HashInfo) {
+void MainFrame::updateTBStatusHashing(const string& /*aFile*/, int64_t aSize, size_t aFiles, int64_t aSpeed, int /*aHashers*/, bool aPaused) {
 
 	if(refreshing) {
 		refreshing = false;
@@ -1714,47 +1704,41 @@ void MainFrame::updateTBStatusHashing(HashInfo m_HashInfo) {
 		progress.Invalidate();
 	}
 
-	string file = m_HashInfo.file;
-	int64_t bytes = m_HashInfo.size;
-	size_t files = m_HashInfo.files;
-	int64_t speed = m_HashInfo.speed;
+	if(aSize > startBytes)
+		startBytes = aSize;
 
-	if(bytes > startBytes)
-		startBytes = bytes;
+	if(aFiles > startFiles)
+		startFiles = aFiles;
 
-	if(files > startFiles)
-		startFiles = files;
-
-	bool paused = m_HashInfo.paused;
-	tstring tmp = _T("");
-	if(files == 0 || bytes == 0 || paused) {
-		if(paused) {
+	tstring tmp;
+	if(aFiles == 0 || aSize == 0 || aPaused) {
+		if(aPaused) {
 			tmp += 	_T(" ( ") + TSTRING(PAUSED) + _T(" )");
 		} else {
 			tmp = _T("");
 		}
 	} else {
-		int64_t filestat = speed > 0 ? ((startBytes - (startBytes - bytes)) / speed) : 0;
+		int64_t filestat = aSpeed > 0 ? ((startBytes - (startBytes - aSize)) / aSpeed) : 0;
 
-		tmp = Util::formatBytesW((int64_t)speed) + _T("/s, ") + Util::formatBytesW(bytes) + _T(" ") + TSTRING(LEFT);
+		tmp = Util::formatBytesW((int64_t)aSpeed) + _T("/s, ") + Util::formatBytesW(aSize) + _T(" ") + TSTRING(LEFT);
 		
-		if(filestat == 0 || speed == 0) {
+		if(filestat == 0 || aSpeed == 0) {
 			tmp += Text::toT(", -:--:-- " + STRING(LEFT));	
 		} else {
 			tmp += _T(", ") + Util::formatSecondsW(filestat) + _T(" ") + TSTRING(LEFT);
 		}
 	}
 
-	if(startFiles == 0 || startBytes == 0 || files == 0) {
-		if(startFiles != 0 && files == 0) {
+	if(startFiles == 0 || startBytes == 0 || aFiles == 0) {
+		if(startFiles != 0 && aFiles == 0) {
 			progress.SetPosWithText((int)progress.GetRangeLimit(0), _T("Finished...")); //show 100% for one second.
-		} else if(progress.GetPos() != 0 || paused || progress.GetTextLen() > 0) {//skip unnecessary window updates...
+		} else if(progress.GetPos() != 0 || aPaused || progress.GetTextLen() > 0) {//skip unnecessary window updates...
 			progress.SetPosWithText(0, tmp);
 		}
 		startBytes = 0;
 		startFiles = 0;
 	} else {
-		progress.SetPosWithText(((int)(progress.GetRangeLimit(0) * ((0.5 * (startFiles - files)/startFiles) + 0.5 * (startBytes - bytes) / startBytes))), tmp);
+		progress.SetPosWithText(((int)(progress.GetRangeLimit(0) * ((0.5 * (startFiles - aFiles)/startFiles) + 0.5 * (startBytes - aSize) / startBytes))), tmp);
 	}
 }
 
@@ -1774,7 +1758,7 @@ LRESULT MainFrame::OnViewStatusBar(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 	::ShowWindow(m_hWndStatusBar, bVisible ? SW_SHOWNOACTIVATE : SW_HIDE);
 	UISetCheck(ID_VIEW_STATUS_BAR, bVisible);
 	UpdateLayout();
-	SettingsManager::getInstance()->set(SettingsManager::SHOW_STATUSBAR, bVisible);
+	SettingsManager::getInstance()->set(SettingsManager::SHOW_STATUSBAR, bVisible ? true : false);
 	return 0;
 }
 
@@ -1790,7 +1774,7 @@ LRESULT MainFrame::OnViewTransferView(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /
 	}
 	UISetCheck(ID_VIEW_TRANSFER_VIEW, bVisible);
 	UpdateLayout();
-	SettingsManager::getInstance()->set(SettingsManager::SHOW_TRANSFERVIEW, bVisible);
+	SettingsManager::getInstance()->set(SettingsManager::SHOW_TRANSFERVIEW, bVisible ? true : false);
 	return 0;
 }
 
@@ -1889,34 +1873,35 @@ void MainFrame::on(TimerManagerListener::Second, uint64_t aTick) noexcept {
 	if(SETTING(DISCONNECT_SPEED) < 1) {
 		SettingsManager::getInstance()->set(SettingsManager::DISCONNECT_SPEED, 1);
 	}
+
 	if(TBStatusCtrl.IsWindowVisible()){
 		if(ShareManager::getInstance()->isRefreshing()){
 			PostMessage(WM_SPEAKER, UPDATE_TBSTATUS_REFRESHING, 0);
 		} else {
-			string file = "";
+			string file;
 			int64_t bytes = 0;
 			size_t files = 0;
 			int64_t speed = 0;
+			int hashers = 0;
 			bool paused = HashManager::getInstance()->isHashingPaused();
-			HashManager::getInstance()->getStats(file, bytes, files, speed);
-			HashInfo *hashinfo = new HashInfo(file, bytes, files, speed, paused);
-			PostMessage(WM_SPEAKER, UPDATE_TBSTATUS_HASHING, LPARAM(hashinfo));
+			HashManager::getInstance()->getStats(file, bytes, files, speed, hashers);
+			callAsync([=] { updateTBStatusHashing(file, bytes, files, speed, hashers, paused); });
 		}
 	}
 
 	if(currentPic != SETTING(BACKGROUND_IMAGE)) {
 		currentPic = SETTING(BACKGROUND_IMAGE);
-		m_PictureWindow.Load(Text::toT(currentPic).c_str());
+		callAsync([=] { m_PictureWindow.Load(Text::toT(currentPic).c_str()); });
 	}
 
 	time_t currentTime;
 	time(&currentTime);
 }
 
-void MainFrame::on(QueueManagerListener::Finished, const QueueItemPtr qi, const string& /*dir*/, const HintedUser& /*aUser*/, int64_t /*aSpeed*/) noexcept {
+void MainFrame::on(QueueManagerListener::Finished, const QueueItemPtr& qi, const string& /*dir*/, const HintedUser& /*aUser*/, int64_t /*aSpeed*/) noexcept {
 	if(!qi->isSet(QueueItem::FLAG_USER_LIST)) {
 		// Finished file sound
-		if(!SETTING(FINISHFILE).empty() && !BOOLSETTING(SOUNDS_DISABLED))
+		if(!SETTING(FINISHFILE).empty() && !SETTING(SOUNDS_DISABLED))
 			WinUtil::playSound(Text::toT(SETTING(FINISHFILE)));
 	}
 
@@ -1926,18 +1911,14 @@ void MainFrame::on(QueueManagerListener::Finished, const QueueItemPtr qi, const 
 }
 
 void MainFrame::on(ScannerManagerListener::ScanFinished, const string& aText, const string& aTitle) noexcept {
-	PostMessage(WM_SPEAKER, VIEW_TEXT, (LPARAM) new TStringPair(make_pair(Text::toT(aTitle), Text::toT(aText))));
+	callAsync([=] { TextFrame::openWindow(Text::toT(aTitle), Text::toT(aText), TextFrame::REPORT); });
 }
 
-void MainFrame::on(DirectoryListingManagerListener::OpenListing, DirectoryListing* aList, const string& aDir) noexcept {
-	DirectoryListInfo* i = new DirectoryListInfo(aList, aDir);
-	PostMessage(WM_SPEAKER, OPEN_FILELIST, (LPARAM)i);
+void MainFrame::on(DirectoryListingManagerListener::OpenListing, DirectoryListing* aList, const string& aDir, const string& aXML) noexcept {
+	callAsync([=] { DirectoryListingFrame::openWindow(aList, aDir, aXML); });
 }
 
 void MainFrame::on(DirectoryListingManagerListener::PromptAction, const string& aName, const string& aMessage) noexcept {
-	//auto i = new SizeConfirmInfo(aName, aMessage);
-	//PostMessage(WM_SPEAKER, PROMPT_SIZE_ACTION, (LPARAM)i);
-
 	bool accept = ::MessageBox(m_hWnd, Text::toT(aMessage).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES;
 	DirectoryListingManager::getInstance()->handleSizeConfirmation(aName, accept);
 }
@@ -1982,14 +1963,13 @@ LRESULT MainFrame::onAppCommand(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam,
 }
 
 LRESULT MainFrame::onAway(WORD , WORD , HWND, BOOL& ) {
-	if(Util::getAway()) { 
+	if(AirUtil::getAway()) { 
 		setAwayButton(false);
-		Util::setAway(false);
+		AirUtil::setAway(AWAY_OFF);
 	} else {
 		setAwayButton(true);
-		Util::setAway(true);
+		AirUtil::setAway(AWAY_MANUAL);
 	}
-	ClientManager::getInstance()->infoUpdated();
 	return 0;
 }
 
@@ -2076,11 +2056,8 @@ void MainFrame::TestWrite( bool downloads, bool incomplete, bool AppPath) {
 	//report errors if any
 	if( error != Util::emptyStringT) {
 		error += _T("Check Your User Privileges or try running AirDC++ as administrator. \r\n");
-		MessageBox((error.c_str()), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_ICONWARNING | MB_OK);
-	} /*else if(ready) { //dont need this but leave it for now.
-		LogManager::getInstance()->message("Test write to AirDC++ common folders succeeded.", LogManager::LOG_WARNING);
-	}*/
-
+		showMessageBox(error, MB_ICONWARNING | MB_OK);
+	}
 }
 
 
@@ -2108,16 +2085,16 @@ LRESULT MainFrame::onDropDown(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/) 
 	dropMenu.appendSeparator();
 
 	auto l = ShareManager::getInstance()->getGroupedDirectories();
-	for(auto i = l.begin(); i != l.end(); ++i) {
-		if (i->second.size() > 1) {
-			auto vMenu = dropMenu.createSubMenu(Text::toT(i->first).c_str(), true);
-			vMenu->appendItem(CTSTRING(ALL), [i] { ShareManager::getInstance()->refresh(i->first); });
+	for(auto& i: l) {
+		if (i.second.size() > 1) {
+			auto vMenu = dropMenu.createSubMenu(Text::toT(i.first).c_str(), true);
+			vMenu->appendItem(CTSTRING(ALL), [=] { ShareManager::getInstance()->refresh(i.first); });
 			vMenu->appendSeparator();
-			for(auto s = i->second.begin(); s != i->second.end(); ++s) {
-				vMenu->appendItem(Text::toT(*s).c_str(), [s] { ShareManager::getInstance()->refresh(*s); });
+			for(const auto& s: i.second) {
+				vMenu->appendItem(Text::toT(s).c_str(), [=] { ShareManager::getInstance()->refresh(s); });
 			}
 		} else {
-			dropMenu.appendItem(Text::toT(i->first).c_str(), [i] { ShareManager::getInstance()->refresh(i->first); });
+			dropMenu.appendItem(Text::toT(i.first).c_str(), [=] { ShareManager::getInstance()->refresh(i.first); });
 		}
 	}
 
@@ -2132,7 +2109,7 @@ LRESULT MainFrame::onDropDown(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/) 
 
 LRESULT MainFrame::onAppShow(WORD /*wNotifyCode*/,WORD /*wParam*/, HWND, BOOL& /*bHandled*/) {
 	if (::IsIconic(m_hWnd)) {
-		if(BOOLSETTING(PASSWD_PROTECT_TRAY)) {
+		if(SETTING(PASSWD_PROTECT_TRAY)) {
 			if(hasPassdlg)
 				return 0;
 
@@ -2159,6 +2136,15 @@ LRESULT MainFrame::onAppShow(WORD /*wNotifyCode*/,WORD /*wParam*/, HWND, BOOL& /
 		ShowWindow(SW_MINIMIZE);
 	}
 	return 0;
+}
+void MainFrame::checkAwayIdle() {
+	if(SETTING(AWAY_IDLE_TIME) && (AirUtil::getAwayMode() <= AWAY_IDLE)) {
+		LASTINPUTINFO info = { sizeof(LASTINPUTINFO) };
+		bool awayIdle = (AirUtil::getAwayMode() == AWAY_IDLE);
+		if((::GetLastInputInfo(&info) && static_cast<int>(::GetTickCount() - info.dwTime) > SETTING(AWAY_IDLE_TIME) * 60 * 1000) ^ awayIdle) {
+			awayIdle ? AirUtil::setAway(AWAY_OFF) : AirUtil::setAway(AWAY_IDLE);
+		}
+	}
 }
 
 void MainFrame::callAsync(function<void ()> f) {
@@ -2194,7 +2180,7 @@ void MainFrame::onBadVersion(const string& message, const string& infoUrl, const
 	bool canAutoUpdate = autoUpdate && UpdateDlg::canAutoUpdate(updateUrl);
 
 	tstring title = Text::toT(STRING(MANDATORY_UPDATE) + " - " APPNAME " " VERSIONSTRING);
-	::MessageBox(m_hWnd, Text::toT(message + "\r\n\r\n" + (canAutoUpdate ? STRING(ATTEMPT_AUTO_UPDATE) : STRING(MANUAL_UPDATE_MSG))).c_str(), title.c_str(), MB_OK | MB_ICONEXCLAMATION);
+	showMessageBox(Text::toT(message + "\r\n\r\n" + (canAutoUpdate ? STRING(ATTEMPT_AUTO_UPDATE) : STRING(MANUAL_UPDATE_MSG))).c_str(), MB_OK | MB_ICONEXCLAMATION, title);
 
 	if(!canAutoUpdate) {
 		if(!infoUrl.empty())
@@ -2207,7 +2193,7 @@ void MainFrame::onBadVersion(const string& message, const string& infoUrl, const
 			UpdateManager::getInstance()->downloadUpdate(updateUrl, buildID, true);
 			ShowPopup(CTSTRING(UPDATER_START), CTSTRING(UPDATER), NIIF_INFO, true);
 		} else {
-			::MessageBox(m_hWnd, CTSTRING(UPDATER_IN_PROGRESS), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_OK | MB_ICONINFORMATION);
+			showMessageBox(CTSTRING(UPDATER_IN_PROGRESS), MB_OK | MB_ICONINFORMATION);
 		}
 	}
 }
@@ -2222,14 +2208,7 @@ void MainFrame::onUpdateComplete(const string& aUpdater) noexcept {
 }
 
 void MainFrame::ShowPopup(tstring szMsg, tstring szTitle, DWORD dwInfoFlags, HICON hIcon, bool force) {
-	Popup* p = new Popup;
-	p->Title = szTitle;
-	p->Message = szMsg;
-	p->Icon = dwInfoFlags;
-	p->hIcon = hIcon;
-	p->force = force;
-
-	PostMessage(WM_SPEAKER, SHOW_POPUP, (LPARAM)p);
+	callAsync([=] { PopupManager::getInstance()->Show(szMsg, szTitle, dwInfoFlags, hIcon, force); });
 }
 void MainFrame::updateTooltipRect() {
 	CRect sr;

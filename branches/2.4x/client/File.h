@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,10 +19,6 @@
 #ifndef DCPLUSPLUS_DCPP_FILE_H
 #define DCPLUSPLUS_DCPP_FILE_H
 
-#include "SettingsManager.h"
-
-#include "Util.h"
-#include "Text.h"
 #include "Streams.h"
 
 #ifdef _WIN32
@@ -115,9 +111,6 @@ protected:
 #else
 	int h;
 #endif
-private:
-	File(const File&);
-	File& operator=(const File&);
 };
 
 class FileFindIter {

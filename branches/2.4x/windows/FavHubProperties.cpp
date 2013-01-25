@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 #include "WinUtil.h"
 #include "MainFrm.h"
@@ -26,6 +25,7 @@
 
 #include "../client/FavoriteManager.h"
 #include "../client/ResourceManager.h"
+#include "../client/tribool.h"
 
 
 FavHubProperties::FavHubProperties(FavoriteHubEntry *_entry) : entry(_entry), loaded(false) { }
@@ -46,8 +46,8 @@ LRESULT FavHubProperties::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetDlgItemText(IDC_FH_USER_DESC, CTSTRING(DESCRIPTION));
 	SetDlgItemText(IDC_FH_CONN, CTSTRING(FAVORITE_HUB_CONNECTION));
 	SetDlgItemText(IDC_DEFAULT, CTSTRING(DEFAULT));
-	SetDlgItemText(IDC_ACTIVE, CTSTRING(SETTINGS_DIRECT));
-	SetDlgItemText(IDC_PASSIVE, CTSTRING(SETTINGS_FIREWALL_PASSIVE));
+	SetDlgItemText(IDC_ACTIVE, CTSTRING(ACTIVE_MODE));
+	SetDlgItemText(IDC_PASSIVE, CTSTRING(PASSIVE_MODE));
 	SetDlgItemText(IDC_STEALTH, CTSTRING(STEALTH_MODE));
 	SetDlgItemText(IDC_FAV_NO_PM, CTSTRING(FAV_NO_PM));
 	SetDlgItemText(IDC_SHOW_JOIN, CTSTRING(FAV_SHOW_JOIN));
@@ -57,6 +57,10 @@ LRESULT FavHubProperties::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetDlgItemText(IDC_LOGMAINCHAT, CTSTRING(FAV_LOG_CHAT));
 	SetDlgItemText(IDC_CHAT_NOTIFY, CTSTRING(CHAT_NOTIFY));
 
+	SetDlgItemText(IDC_LOGMAINCHAT, CTSTRING(FAV_LOG_CHAT));
+	SetDlgItemText(IDC_HUBSETTINGS, CTSTRING(GLOBAL_SETTING_OVERRIDES));
+	SetDlgItemText(IDC_SEARCH_INTERVAL_DEFAULT, CTSTRING(USE_DEFAULT));
+
 	SetDlgItemText(IDC_FAV_SHAREPROFILE_CAPTION, CTSTRING(SHARE_PROFILE));
 	SetDlgItemText(IDC_EDIT_PROFILES, CTSTRING(EDIT_PROFILES));
 	SetDlgItemText(IDC_PROFILES_NOTE, CTSTRING(PROFILES_NOTE));
@@ -65,16 +69,23 @@ LRESULT FavHubProperties::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetDlgItemText(IDC_HUBNAME, Text::toT(entry->getName()).c_str());
 	SetDlgItemText(IDC_HUBDESCR, Text::toT(entry->getDescription()).c_str());
 	SetDlgItemText(IDC_HUBADDR, Text::toT(entry->getServerStr()).c_str());
-	SetDlgItemText(IDC_HUBNICK, Text::toT(entry->getNick(false)).c_str());
+	SetDlgItemText(IDC_HUBNICK, Text::toT(entry->get(HubSettings::Nick)).c_str());
 	SetDlgItemText(IDC_HUBPASS, Text::toT(entry->getPassword()).c_str());
-	SetDlgItemText(IDC_HUBUSERDESCR, Text::toT(entry->getUserDescription()).c_str());
+	SetDlgItemText(IDC_HUBUSERDESCR, Text::toT(entry->get(HubSettings::Description)).c_str());
 	CheckDlgButton(IDC_STEALTH, entry->getStealth() ? BST_CHECKED : BST_UNCHECKED);
-	SetDlgItemText(IDC_SERVER, Text::toT(entry->getIP()).c_str());
+	SetDlgItemText(IDC_SERVER, Text::toT(entry->get(HubSettings::UserIp)).c_str());
 	CheckDlgButton(IDC_FAV_NO_PM, entry->getFavNoPM() ? BST_CHECKED : BST_UNCHECKED);
-	CheckDlgButton(IDC_SHOW_JOIN, entry->getHubShowJoins() ? BST_CHECKED : BST_UNCHECKED); //hub show joins
-	SetDlgItemText(IDC_FAV_SEARCH_INTERVAL_BOX, Util::toStringW(entry->getSearchInterval()).c_str());
-	CheckDlgButton(IDC_LOGMAINCHAT, entry->getHubLogMainchat() ? BST_CHECKED : BST_UNCHECKED);
-	CheckDlgButton(IDC_CHAT_NOTIFY, entry->getChatNotify() ? BST_CHECKED : BST_UNCHECKED);
+
+	CheckDlgButton(IDC_SHOW_JOIN, toInt(entry->get(HubSettings::ShowJoins)));
+	CheckDlgButton(IDC_SHOW_JOIN_FAV, toInt(entry->get(HubSettings::FavShowJoins)));
+	CheckDlgButton(IDC_LOGMAINCHAT, toInt(entry->get(HubSettings::LogMainChat)));
+	CheckDlgButton(IDC_CHAT_NOTIFY, toInt(entry->get(HubSettings::ChatNotify)));
+
+	CheckDlgButton(IDC_FAV_NO_PM, entry->getFavNoPM() ? BST_CHECKED : BST_UNCHECKED);
+
+	auto searchInterval = entry->get(HubSettings::SearchInterval);
+	CheckDlgButton(IDC_SEARCH_INTERVAL_DEFAULT, searchInterval == -1 ? BST_CHECKED : BST_UNCHECKED);
+	SetDlgItemText(IDC_FAV_SEARCH_INTERVAL_BOX, Util::toStringW(searchInterval).c_str());
 
 	bool isAdcHub = entry->isAdcHub();
 
@@ -84,8 +95,7 @@ LRESULT FavHubProperties::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	combo.SetCurSel(0);
 
 	const FavHubGroups& favHubGroups = FavoriteManager::getInstance()->getFavHubGroups();
-	for(auto i = favHubGroups.begin(); i != favHubGroups.end(); ++i) {
-		const string& name = i->first;
+	for(const auto& name: favHubGroups | map_keys) {
 		int pos = combo.AddString(Text::toT(name).c_str());
 		
 		if(name == entry->getGroup())
@@ -125,12 +135,15 @@ LRESULT FavHubProperties::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 	combo.Detach();
 
-	if(entry->getMode() == 0)
+	auto conn = entry->get(HubSettings::Connection);
+	if(conn == -1)
 		CheckRadioButton(IDC_ACTIVE, IDC_DEFAULT, IDC_DEFAULT);
-	else if(entry->getMode() == 1)
+	else if(conn == SettingsManager::INCOMING_ACTIVE)
 		CheckRadioButton(IDC_ACTIVE, IDC_DEFAULT, IDC_ACTIVE);
-	else if(entry->getMode() == 2)
+	else if(conn == SettingsManager::INCOMING_PASSIVE)
 		CheckRadioButton(IDC_ACTIVE, IDC_DEFAULT, IDC_PASSIVE);
+
+	fixControls();
 
 	CEdit tmp;
 	tmp.Attach(GetDlgItem(IDC_HUBNAME));
@@ -169,6 +182,19 @@ LRESULT FavHubProperties::onClickedHideShare(WORD /*wNotifyCode*/, WORD /*wID*/,
 			ctrlProfile.EnableWindow(true);
 	}
 	return FALSE;
+}
+
+LRESULT FavHubProperties::fixControls(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
+	fixControls();
+	return FALSE;
+}
+
+void FavHubProperties::fixControls() {
+	auto usingDefaultInterval = IsDlgButtonChecked(IDC_SEARCH_INTERVAL_DEFAULT);
+	::EnableWindow(GetDlgItem(IDC_FAV_SEARCH_INTERVAL_BOX),			!usingDefaultInterval);
+	::EnableWindow(GetDlgItem(IDC_FAV_SEARCH_INTERVAL_SPIN),		!usingDefaultInterval);
+	if (usingDefaultInterval)
+		SetDlgItemText(IDC_FAV_SEARCH_INTERVAL_BOX, Util::toStringW(SettingsManager::getInstance()->get(SettingsManager::MINIMUM_SEARCH_INTERVAL)).c_str());
 }
 
 void FavHubProperties::appendProfiles() {
@@ -228,21 +254,32 @@ LRESULT FavHubProperties::OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWnd
 		entry->setName(Text::fromT(buf));
 		GetDlgItemText(IDC_HUBDESCR, buf, 256);
 		entry->setDescription(Text::fromT(buf));
-		GetDlgItemText(IDC_HUBNICK, buf, 256);
-		entry->setNick(Text::fromT(buf));
 		GetDlgItemText(IDC_HUBPASS, buf, 256);
 		entry->setPassword(Text::fromT(buf));
-		GetDlgItemText(IDC_HUBUSERDESCR, buf, 256);
-		entry->setUserDescription(Text::fromT(buf));
 		entry->setStealth(IsDlgButtonChecked(IDC_STEALTH) == 1);
-		GetDlgItemText(IDC_SERVER, buf, 512);
-		entry->setIP(Text::fromT(buf));
 		entry->setFavNoPM(IsDlgButtonChecked(IDC_FAV_NO_PM) == 1);
-		entry->setHubShowJoins(IsDlgButtonChecked(IDC_SHOW_JOIN) == 1); //show joins
-		entry->setHubLogMainchat(IsDlgButtonChecked(IDC_LOGMAINCHAT) == 1);
-		entry->setChatNotify(IsDlgButtonChecked(IDC_CHAT_NOTIFY) == 1);
-		GetDlgItemText(IDC_FAV_SEARCH_INTERVAL_BOX, buf, 512);
-		entry->setSearchInterval(Util::toUInt32(Text::fromT(buf)));
+
+		//Hub settings
+		GetDlgItemText(IDC_HUBNICK, buf, 256);
+		entry->get(HubSettings::Nick) = Text::fromT(buf);
+
+		GetDlgItemText(IDC_HUBUSERDESCR, buf, 256);
+		entry->get(HubSettings::Description) = Text::fromT(buf);
+
+		GetDlgItemText(IDC_SERVER, buf, 512);
+		entry->get(HubSettings::UserIp) = Text::fromT(buf);
+
+		entry->get(HubSettings::ShowJoins) = to3bool(IsDlgButtonChecked(IDC_SHOW_JOIN));
+		entry->get(HubSettings::FavShowJoins) = to3bool(IsDlgButtonChecked(IDC_SHOW_JOIN));
+		entry->get(HubSettings::LogMainChat) = to3bool(IsDlgButtonChecked(IDC_LOGMAINCHAT));
+		entry->get(HubSettings::ChatNotify) = to3bool(IsDlgButtonChecked(IDC_CHAT_NOTIFY));
+
+		auto val = -1;
+		if (!IsDlgButtonChecked(IDC_SEARCH_INTERVAL_DEFAULT)) {
+			GetDlgItemText(IDC_FAV_SEARCH_INTERVAL_BOX, buf, 512);
+			val = Util::toInt(Text::fromT(buf));
+		}
+		entry->get(HubSettings::SearchInterval) = val;
 
 		
 		CComboBox combo;
@@ -262,14 +299,12 @@ LRESULT FavHubProperties::OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWnd
 		combo.Detach();
 
 		int	ct = -1;
-		if(IsDlgButtonChecked(IDC_DEFAULT))
-			ct = 0;
-		else if(IsDlgButtonChecked(IDC_ACTIVE))
-			ct = 1;
+		if(IsDlgButtonChecked(IDC_ACTIVE))
+			ct = SettingsManager::INCOMING_ACTIVE;
 		else if(IsDlgButtonChecked(IDC_PASSIVE))
-			ct = 2;
+			ct = SettingsManager::INCOMING_PASSIVE;
 
-		entry->setMode(ct);
+		entry->get(HubSettings::Connection) = ct;
 
 		auto p = ShareManager::getInstance()->getProfiles();
 

@@ -731,3 +731,61 @@ Removed:
 - The option to disable notifications about new version
 - The option to use antifrag method for downloads (always enabled now, didn't work correctly earlier)
 - "Private" option for favorite hubs
+
+
+2.41
+
+Added:
+
+- Allow using multiple threads for hashing
+- Show some user information in favorite users frame
+- Add "browse list" in the queue tab
+- Allow automatic enabling of away mode after certain period of inactivity
+
+Changed:
+
+- Optimize hard disk access with segmented downloads/uploads (equals to not using segments when transferring sequential segments)
+- Store the favorite hub settings in a different way, use the global value by default (when there is one)
+- Store the settings in "My documents" for new installations
+- Remove GUI freezes in various situations
+- Make sending of magnet links usable with large files: no freezing and the hashing progress is shown
+- Show a warning message when magnet links from private chat are downloaded into a shared folder
+- Disable partial sharing for magnet links downloaded from private chat
+- Merge 2 identical active mode settings (DC++)
+- Several performance tweaks
+- Update the dupe type when right clicking on a magnet/release name
+- Open dupe files in links from disk
+- Allow loading version 3 hash indexes
+- Improved coloring in file lists while they are being loaded
+- Update the country database and language even if getting the version file fails
+- Show a log message if the hash data is corrupt
+- Consider the connection speed settings in the limiter menu when there is no limit set
+
+Fixed:
+
+- Fix a startup crash if the client can't write in the settings folder
+- Fix a bug that prevents users from sending chat messages before they change their CID
+- Fix the auto search dialog sizing when using larger font size
+- Open web links even when they don't have the http:// part
+- Don't spam "User went offline" status messages in PM
+- Fix a few message boxes going to the background on startup
+- Fix a crash with formating parameters (only affects the 32 bit version)
+- Fix a crash when there are favorite hubs with empty addresses
+- Display the bundle sources correctly when sources have been readded for single files
+- Fix a few bugs in the sharing page
+- Avoid disk access when loading the initial folder tree on the sharing page
+- Fix queue size going wrong when opening files directly
+- Don't try to update custom language files
+- Don't leave empty directories on disk when moving queued bundles
+- Improve the stability of browsing partial file lists
+- Fix the context menu when right-clicking on a scroll bar in chat
+- Fix a bug with setting newly added share dirs as incoming
+- Don't leave 0-byte dctmp files when the incomlete dir is full
+- Fix "Don't share files bigger than x MB" when the limit is more than 2048MB
+- Fix ugly background color in file lists while loading them
+- Fix a few minor problems when moving bundles
+
+Removed:
+
+- The virus scanner path for finished downloads (didn't work before)
+- The NAT travelsal option (always enabled for now when using passive mode)

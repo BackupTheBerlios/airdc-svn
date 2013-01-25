@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,17 +28,11 @@
 
 #include "FlatTabCtrl.h"
 #include "TypedListViewCtrl.h"
-#include "WinUtil.h"
 #include "UCHandler.h"
 #include "MenuBaseHandlers.h"
-#include "../client/HighlightManager.h"
 
 #include "../client/DirectoryListing.h"
 #include "../client/DirectoryListingListener.h"
-#include "../client/StringSearch.h"
-#include "../client/ADLSearch.h"
-#include "../client/LogManager.h"
-#include "../client/ShareManager.h"
 #include "../client/TargetUtil.h"
 
 #define FILTER_MESSAGE_MAP 8
@@ -49,7 +43,7 @@ class DirectoryListingFrame : public MDITabChildWindowImpl<DirectoryListingFrame
 	public DownloadBaseHandler<DirectoryListingFrame>, private DirectoryListingListener
 {
 public:
-	static void openWindow(DirectoryListing* aList, const string& aDir);
+	static void openWindow(DirectoryListing* aList, const string& aDir, const string& aXML);
 	static void closeAll();
 
 	typedef MDITabChildWindowImpl<DirectoryListingFrame> baseClass;
@@ -65,14 +59,6 @@ public:
 		COLUMN_DATE,
 		COLUMN_LAST
 	};
-
-	enum {
-		UPDATE_STATUS,
-		STARTED,
-		FINISHED,
-		ABORTED,
-		FILTER
-	};	
 		
 	enum {
 		STATUS_TEXT,
@@ -214,10 +200,8 @@ public:
 	HTREEITEM findItem(HTREEITEM ht, const tstring& name);
 	void selectItem(const tstring& name);
 	
-	LRESULT onItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/) {
-		updateStatus();
-		return 0;
-	}
+	LRESULT onItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
+
 
 	LRESULT onSetFocus(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		ctrlList.SetFocus();
@@ -226,6 +210,8 @@ public:
 
 	void onFind();
 	void setWindowTitle();
+
+	void callAsync(function<void ()> f);
 
 	LRESULT OnEraseBackground(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		return 1;
@@ -291,6 +277,7 @@ public:
 	void handleDownload(const string& aTarget, QueueItem::Priority p, bool usingTree, TargetUtil::TargetType aTargetType, bool isSizeUnknown);
 	bool showDirDialog(string& fileName);
 private:
+	void updateStatus(const tstring& aMsg);
 	string curPath;
 	void changeWindowState(bool enable);
 	void onReloadPartial(bool dirOnly);
@@ -386,19 +373,13 @@ private:
 	typedef FrameMap::iterator FrameIter;
 
 	static FrameMap frames;
-	void DisableWindow(){
-		ctrlTree.EnableWindow(FALSE);
-		ctrlList.EnableWindow(FALSE);
-	}
-	void EnableWindow(){
-		ctrlTree.EnableWindow(TRUE);
-		ctrlList.EnableWindow(TRUE);
-	}
+	void DisableWindow();
+	void EnableWindow();
 
-
+	bool disabled;
 	void on(SettingsManagerListener::Save, SimpleXML& /*xml*/) noexcept;
 
-	void on(DirectoryListingListener::LoadingFinished, int64_t aStart, const string& aDir, bool reloadList, bool changeDir) noexcept;
+	void on(DirectoryListingListener::LoadingFinished, int64_t aStart, const string& aDir, bool reloadList, bool changeDir, bool loadInGUIThread) noexcept;
 	void on(DirectoryListingListener::LoadingFailed, const string& aReason) noexcept;
 	void on(DirectoryListingListener::LoadingStarted) noexcept;
 	void on(DirectoryListingListener::QueueMatched, const string& aMessage) noexcept;
@@ -412,6 +393,7 @@ private:
 	void filterList();
 	void createRoot();
 	void convertToFull();
+	void onLoadingFinished(int64_t aStart, const string& aDir, bool reloadList, bool changeDir);
 };
 
 #endif // !defined(DIRECTORY_LISTING_FRM_H)

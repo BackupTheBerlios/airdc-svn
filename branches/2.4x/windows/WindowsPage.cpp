@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,10 +17,6 @@
  */
 
 #include "stdafx.h"
-
-#include "../client/DCPlusPlus.h"
-#include "../client/SettingsManager.h"
-#include "../client/FavoriteManager.h"
 
 #include "Resource.h"
 #include "WindowsPage.h"
@@ -69,9 +65,9 @@ WindowsPage::ListItem WindowsPage::optionItems[] = {
 WindowsPage::ListItem WindowsPage::confirmItems[] = {
 	{ SettingsManager::CONFIRM_EXIT, ResourceManager::SETTINGS_CONFIRM_EXIT },
 	{ SettingsManager::CONFIRM_HUB_REMOVAL, ResourceManager::SETTINGS_CONFIRM_HUB_REMOVAL },
-	{ SettingsManager::CONFIRM_DELETE, ResourceManager::SETTINGS_CONFIRM_ITEM_REMOVAL },
-	{ SettingsManager::CONFIRM_HUB_EXIT, ResourceManager::SETTINGS_CONFIRM_HUB_CLOSE },
-	{ SettingsManager::CONFIRM_AS_REMOVE, ResourceManager::SETTINGS_CONFIRM_AS_REMOVE },
+	{ SettingsManager::CONFIRM_QUEUE_REMOVAL, ResourceManager::SETTINGS_CONFIRM_ITEM_REMOVAL },
+	{ SettingsManager::CONFIRM_HUB_CLOSING, ResourceManager::SETTINGS_CONFIRM_HUB_CLOSE },
+	{ SettingsManager::CONFIRM_AS_REMOVAL, ResourceManager::SETTINGS_CONFIRM_AS_REMOVE },
 	{ 0, ResourceManager::SETTINGS_AUTO_AWAY }
 };
 

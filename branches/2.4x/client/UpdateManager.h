@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 AirDC++ Project
+ * Copyright (C) 2012-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,6 +95,7 @@ public:
 	bool isUpdating();
 
 	static bool getVersionInfo(SimpleXML& xml, string& versionString, int& remoteBuild);
+	void checkAdditionalUpdates(bool manualCheck);
 private:
 	uint64_t lastIPUpdate;
 	static uint8_t publicKey[];

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -106,7 +106,7 @@ public:
 	void validatePath(const string& realPath, const string& virtualName);
 
 	string toVirtual(const TTHValue& tth, ProfileToken aProfile) const;
-	string getFileListName(const string& virtualFile, ProfileToken aProfile);
+	pair<int64_t, string> getFileListInfo(const string& virtualFile, ProfileToken aProfile);
 	void toRealWithSize(const string& virtualFile, const ProfileTokenSet& aProfiles, const HintedUser& aUser, string& path_, int64_t& size_, bool& noAccess_);
 	TTHValue getListTTH(const string& virtualFile, ProfileToken aProfile) const;
 	
@@ -126,8 +126,9 @@ public:
 
 	void setDirty(ProfileTokenSet aProfiles, bool setCacheDirty, bool forceXmlRefresh=false);
 
-	void startup();
+	void startup(function<void (const string&)> splashF);
 	void shutdown();
+	void abortRefresh();
 
 	void changeExcludedDirs(const ProfileTokenStringList& aAdd, const ProfileTokenStringList& aRemove);
 	void rebuildTotalExcludes();
@@ -149,8 +150,8 @@ public:
 
 	vector<pair<string, StringList>> getGroupedDirectories() const noexcept;
 	static bool checkType(const string& aString, int aType);
-	MemoryInputStream* generatePartialList(const string& dir, bool recurse, ProfileToken aProfile);
-	MemoryInputStream* generateTTHList(const string& dir, bool recurse, ProfileToken aProfile);
+	MemoryInputStream* generatePartialList(const string& dir, bool recurse, ProfileToken aProfile) const;
+	MemoryInputStream* generateTTHList(const string& dir, bool recurse, ProfileToken aProfile) const;
 	MemoryInputStream* getTree(const string& virtualFile, ProfileToken aProfile) const;
 
 	void saveXmlList(bool verbose = false);	//for filelist caching
@@ -173,15 +174,15 @@ public:
 
 	string generateOwnList(ProfileToken aProfile);
 
-	bool isTTHShared(const TTHValue& tth);
+	bool isTTHShared(const TTHValue& tth) const;
 
-	void getRealPaths(const string& path, StringList& ret, ProfileToken aProfile);
+	void getRealPaths(const string& path, StringList& ret, ProfileToken aProfile) const;
 
 	//void LockRead() noexcept { cs.lock_shared(); }
 	//void unLockRead() noexcept { cs.unlock_shared(); }
 
-	string getRealPath(const TTHValue& root);
-	string getRealPath(const string& aFileName, int64_t aSize);
+	string getRealPath(const TTHValue& root) const;
+	string getRealPath(const string& aFileName, int64_t aSize) const;
 
 	enum { 
 		REFRESH_STARTED = 0,
@@ -204,10 +205,12 @@ public:
 
 	typedef unordered_multimap<TTHValue, TempShareInfo> TempShareMap;
 	TempShareMap tempShares;
-	CriticalSection tScs;
 	void addTempShare(const string& aKey, const TTHValue& tth, const string& filePath, int64_t aSize, ProfileToken aProfile);
-	bool hasTempShares() { Lock l(tScs); return !tempShares.empty(); }
-	TempShareMap getTempShares() { Lock l(tScs); return tempShares; }
+
+	// GUI only
+	bool hasTempShares() { return !tempShares.empty(); }
+	TempShareMap& getTempShares() { return tempShares; }
+
 	void removeTempShare(const string& aKey, const TTHValue& tth);
 	bool isTempShared(const string& aKey, const TTHValue& tth);
 	//tempShares end
@@ -241,7 +244,7 @@ private:
 		public:
 			typedef boost::intrusive_ptr<ProfileDirectory> Ptr;
 
-			ProfileDirectory(const string& aRootPath, const string& aVname, ProfileToken aProfile);
+			ProfileDirectory(const string& aRootPath, const string& aVname, ProfileToken aProfile, bool incoming = false);
 			ProfileDirectory(const string& aRootPath, ProfileToken aProfile);
 
 			GETSET(string, path, Path);
@@ -259,18 +262,18 @@ private:
 				FLAG_INCOMING			= 0x08
 			};
 
-			bool hasExcludes() { return !excludedProfiles.empty(); }
-			bool hasRoots() { return !rootProfiles.empty(); }
+			bool hasExcludes() const { return !excludedProfiles.empty(); }
+			bool hasRoots() const { return !rootProfiles.empty(); }
 
-			bool hasRootProfile(ProfileToken aProfile);
-			bool hasRootProfile(const ProfileTokenSet& aProfiles);
-			bool isExcluded(ProfileToken aProfile);
-			bool isExcluded(const ProfileTokenSet& aProfiles);
+			bool hasRootProfile(ProfileToken aProfile) const;
+			bool hasRootProfile(const ProfileTokenSet& aProfiles) const;
+			bool isExcluded(ProfileToken aProfile) const;
+			bool isExcluded(const ProfileTokenSet& aProfiles) const;
 			void addRootProfile(const string& aName, ProfileToken aProfile);
 			void addExclude(ProfileToken aProfile);
 			bool removeRootProfile(ProfileToken aProfile);
 			bool removeExcludedProfile(ProfileToken aProfile);
-			string getName(ProfileToken aProfile);
+			string getName(ProfileToken aProfile) const;
 	};
 
 	struct FileListDir;
@@ -296,15 +299,6 @@ private:
 			File() : size(0), parent(0) { }
 			File(const string& aName, int64_t aSize, Directory::Ptr aParent, const TTHValue& aRoot) : 
 				name(aName), tth(aRoot), size(aSize), parent(aParent.get()) { }
-			File(const File& rhs) : 
-				name(rhs.getName()), tth(rhs.getTTH()), size(rhs.getSize()), parent(rhs.getParent()) { }
-
-			~File() { }
-
-			File& operator=(const File& rhs) {
-				name = rhs.name; size = rhs.size; parent = rhs.parent; tth = rhs.tth;
-				return *this;
-			}
 
 			bool operator==(const File& rhs) const {
 				return stricmp(name, rhs.getName()) == 0;
@@ -355,12 +349,12 @@ private:
 
 		string getADCPath(ProfileToken aProfile) const noexcept;
 		string getVirtualName(ProfileToken aProfile) const noexcept;
-		string getRealName() { return realName; }
+		string getRealName() const { return realName; }
 		string getFullName(ProfileToken aProfile) const noexcept; 
 		string getRealPath(bool checkExistance) const { return getRealPath(Util::emptyString, checkExistance); };
 
-		bool hasProfile(const ProfileTokenSet& aProfiles);
-		bool hasProfile(ProfileToken aProfiles);
+		bool hasProfile(const ProfileTokenSet& aProfiles) const noexcept;
+		bool hasProfile(ProfileToken aProfiles) const noexcept;
 
 		int64_t getSize(ProfileToken aProfile) const noexcept;
 		int64_t getTotalSize() const noexcept;
@@ -372,8 +366,8 @@ private:
 		void directSearch(DirectSearchResultList& aResults, AdcSearch& aStrings, StringList::size_type maxResults, ProfileToken aProfile) const noexcept;
 
 		void toFileList(FileListDir* aListDir, ProfileToken aProfile, bool isFullList);
-		void toXml(SimpleXML& aXml, bool fullList, ProfileToken aProfile);
-		void toTTHList(OutputStream& tthList, string& tmp2, bool recursive);
+		void toXml(SimpleXML& aXml, bool fullList, ProfileToken aProfile) const;
+		void toTTHList(OutputStream& tthList, string& tmp2, bool recursive) const;
 		//for filelist caching
 		void toXmlList(OutputStream& xmlFile, const string& path, string& indent);
 
@@ -386,10 +380,10 @@ private:
 		Directory(const string& aRealName, const Ptr& aParent, uint32_t aLastWrite, ProfileDirectory::Ptr root = nullptr);
 		~Directory() { }
 
-		void copyRootProfiles(ProfileTokenSet& aProfiles);
-		bool isRootLevel(ProfileToken aProfile);
-		bool isLevelExcluded(ProfileToken aProfile);
-		bool isLevelExcluded(const ProfileTokenSet& aProfiles);
+		void copyRootProfiles(ProfileTokenSet& aProfiles) const;
+		bool isRootLevel(ProfileToken aProfile) const;
+		bool isLevelExcluded(ProfileToken aProfile) const;
+		bool isLevelExcluded(const ProfileTokenSet& aProfiles) const;
 		int64_t size;
 	private:
 		friend void intrusive_ptr_release(intrusive_ptr_base<Directory>*);
@@ -400,7 +394,7 @@ private:
 	};
 
 	struct FileListDir {
-		typedef unordered_map<string, FileListDir*, noCaseStringHash, noCaseStringEq> List;
+		typedef unordered_map<string, FileListDir*, noCaseStringHash, noCaseStringEq> ListDirectoryMap;
 		vector<Directory::Ptr> shareDirs;
 
 		FileListDir(const string& aName, int64_t aSize, int aDate);
@@ -409,10 +403,10 @@ private:
 		string name;
 		int64_t size;
 		uint32_t date;
-		List listDirs;
+		ListDirectoryMap listDirs;
 
-		void toXml(OutputStream& xmlFile, string& indent, string& tmp2, bool fullList);
-		void filesToXml(OutputStream& xmlFile, string& indent, string& tmp2);
+		void toXml(OutputStream& xmlFile, string& indent, string& tmp2, bool fullList) const;
+		void filesToXml(OutputStream& xmlFile, string& indent, string& tmp2) const;
 	};
 
 	int addTask(uint8_t aTaskType, StringList& dirs, RefreshType aRefreshType, const string& displayName=Util::emptyString) noexcept;
@@ -457,7 +451,7 @@ private:
 	FileList* getFileList(ProfileToken aProfile) const;
 
 	bool ShareCacheDirty;
-	bool aShutdown;
+	volatile bool aShutdown;
 
 	boost::regex rxxReg;
 	
@@ -565,7 +559,7 @@ private:
 	virtual int run();
 
 	// QueueManagerListener
-	virtual void on(QueueManagerListener::BundleAdded, const BundlePtr aBundle) noexcept;
+	virtual void on(QueueManagerListener::BundleAdded, const BundlePtr& aBundle) noexcept;
 	virtual void on(QueueManagerListener::BundleHashed, const string& path) noexcept;
 	virtual void on(QueueManagerListener::FileHashed, const string& fname, const TTHValue& root) noexcept { onFileHashed(fname, root); }
 

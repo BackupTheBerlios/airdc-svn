@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2011 Jacek Sieka, j_s@telia.com
+ * Copyright (C) 2012-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,14 +16,28 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#include "stdinc.h"
-#include "Exception.h"
+#ifndef CHATCOMMANDS_H
+#define CHATCOMMANDS_H
 
-namespace dcpp {
+#if _MSC_VER > 1000
+#pragma once
+#endif // _MSC_VER > 1000
 
-} // namespace dcpp
+#include "../client/typedefs.h"
 
-/**
- * @file
- * $Id: Exception.cpp 568 2011-07-24 18:28:43Z bigmuscle $
- */
+class ChatCommands {
+public:
+	static tstring UselessInfo();
+	static tstring Speedinfo();
+	static tstring DiskSpaceInfo(bool onlyTotal = false);
+	static string CPUInfo();
+	
+	static string getSysUptime();
+	static tstring diskInfo();
+	static string generateStats();
+	static string uptimeInfo();
+
+	static TStringList FindVolumes();
+};
+
+#endif // !defined(CHATCOMMANDS_H)

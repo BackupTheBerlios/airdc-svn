@@ -38,7 +38,7 @@
     <UseOfAtl>false</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -107,6 +107,9 @@
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)\windows\WTL;$(IncludePath)</IncludePath>
     <PostBuildEventUseInBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</PostBuildEventUseInBuild>
     <PostBuildEventUseInBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</PostBuildEventUseInBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Midl>
@@ -493,15 +496,18 @@
     <ClCompile Include="windows\ADLSProperties.cpp" />
     <ClCompile Include="windows\AdvancedPage.cpp" />
     <ClCompile Include="windows\AutoSearchFrm.cpp" />
+    <ClCompile Include="windows\ChatCommands.cpp" />
     <ClCompile Include="windows\DirectoryListingDlg.cpp" />
     <ClCompile Include="windows\EmoticonsManager.cpp" />
     <ClCompile Include="windows\AirAppearancePage.cpp" />
     <ClCompile Include="windows\ChatFrameBase.cpp" />
     <ClCompile Include="windows\ExMessageBox.cpp" />
+    <ClCompile Include="windows\HashProgressDlg.cpp" />
     <ClCompile Include="windows\HtmlToRtf.cpp" />
     <ClCompile Include="windows\LimitPage.cpp" />
     <ClCompile Include="windows\MiscPage.cpp" />
     <ClCompile Include="windows\DownloadingOptionsPage.cpp" />
+    <ClCompile Include="windows\ProxyPage.cpp" />
     <ClCompile Include="windows\ResourceLoader.cpp" />
     <ClCompile Include="windows\SearchTypeCombo.cpp" />
     <ClCompile Include="windows\SharingOptionsPage.cpp" />
@@ -604,6 +610,7 @@
     <ClInclude Include="windows\AdvancedPage.h" />
     <ClInclude Include="windows\AutoSearchFrm.h" />
     <ClInclude Include="windows\AutosearchParams.h" />
+    <ClInclude Include="windows\ChatCommands.h" />
     <ClInclude Include="windows\CProgressCtrlEx.h" />
     <ClInclude Include="windows\CSplitterEx.h" />
     <ClInclude Include="windows\DirectoryListingDlg.h" />
@@ -615,6 +622,7 @@
     <ClInclude Include="windows\HtmlToRtf.h" />
     <ClInclude Include="windows\LimitPage.h" />
     <ClInclude Include="windows\ExCImage.h" />
+    <ClInclude Include="windows\ProxyPage.h" />
     <ClInclude Include="windows\SearchTypeCombo.h" />
     <ClInclude Include="windows\SplashWindow.h" />
     <ClInclude Include="windows\MiscPage.h" />
@@ -794,6 +802,7 @@
     <Image Include="res\searchTypes\tth.ico" />
     <Image Include="res\searchTypes\Video.ico" />
     <Image Include="res\SettingsTree\Limiter.ico" />
+    <Image Include="res\SettingsTree\Proxy.ico" />
     <Image Include="res\SettingsTree\SearchTypes.ico" />
     <Image Include="res\Shared.ico" />
     <Image Include="res\Slots.ico" />

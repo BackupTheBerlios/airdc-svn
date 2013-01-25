@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by C:\Projects\airsvn\branches\2.4x\AirDC.rc
+// Used by C:\Projects\airsvn\trunk\AirDC.rc
 //
 #define IDOK2                           3
 #define IDCANCEL2                       3
@@ -282,10 +282,11 @@
 #define IDI_TOTAL_UP                    482
 #define IDI_TOTAL_DOWN                  483
 #define IDI_SHARED                      484
-#define IDR_WINAMP                      485
-#define IDD_PARAM_DLG                   486
-#define IDD_FAVHUBGROUPS                487
+#define IDI_PROXY                       488
 #define IDD_FORMVIEW                    500
+#define IDR_WINAMP                      501
+#define IDD_PARAM_DLG                   502
+#define IDD_FAVHUBGROUPS                503
 #define IDC_REFRESH                     1000
 #define IDC_NICK                        1001
 #define IDC_EMAIL                       1002
@@ -570,6 +571,7 @@
 #define IDC_SHARE_SAVE_TIME             1218
 #define IDC_U_MATCH                     1218
 #define IDC_FDNAME                      1218
+#define IDC_AWAY_IDLE_TIME              1218
 #define IDC_CLIENT_VERSION              1219
 #define IDC_HIGH_PRIO_FILES             1219
 #define IDC_MAX_UPLOAD_SP               1219
@@ -591,6 +593,7 @@
 #define IDC_TOOLBAR_IMAGE               1224
 #define IDC_CLIENT_SUPPORTS             1224
 #define IDC_TREE1                       1224
+#define IDC_MAX_VOL_HASHERS             1224
 #define IDC_STATICb                     1225
 #define IDC_IMAGEBROWSE                 1225
 #define IDC_CLIENT_TESTSUR_RESPONSE     1225
@@ -601,6 +604,7 @@
 #define IDC_SETTINGS_MBS                1226
 #define IDC_MOUSE_OVER                  1227
 #define IDC_CLIENT_STATUS               1227
+#define IDC_MAX_VOL_HASHERS_LBL         1227
 #define IDC_NORMAL                      1228
 #define IDC_TOOLBAR_IMAGE_BOX           1229
 #define IDC_VERSION_MISMATCH            1229
@@ -746,9 +750,11 @@
 #define IDC_CH_STATUS_HUB_BOLD2         1295
 #define IDC_BOLD_HUB_TABS_ON_KICK       1295
 #define IDC_ENABLE_SEGMENTS             1295
+#define IDC_HUBSETTINGS                 1295
 #define IDC_REGEXP_TESTER_COMBO         1296
 #define IDC_MULTISOURCE_COMBO           1296
 #define IDC_CH_ICONS                    1296
+#define IDC_SEARCH_INT_BOX              1296
 #define IDC_PUB_LIST_CONFIG             1297
 #define IDC_ODC_STYLE                   1297
 #define IDC_OVERRIDE                    1297
@@ -760,23 +766,24 @@
 #define IDC_SETTINGS_WINDOWS_OPTIONS    1300
 #define IDC_ADLSEARCH_ACTION            1300
 #define IDC_PRIO_HIGHEST_SIZE           1300
+#define IDC_SETTINGS_BIND_ADDRESS2      1300
+#define IDC_SETTINGS_MANUAL_CONFIG      1300
 #define IDC_WINDOWS_OPTIONS             1301
 #define IDC_ADLSEARCH_RAW_ACTION        1301
 #define IDC_PRIO_HIGH_SIZE              1301
 #define IDC_REFRESH_SPIN                1301
-#define IDC_DIRECT                      1302
 #define IDC_PRIO_NORMAL_SIZE            1302
 #define IDC_ROLLBACK_SPIN               1302
 #define IDC_INCOMING_SPIN               1302
-#define IDC_FIREWALL_UPNP               1303
+#define IDC_SETTINGS_MANUAL_CONFIG3     1302
+#define IDC_ACTIVE_UPNP                 1303
 #define IDC_PRIO_LOW_SIZE               1303
 #define IDC_SHUTDOWNACTION              1303
-#define IDC_FIREWALL_NAT                1304
+#define IDC_HASHING_THREADS_SPIN        1303
 #define IDC_SETTINGS_PRIO_HIGHEST       1304
 #define IDC_READ_SPIN                   1304
 #define IDC_POPUPGROUP                  1304
 #define IDC_PARAM_NAME                  1304
-#define IDC_FIREWALL_PASSIVE            1305
 #define IDC_SETTINGS_PRIO_HIGH          1305
 #define IDC_AUTO_SEARCH_LIMIT_SPIN      1305
 #define IDC_PARAM_REGEXP                1305
@@ -799,6 +806,8 @@
 #define IDC_PASSWD_PROTECT_TRAY_CHCKBOX 1309
 #define IDC_REFRESH_ON_SHAREPAGE        1309
 #define IDC_CHECK_QUEUED                1309
+#define IDC_VOL_HASHERS_SPIN            1309
+#define IDC_AUTO_AWAY                   1309
 #define IDC_DOWNCONN_SPIN               1310
 #define IDC_HIGHEST_PRIORITY_USE_REGEXP 1310
 #define IDC_FAV_SEARCH_INTERVAL_BOX     1310
@@ -884,6 +893,8 @@
 #define IDC_CHECK_SHARED                1331
 #define IDC_ASEARCH                     1332
 #define IDC_REFRESH_VNAME_ON_SHAREPAGE2 1332
+#define IDC_SHOW_JOIN2                  1332
+#define IDC_SHOW_JOIN_FAV               1332
 #define IDC_SEARH_SKIPLIST_PRESET       1333
 #define IDC_PRE1                        1334
 #define IDC_PRE2                        1335
@@ -916,6 +927,7 @@
 #define IDC_HIDE_SHARE                  1359
 #define IDC_DOWNLOAD_SLOTS              1359
 #define IDC_DOWNLOAD_S_SPIN             1360
+#define IDC_SEARCH_INTERVAL_DEFAULT     1360
 #define IDC_UPLOAD_SLOTS                1361
 #define IDC_UPLOAD_S_SPIN               1362
 #define IDC_MAX_AUTO_OPENED             1363
@@ -933,7 +945,7 @@
 #define IDC_LOG_LINESTEXT               1368
 #define IDC_SPIN1                       1369
 #define IDC_COMBOBOXEX1                 1369
-#define IDC_NATT                        1370
+#define IDC_AWAY_SPIN                   1369
 #define IDC_SORT_DIRS                   1370
 #define IDC_CONNECTION_DETECTION        1371
 #define IDC_DONT_SHARE_BIGGER_THAN      1371
@@ -1008,8 +1020,10 @@
 #define IDC_SETTINGS_AUTO_REFRESH_TIME  1420
 #define IDC_AUTO_SEARCH_LIMIT           1421
 #define IDC_TLS_OPTIONS                 1421
+#define IDC_HASHING_THREADS_LBL         1421
 #define IDC_SETTINGS_AUTO_SEARCH_LIMIT  1422
 #define IDC_GENERATE_CERTS              1422
+#define IDC_HASHING_THREADS             1422
 #define IDC_CLOSE_ALL_PM                1423
 #define IDC_BROWSE_PRIVATE_KEY          1423
 #define IDC_SETTINGS_AUTO_SEARCH_LIMIT2 1423
@@ -1088,7 +1102,7 @@
 #define IDC_RESET_TAB_COLOR             1525
 #define IDC_SEARCH_BY_TTH               1526
 #define IDC_THEMES                      1526
-#define IDC_REMOVE_ON_HIT               1533
+#define IDC_REMOVE_AFTER_COMPLETED      1533
 #define IDC_DL_TO                       1534
 #define IDC_TARGET_PATH                 1535
 #define IDC_REMOVE_ON_HIT2              1536
@@ -1201,6 +1215,12 @@
 #define IDC_AS_MAXNUMBER_HELP2          1690
 #define IDC_INCR_NUM_DESC               1690
 #define IDC_AUTO_DETECTION_USE_LIMITED  1690
+#define IDC_REFRESHING_OPTIONS          1691
+#define IDC_HASHING_OPTIONS             1692
+#define IDC_AWAY_MINS                   1694
+#define IDC_AWAY_IDLE_TEXT_END          1694
+#define IDC_AWAY_IDLE_TEXT_BEGIN        1695
+#define IDC_AWAY_MODE                   1696
 #define IDC_EDIT4                       1699
 #define IDC_PREVIEW_APP                 1700
 #define IDC_HASH_PROGRESS_AUTO_CLOSE    1701
@@ -1406,6 +1426,7 @@
 #define IDC_IGNORE_REMOVE               15007
 #define IDD_SHAREPAGE_DLG               15007
 #define IDC_IGNORE_CLEAR                15008
+#define IDD_PROXYPAGE                   15008
 #define IDC_IGNORELIST                  15009
 #define IDC_IGNORE_USE_REGEXP_OR_WC     15010
 #define IDC_IGNORELIST_EDIT             15011
@@ -1413,9 +1434,6 @@
 #define IDC_FAV_DL_SPEED                15013
 #define IDC_OPEN_FIRST_X_HUB            15014
 #define IDC_OPEN_FIRST                  15015
-#define IDC_ANTIVIR_PATH                15016
-#define IDC_ANTIVIR_BROWSE              15017
-#define IDC_AIRDC_ANTI_VIR              15018
 #define IDC_SKIPLIST_SHARE              15019
 #define IDC_FREE_SLOTS_EXTENSIONS       15020
 #define IDC_MINISLOTS_EXTENSIONS        15021
@@ -1585,7 +1603,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        347
 #define _APS_NEXT_COMMAND_VALUE         32795
-#define _APS_NEXT_CONTROL_VALUE         1691
+#define _APS_NEXT_CONTROL_VALUE         1697
 #define _APS_NEXT_SYMED_VALUE           136
 #endif
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 AirDC++ Project
+ * Copyright (C) 2012-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #define DCPLUSPLUS_DCPP_MAGNET_H
 
 #include "forward.h"
+#include "AirUtil.h"
 
 #include <string>
 
@@ -38,8 +39,7 @@ struct Magnet {
 
 	explicit Magnet(const string& aLink);
 
-	int8_t isQueueDupe();
-	bool isShareDupe();
+	DupeType getDupeType();
 	TTHValue getTTH();
 };
 

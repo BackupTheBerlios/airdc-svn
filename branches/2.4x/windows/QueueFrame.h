@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 #include "../client/TaskQueue.h"
 #include "boost/unordered_map.hpp"
 
-#include "ResourceLoader.h"
+#include <boost/noncopyable.hpp>
 
 #define SHOWTREE_MESSAGE_MAP 12
 
@@ -43,7 +43,7 @@ public:
 	DECLARE_FRAME_WND_CLASS_EX(_T("QueueFrame"), IDR_QUEUE, 0, COLOR_3DFACE);
 
 	QueueFrame() : menuItems(0), queueSize(0), queueItems(0), spoken(false), dirty(false), 
-		usingDirMenu(false),  readdItems(0), fileLists(NULL), tempItems(NULL), showTree(true), closed(false), PreviewAppsSize(0),
+		usingDirMenu(false),  readdItems(0), fileLists(NULL), tempItems(NULL), showTree(true), closed(false),
 		showTreeContainer(WC_BUTTON, this, SHOWTREE_MESSAGE_MAP) 
 	{
 	}
@@ -69,7 +69,6 @@ public:
 		COMMAND_ID_HANDLER(IDC_SEARCH_BUNDLE, onSearchBundle)
 		COMMAND_ID_HANDLER(IDC_SEARCH_ALTERNATES, onSearchAlternates)
 		COMMAND_ID_HANDLER(IDC_SEARCHDIR, onSearchAlternates)
-		COMMAND_ID_HANDLER(IDC_COPY_LINK, onCopyMagnet)
 		COMMAND_ID_HANDLER(IDC_REMOVE, onRemove)
 		COMMAND_ID_HANDLER(IDC_RECHECK, onRecheck);
 		COMMAND_ID_HANDLER(IDC_REMOVE_OFFLINE, onRemoveOffline)
@@ -80,16 +79,10 @@ public:
 		COMMAND_RANGE_HANDLER(IDC_SEARCH_SITES, IDC_SEARCH_SITES + WebShortcuts::getInstance()->list.size(), onSearchSite)
 		COMMAND_ID_HANDLER(IDC_OPEN_FOLDER, onOpenFolder)
 		COMMAND_ID_HANDLER(IDC_CLOSE_WINDOW, onCloseWindow)
-		COMMAND_RANGE_HANDLER(IDC_COPY, IDC_COPY + COLUMN_LAST-1, onCopy)
+		COMMAND_ID_HANDLER(IDC_COPY, onCopy)
 		COMMAND_RANGE_HANDLER(IDC_PRIORITY_PAUSED, IDC_PRIORITY_HIGHEST, onPriority)
 		COMMAND_RANGE_HANDLER(IDC_SEGMENTONE, IDC_SEGMENTTEN, onSegments)
-		COMMAND_RANGE_HANDLER(IDC_BROWSELIST, IDC_BROWSELIST + menuItems, onBrowseList)
-		COMMAND_RANGE_HANDLER(IDC_REMOVE_SOURCE, IDC_REMOVE_SOURCE + menuItems, onRemoveSource)
-		COMMAND_RANGE_HANDLER(IDC_REMOVE_SOURCES, IDC_REMOVE_SOURCES + 1 + menuItems, onRemoveSources)
-		COMMAND_RANGE_HANDLER(IDC_PM, IDC_PM + menuItems, onPM)
-		COMMAND_RANGE_HANDLER(IDC_READD, IDC_READD + 1 + readdItems, onReadd)
 		COMMAND_ID_HANDLER(IDC_AUTOPRIORITY, onAutoPriority)
-		COMMAND_RANGE_HANDLER(IDC_PREVIEW_APP, IDC_PREVIEW_APP + PreviewAppsSize, onPreviewCommand)
 		NOTIFY_HANDLER(IDC_QUEUE, NM_CUSTOMDRAW, onCustomDraw)
 		CHAIN_MSG_MAP(splitBase)
 		CHAIN_MSG_MAP(baseClass)
@@ -97,18 +90,14 @@ public:
 		MESSAGE_HANDLER(BM_SETCHECK, onShowTree)
 	END_MSG_MAP()
 
+
+	LRESULT onReaddAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onSegments(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onBrowseList(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onRemoveSource(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onRemoveSources(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onPM(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onReadd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onReaddAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onRecheck(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onSearchAlternates(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onSearchBundle(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onCopyMagnet(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onItemChanged(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled);
 	LRESULT onSpeaker(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled);
@@ -116,7 +105,6 @@ public:
 	LRESULT OnChar(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT onClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled);
 	LRESULT onAutoPriority(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onPreviewCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onCustomDraw(int /*idCtrl*/, LPNMHDR pnmh, BOOL& bHandled);
 	LRESULT onRemoveOffline(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onOpenFolder(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -193,7 +181,6 @@ public:
 	}
 	
 private:
-
 	enum {
 		COLUMN_FIRST,
 		COLUMN_TARGET = COLUMN_FIRST,
@@ -249,7 +236,7 @@ private:
 	class QueueItemInfo;
 	friend class QueueItemInfo;
 	
-	class QueueItemInfo : public FastAlloc<QueueItemInfo> {
+	class QueueItemInfo : public FastAlloc<QueueItemInfo>, boost::noncopyable {
 	public:
 
 		QueueItemInfo(QueueItemPtr aQI) : qi(aQI), fileName(aQI->getTargetFileName()) { }
@@ -263,7 +250,7 @@ private:
 
 		static int compareItems(const QueueItemInfo* a, const QueueItemInfo* b, int col);
 
-		int getImageIndex() const { return ResourceLoader::getIconIndex(Text::toT(getTarget()));	}
+		int getImageIndex() const;
 
 		const BundlePtr getBundle() const { return qi->getBundle(); }
 		const QueueItemPtr getQueueItem() const { return qi; }
@@ -289,9 +276,6 @@ private:
 		GETSET(string, fileName, FileName);
 	private:
 		QueueItemPtr qi;
-
-		QueueItemInfo(const QueueItemInfo&);
-		QueueItemInfo& operator=(const QueueItemInfo&);
 	};
 		
 	struct QueueItemInfoTask : FastAlloc<QueueItemInfoTask>, public Task {
@@ -318,14 +302,6 @@ private:
 
 	TaskQueue tasks;
 	bool spoken;
-
-	OMenu browseMenu;
-	OMenu removeMenu;
-	OMenu removeAllMenu;
-	OMenu pmMenu;
-	OMenu readdMenu;
-
-	int PreviewAppsSize;
 
 	CButton ctrlShowTree;
 	CContainedWindow showTreeContainer;
@@ -367,8 +343,8 @@ private:
 	void addQueueList(const QueueItem::StringMap& l);
 	void addQueueItem(QueueItemInfo* qi, bool noSort);
 	HTREEITEM addItemDir(bool isFileList);
-	HTREEITEM addBundleDir(const string& dir, const BundlePtr aBundle, HTREEITEM startAt = NULL);
-	HTREEITEM createDir(TVINSERTSTRUCT& tvi, const string&& dir, const BundlePtr aBundle, HTREEITEM parent, bool subDir=false);
+	HTREEITEM addBundleDir(const string& dir, const BundlePtr& aBundle, HTREEITEM startAt = NULL);
+	HTREEITEM createDir(TVINSERTSTRUCT& tvi, const string&& dir, const BundlePtr& aBundle, HTREEITEM parent, bool subDir=false);
 	HTREEITEM createSplitDir(TVINSERTSTRUCT& tvi, const string&& dir, HTREEITEM parent, DirItemInfo* bii, bool subDir=false);
 	void removeQueueItem(QueueItemInfo* ii, bool noSort);
 	void removeItemDir(bool isFileList);
@@ -412,10 +388,10 @@ private:
 	
 	const string& getDir(HTREEITEM ht) const { dcassert(ht != NULL); return ((DirItemInfo*)(ctrlDirs.GetItemData(ht)))->getDir(); }
 
-	void on(QueueManagerListener::Added, QueueItemPtr aQI) noexcept;
-	void on(QueueManagerListener::Removed, const QueueItemPtr aQI, bool updateStatus) noexcept;
-	void on(QueueManagerListener::SourcesUpdated, const QueueItemPtr aQI) noexcept;
-	void on(QueueManagerListener::StatusUpdated, const QueueItemPtr aQI) noexcept { on(QueueManagerListener::SourcesUpdated(), aQI); }
+	void on(QueueManagerListener::Added, QueueItemPtr& aQI) noexcept;
+	void on(QueueManagerListener::Removed, const QueueItemPtr& aQI, bool updateStatus) noexcept;
+	void on(QueueManagerListener::SourcesUpdated, const QueueItemPtr& aQI) noexcept;
+	void on(QueueManagerListener::StatusUpdated, const QueueItemPtr& aQI) noexcept { on(QueueManagerListener::SourcesUpdated(), aQI); }
 	void on(SettingsManagerListener::Save, SimpleXML& /*xml*/) noexcept;
 	
 	void onRechecked(const string& target, const string& message);
@@ -427,15 +403,15 @@ private:
 	void on(QueueManagerListener::RecheckNoTree, const string& target) noexcept;
 	void on(QueueManagerListener::RecheckAlreadyFinished, const string& target) noexcept;
 	void on(QueueManagerListener::RecheckDone, const string& target) noexcept;
-	void on(QueueManagerListener::Moved, const QueueItemPtr aQI, const string& oldTarget) noexcept;
+	void on(QueueManagerListener::Moved, const QueueItemPtr& aQI, const string& oldTarget) noexcept;
 
-	void on(QueueManagerListener::BundleMoved, const BundlePtr aBundle) noexcept;
-	void on(QueueManagerListener::BundleMerged, const BundlePtr aBundle, const string& oldTarget) noexcept;
-	void on(QueueManagerListener::BundleSources, const BundlePtr aBundle) noexcept { on(QueueManagerListener::BundlePriority(), aBundle); };
-	void on(QueueManagerListener::BundlePriority, const BundlePtr aBundle) noexcept;
-	void on(QueueManagerListener::BundleAdded, const BundlePtr aBundle) noexcept;
-	void on(QueueManagerListener::BundleRemoved, const BundlePtr aBundle) noexcept;
-	void on(QueueManagerListener::BundleFinished, const BundlePtr aBundle) noexcept { on(QueueManagerListener::BundleRemoved(), aBundle); }
+	void on(QueueManagerListener::BundleMoved, const BundlePtr& aBundle) noexcept;
+	void on(QueueManagerListener::BundleMerged, const BundlePtr& aBundle, const string& oldTarget) noexcept;
+	void on(QueueManagerListener::BundleSources, const BundlePtr& aBundle) noexcept { on(QueueManagerListener::BundlePriority(), aBundle); };
+	void on(QueueManagerListener::BundlePriority, const BundlePtr& aBundle) noexcept;
+	void on(QueueManagerListener::BundleAdded, const BundlePtr& aBundle) noexcept;
+	void on(QueueManagerListener::BundleRemoved, const BundlePtr& aBundle) noexcept;
+	void on(QueueManagerListener::BundleFinished, const BundlePtr& aBundle) noexcept { on(QueueManagerListener::BundleRemoved(), aBundle); }
 
 	void on(DownloadManagerListener::BundleTick, const BundleList& tickBundles, uint64_t aTick) noexcept;
 };

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 #include "WinUtil.h"
 #include "AutoSearchDlg.h"
@@ -64,7 +63,7 @@ LRESULT AutoSearchDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	::SetWindowText(GetDlgItem(IDC_SEARCH_FAKE_DLG_SEARCH_STRING), (TSTRING(SEARCH_STRING)).c_str());
 	::SetWindowText(GetDlgItem(IDC_AS_ACTION_STATIC), (TSTRING(ACTION)).c_str());
 	::SetWindowText(GetDlgItem(IDC_ADD_SRCH_STR_TYPE_STATIC), (TSTRING(FILE_TYPE)).c_str());
-	::SetWindowText(GetDlgItem(IDC_REMOVE_ON_HIT), (TSTRING(REMOVE_ON_HIT)).c_str());
+	::SetWindowText(GetDlgItem(IDC_REMOVE_AFTER_COMPLETED), (TSTRING(REMOVE_AFTER_COMPLETED)).c_str());
 
 	::SetWindowText(GetDlgItem(IDC_DL_TO), TSTRING(DOWNLOAD_TO).c_str());
 	::SetWindowText(GetDlgItem(IDC_SELECT_DIR), TSTRING(SELECT_DIRECTORY).c_str());
@@ -97,6 +96,8 @@ LRESULT AutoSearchDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 	::SetWindowText(GetDlgItem(IDC_ADVANCED_LABEL), CTSTRING(SETTINGS_ADVANCED));
 	::SetWindowText(GetDlgItem(IDC_EXACT_MATCH), CTSTRING(REQUIRE_EXACT_MATCH));
 
+	::SetWindowText(GetDlgItem(IDC_CONF_PARAMS), Text::toT(STRING(CONFIGURE) + "...").c_str());
+	::SetWindowText(GetDlgItem(IDC_USE_PARAMS), CTSTRING(ENABLE_PARAMETERS));
 
 	//get the search type so that we can set the initial control states correctly in fixControls
 	StringList ext;
@@ -127,7 +128,7 @@ LRESULT AutoSearchDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*l
 		cMatcherType.SetCurSel(matcherType);
 	}
 
-	CheckDlgButton(IDC_REMOVE_ON_HIT, remove);
+	CheckDlgButton(IDC_REMOVE_AFTER_COMPLETED, remove);
 	CheckDlgButton(IDC_CHECK_QUEUED, checkQueued);
 	CheckDlgButton(IDC_CHECK_SHARED, checkShared);
 	CheckDlgButton(IDC_MATCH_FULL_PATH, matchFullPath);
@@ -213,17 +214,31 @@ void AutoSearchDlg::switchMode() {
 	//users shouldn't be able to change the hidden options with the keyboard command
 	fixControls();
 
-	CRect rc;
-	DWORD dwStyle = ::GetWindowLongPtr( m_hWnd, GWL_STYLE ) ;
-	AdjustWindowRect(rc, dwStyle, FALSE); //get the border widths so it's being sized correctly on different operating systems
+	auto adjustWindowSize = [](HWND m_hWnd, int exceptedCurX, int exceptedCurY, int& newX, int& newY) -> void {
+		//get the border widths so it's being sized correctly on different operating systems
+		CRect rc;
+		DWORD dwStyle = ::GetWindowLongPtr(m_hWnd, GWL_STYLE);
+		AdjustWindowRect(rc, dwStyle, FALSE);
 
-	if (advanced) {
-		SetWindowPos(NULL,0, 0, 585+abs(rc.left)+abs(rc.right), 490+abs(rc.top)+abs(rc.bottom),SWP_NOZORDER|SWP_NOMOVE);
-		cAdvanced.SetWindowText(Text::toT(STRING(SETTINGS_ADVANCED) + " <<").c_str());
-	} else {
-		SetWindowPos(NULL, 0, 0, 585+abs(rc.left)+abs(rc.right), 250+abs(rc.top)+abs(rc.bottom),SWP_NOZORDER|SWP_NOMOVE);
-		cAdvanced.SetWindowText(Text::toT(STRING(SETTINGS_ADVANCED) + " >>").c_str());
-	}
+		//get the current window rect (it varies depending on the font size)
+		CRect rcCur;
+		::GetClientRect(m_hWnd, &rcCur);
+
+		//get the conversion factors
+		auto dpiFactorX = static_cast<float>(rcCur.right) / exceptedCurX;
+		auto dpiFactorY = static_cast<float>(rcCur.bottom) / exceptedCurY;
+
+		//calculate the new size
+		newX = (newX * dpiFactorX) + abs(rc.left) + abs(rc.right);
+		newY = (newY * dpiFactorY) + abs(rc.top) + abs(rc.bottom);
+	};
+
+	int newX = 584;
+	int newY = (advanced ? 489.0 : 250.0);
+	adjustWindowSize(m_hWnd, 584, (!advanced ? 489.0 : 250.0), newX, newY);
+
+	SetWindowPos(m_hWnd,0, 0, newX, newY, SWP_NOZORDER|SWP_NOMOVE);
+	cAdvanced.SetWindowText(Text::toT(STRING(SETTINGS_ADVANCED) + (advanced ? " <<" : " >>")).c_str());
 }
 
 LRESULT AutoSearchDlg::onClickLocation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -297,7 +312,7 @@ LRESULT AutoSearchDlg::OnCloseCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl
 		searchString = Text::fromT(str);
 
 		action = cAction.GetCurSel();
-		remove = IsDlgButtonChecked(IDC_REMOVE_ON_HIT) ? true : false;
+		remove = IsDlgButtonChecked(IDC_REMOVE_AFTER_COMPLETED) ? true : false;
 		checkQueued = IsDlgButtonChecked(IDC_CHECK_QUEUED) ? true : false;
 		checkShared = IsDlgButtonChecked(IDC_CHECK_SHARED) ? true : false;
 		matchFullPath = IsDlgButtonChecked(IDC_MATCH_FULL_PATH) ? true : false;

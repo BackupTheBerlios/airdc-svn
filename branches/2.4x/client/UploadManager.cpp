@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
 #include "LogManager.h"
 #include "ShareManager.h"
 #include "ClientManager.h"
-#include "FilteredFile.h"
-#include "ZUtils.h"
 #include "ResourceManager.h"
 #include "HashManager.h"
 #include "AdcCommand.h"
@@ -43,6 +41,8 @@
 #include "Wildcards.h"
 
 namespace dcpp {
+
+using boost::range::find_if;
 	
 static const string UPLOAD_AREA = "Uploads";
 
@@ -56,9 +56,9 @@ UploadManager::~UploadManager() {
 	ClientManager::getInstance()->removeListener(this);
 	{
 		Lock l(cs);
-		for(auto ii = uploadQueue.cbegin(); ii != uploadQueue.cend(); ++ii) {
-			for(auto i = ii->files.cbegin(); i != ii->files.cend(); ++i) {
-				(*i)->dec();
+		for(const auto ii: uploadQueue) {
+			for(const auto& f: ii.files) {
+				f->dec();
 			}
 		}
 		uploadQueue.clear();
@@ -125,7 +125,9 @@ bool UploadManager::prepareFile(UserConnection& aSource, const string& aType, co
 
 			//check that we have a file
 			if (userlist) {
-				sourceFile = move(ShareManager::getInstance()->getFileListName(aFile, *profile));
+				auto info = move(ShareManager::getInstance()->getFileListInfo(aFile, *profile));
+				sourceFile = move(info.second);
+				fileSize = info.first;
 			} else {
 				//get all hubs with file transfers
 				ProfileTokenSet profiles;
@@ -165,7 +167,7 @@ bool UploadManager::prepareFile(UserConnection& aSource, const string& aType, co
 
 			TTHValue fileHash(aFile.substr(4));
 
-			if(BOOLSETTING(USE_PARTIAL_SHARING) && QueueManager::getInstance()->isChunkDownloaded(fileHash, aStartPos, aBytes, sourceFile)){
+			if(SETTING(USE_PARTIAL_SHARING) && QueueManager::getInstance()->isChunkDownloaded(fileHash, aStartPos, aBytes, fileSize, sourceFile)){
 				//Todo: Do we need to set fileSize here?
 				partialFileSharing = true;
 				type = Transfer::TYPE_FILE;
@@ -188,7 +190,7 @@ checkslots:
 			bool hasReserved = reservedSlots.find(aSource.getUser()) != reservedSlots.end();
 			bool hasFreeSlot = (getFreeSlots() > 0) && ((uploadQueue.empty() && notifiedUsers.empty()) || isNotifiedUser(aSource.getUser()));
 		
-			if ((type==Transfer::TYPE_PARTIAL_LIST || ( fileSize > 0 && fileSize <= 65792)) && smallSlots <= 8) {
+			if ((type==Transfer::TYPE_PARTIAL_LIST || (type != Transfer::TYPE_FULL_LIST && fileSize <= 65792)) && smallSlots <= 8) {
 				slotType = UserConnection::SMALLSLOT;
 			} else if (aSource.isSet(UserConnection::FLAG_MCN1)) {
 				if (getMultiConn(aSource) || ((hasReserved || isFavorite|| getAutoSlot()) && !isUploading(aSource.getUser()))) {
@@ -227,37 +229,49 @@ checkslots:
 		setLastGrant(GET_TICK());
 	}
 	
-	InputStream* is = 0;
+	unique_ptr<InputStream> is = nullptr;
 	int64_t start = 0;
 	int64_t size = 0;
 
 	try {
+		auto countFilePositions = [&] () -> void {
+			start = aStartPos;
+			size = (aBytes == -1) ? fileSize - start : aBytes;
 
+			if((start + size) > fileSize) {
+				throw Exception("Bytes were requested beyond the end of the file");
+			}
+		};
+
+
+		{
+			//are we resuming an existing upload?
+			Lock l(cs);
+			auto i = find_if(delayUploads, [&aSource](const Upload* up) { return &aSource == &up->getUserConnection(); });
+			if (i != delayUploads.end()) {
+				Upload* up = *i;
+				delayUploads.erase(i);
+
+				if(sourceFile != up->getPath()) {
+					if (up->isSet(Upload::FLAG_CHUNKED))
+						logUpload(up);
+				} else if (up->getType() == Transfer::TYPE_FILE && type == Transfer::TYPE_FILE) {
+					//we are resuming the same file, reuse the existing upload
+					countFilePositions();
+					up->resume(start, size);
+					dcassert(aSource.getUpload());
+					uploads.push_back(up);
+					goto end;
+				}
+
+				delete up;
+			}
+		}
+
+		// a new upload
 		switch(type) {
 		case Transfer::TYPE_FILE:
-			{
-				if(partialFileSharing) {
-					auto ss = new File(sourceFile, File::READ, File::OPEN);
-
-					start = aStartPos;
-					fileSize = ss->getSize();
-					size = (aBytes == -1) ? fileSize - start : aBytes;
-					
-					if((start + size) > fileSize) {
-						aSource.sendError();
-						delete ss;
-						return false;
-					}
-
-					ss->setPos(start);
-					is = ss;
-					if((start + size) < fileSize) {
-						is = new LimitedInputStream<true>(is, size);
-					}
-
-					break;
-				}
-			}
+			// handle below...
 		case Transfer::TYPE_FULL_LIST:
 			{
 				if(aFile == Transfer::USER_LIST_NAME) {
@@ -267,26 +281,17 @@ checkslots:
 					CryptoManager::getInstance()->decodeBZ2(reinterpret_cast<const uint8_t*>(bz2.data()), bz2.size(), xml);
 					// Clear to save some memory...
 					string().swap(bz2);
-					is = new MemoryInputStream(xml);
+					is.reset(new MemoryInputStream(xml));
 					start = 0;
 					fileSize = size = xml.size();
 				} else {
-					File* f = new File(sourceFile, File::READ, File::OPEN);
-					start = aStartPos;
-					int64_t sz = f->getSize();
-					size = (aBytes == -1) ? sz - start : aBytes;
-					fileSize = sz;
-
-					if((start + size) > sz) {
-						aSource.sendError();
-						delete f;
-						return false;
-					}
+					countFilePositions();
+					unique_ptr<File> f(new File(sourceFile, File::READ, File::OPEN));
 			
 					f->setPos(start);
-					is = f;
-					if((start + size) < sz) {
-						is = new LimitedInputStream<true>(is, size);
+					is = move(f);
+					if((start + size) < fileSize) {
+						is.reset(new LimitedInputStream<true>(is.release(), size));
 					}
 				}
 				break;
@@ -294,38 +299,38 @@ checkslots:
 		case Transfer::TYPE_TREE:
 			{
 				sourceFile = aFile;
-				MemoryInputStream* mis = ShareManager::getInstance()->getTree(aFile, *profile);
-				if(!mis) {
+				unique_ptr<MemoryInputStream> mis(ShareManager::getInstance()->getTree(aFile, *profile));
+				if(!mis.get()) {
 					aSource.sendError();
 					return false;
 				}
 
 				start = 0;
 				fileSize = size = mis->getSize();
-				is = mis;
+				is = move(mis);
 				break;
 			}
 		case Transfer::TYPE_PARTIAL_LIST:
 			{
-				MemoryInputStream* mis;
+				unique_ptr<MemoryInputStream> mis = nullptr;
 				// Partial file list
 				if (tthList) {
 					if (aFile[0] != '/') {
-						mis = QueueManager::getInstance()->generateTTHList(aFile, *profile != SP_HIDDEN);
+						mis.reset(QueueManager::getInstance()->generateTTHList(aFile, *profile != SP_HIDDEN));
 					} else {
-						mis = ShareManager::getInstance()->generateTTHList(aFile, listRecursive, *profile);
+						mis.reset(ShareManager::getInstance()->generateTTHList(aFile, listRecursive, *profile));
 					}
 				} else {
-					mis = ShareManager::getInstance()->generatePartialList(aFile, listRecursive, *profile);
+					mis.reset(ShareManager::getInstance()->generatePartialList(aFile, listRecursive, *profile));
 				}
 
-				if(mis == NULL) {
+				if(!mis.get()) {
 					aSource.sendError();
 					return false;
 				}
 				start = 0;
 				fileSize = size = mis->getSize();
-				is = mis;
+				is = move(mis);
 				break;
 			}
 		}
@@ -336,16 +341,14 @@ checkslots:
 		aSource.sendError(e.getError());
 		return false;
 	} catch(const Exception& e) {
-		if(is)
-			delete is;
-		LogManager::getInstance()->message(STRING(UNABLE_TO_SEND_FILE) + " " + sourceFile + ": " + e.getError(), LogManager::LOG_ERROR);
+		if (!e.getError().empty())
+			LogManager::getInstance()->message(STRING(UNABLE_TO_SEND_FILE) + " " + sourceFile + ": " + e.getError() + " (" + (Util::toString(ClientManager::getInstance()->getNicks(aSource.getUser()->getCID())) + ")"), LogManager::LOG_ERROR);
 		aSource.sendError();
 		return false;
 	}
 
 	// remove file from upload queue
 	clearUserFiles(aSource.getUser());
-	bool resumed = false;
 
 	{
 		Lock l(cs);
@@ -354,52 +357,28 @@ checkslots:
 		if(cu != notifiedUsers.end()) {
 			notifiedUsers.erase(cu);
 		}
-
-		for(auto i = delayUploads.begin(); i != delayUploads.end(); ++i) {
-			Upload* up = *i;
-			if(&aSource == &up->getUserConnection()) {
-				if(sourceFile != up->getPath() && up->isSet(Upload::FLAG_CHUNKED)) {
-					logUpload(up);
-				} else {
-					resumed = true;
-				}
-
-				if (up->getBundle()) {
-					up->getBundle()->removeUpload(up);
-				}
-				delayUploads.erase(i);
-				dcassert(find(delayUploads.begin(), delayUploads.end(), up) == delayUploads.end());
-				delete up;
-				break;
-			}
-		}
 	}
 
-	Upload* u = new Upload(aSource, sourceFile, TTHValue());
-	u->setStream(is);
+	Upload* u = new Upload(aSource, sourceFile, TTHValue(), move(is));
 	u->setSegment(Segment(start, size));
-	if(u->getSize() != fileSize)
+	if(u->getSegment().getEnd() != fileSize)
 		u->setFlag(Upload::FLAG_CHUNKED);
-	if(resumed)
-		u->setFlag(Upload::FLAG_RESUMED);
 	if(partialFileSharing)
 		u->setFlag(Upload::FLAG_PARTIAL);
 	u->setFileSize(fileSize);
 	u->setType(type);
 
-	UploadBundlePtr bundle = NULL;
-	if (!aSource.getLastBundle().empty()) {
-		bundle = findBundle(aSource.getLastBundle());
-	}
-
 	{
 		Lock l(cs);
 		uploads.push_back(u);
+
+		auto bundle = !aSource.getLastBundle().empty() ? findBundle(aSource.getLastBundle()) : nullptr;
 		if (bundle) {
 			bundle->addUpload(u);
 		}
 	}
 
+end:
 	UpdateSlotCounts(aSource, slotType);
 	return true;
 }
@@ -490,12 +469,12 @@ bool UploadManager::getMultiConn(const UserConnection& aSource) {
 
 	if (!multiUploads.empty()) {
 		uint16_t highest=0;
-		for(auto i = multiUploads.begin(); i != multiUploads.end(); ++i) {
-			if (i->first == u) {
+		for(auto& i: multiUploads) {
+			if (i.first == u) {
 				continue;
 			}
-			if (i->second > highest) {
-				highest = i->second;
+			if (i.second > highest) {
+				highest = i.second;
 			}
 		}
 
@@ -533,8 +512,7 @@ void UploadManager::onUBN(const AdcCommand& cmd) {
 	float percent = -1;
 	string speedStr;
 
-	for(auto i = cmd.getParameters().begin(); i != cmd.getParameters().end(); ++i) {
-		const string& str = *i;
+	for(const auto& str: cmd.getParameters()) {
 		if(str.compare(0, 2, "HI") == 0) {
 			hubIpPort = str.substr(2);
 		} else if(str.compare(0, 2, "BU") == 0) {
@@ -592,8 +570,7 @@ void UploadManager::createBundle(const AdcCommand& cmd) {
 	int64_t size=0, downloaded=0;
 	bool singleUser = false;
 
-	for(auto i = cmd.getParameters().begin(); i != cmd.getParameters().end(); ++i) {
-		const string& str = *i;
+	for(const auto& str: cmd.getParameters()) {
 		if(str.compare(0, 2, "BU") == 0) {
 			bundleToken = str.substr(2);
 		} else if(str.compare(0, 2, "TO") == 0) {
@@ -647,8 +624,7 @@ void UploadManager::updateBundleInfo(const AdcCommand& cmd) {
 	int64_t size=0, downloaded=0;
 	bool singleUser = false, multiUser = false;
 
-	for(auto i = cmd.getParameters().begin(); i != cmd.getParameters().end(); ++i) {
-		const string& str = *i;
+	for(const auto& str: cmd.getParameters()) {
 		if(str.compare(0, 2, "BU") == 0) {
 			bundleToken = str.substr(2);
 		} else if(str.compare(0, 2, "SI") == 0) {
@@ -694,8 +670,7 @@ void UploadManager::changeBundle(const AdcCommand& cmd) {
 	string bundleToken;
 	string token;
 
-	for(auto i = cmd.getParameters().begin(); i != cmd.getParameters().end(); ++i) {
-		const string& str = *i;
+	for(const auto& str: cmd.getParameters()) {
 		if(str.compare(0, 2, "BU") == 0) {
 			bundleToken = str.substr(2);
 		} else if(str.compare(0, 2, "TO") == 0) {
@@ -729,9 +704,9 @@ void UploadManager::changeBundle(const AdcCommand& cmd) {
 void UploadManager::finishBundle(const AdcCommand& cmd) {
 	string bundleToken;
 
-	for(auto i = cmd.getParameters().begin(); i != cmd.getParameters().end(); ++i) {
-		if((*i).compare(0, 2, "BU") == 0) {
-			bundleToken = (*i).substr(2);
+	for(const auto& str: cmd.getParameters()) {
+		if(str.compare(0, 2, "BU") == 0) {
+			bundleToken = str.substr(2);
 			break;
 		}
 	}
@@ -758,8 +733,7 @@ void UploadManager::finishBundle(const AdcCommand& cmd) {
 void UploadManager::removeBundleConnection(const AdcCommand& cmd) {
 	string token;
 
-	for(StringIterC i = cmd.getParameters().begin(); i != cmd.getParameters().end(); ++i) {
-		const string& str = *i;
+	for(const auto& str: cmd.getParameters()) {
 		if(str.compare(0, 2, "TO") == 0) {
 			token = str.substr(2);
 		}
@@ -823,7 +797,8 @@ int64_t UploadManager::getRunningAverage() {
 	int64_t avg = 0;
 
 	Lock l(cs);
-	for_each(uploads.begin(), uploads.end(), [&](const Upload* u) { avg += static_cast<int64_t>(u->getAverageSpeed()); });
+	for (auto u: uploads)
+		avg += static_cast<int64_t>(u->getAverageSpeed()); 
 	return avg;
 }
 
@@ -845,15 +820,10 @@ void UploadManager::removeUpload(Upload* aUpload, bool delay) {
 	Lock l(cs);
 	dcassert(find(uploads.begin(), uploads.end(), aUpload) != uploads.end());
 	uploads.erase(remove(uploads.begin(), uploads.end(), aUpload), uploads.end());
-	dcassert(find(uploads.begin(), uploads.end(), aUpload) == uploads.end());
-	dcassert(find(delayUploads.begin(), delayUploads.end(), aUpload) == delayUploads.end());
 
 	if(delay) {
 		delayUploads.push_back(aUpload);
 	} else {
-		if (aUpload->getBundle()) {
-			aUpload->getBundle()->removeUpload(aUpload);
-		}
 		delete aUpload;
 	}
 }
@@ -906,7 +876,7 @@ void UploadManager::on(UserConnectionListener::Send, UserConnection* aSource) no
 	}
 
 	Upload* u = aSource->getUpload();
-	dcassert(u != NULL);
+	dcassert(u);
 
 	u->setStart(GET_TICK());
 	u->tick();
@@ -925,8 +895,12 @@ void UploadManager::on(AdcCommand::GET, UserConnection* aSource, const AdcComman
 	const string& fname = c.getParam(1);
 	int64_t aStartPos = Util::toInt64(c.getParam(2));
 	int64_t aBytes = Util::toInt64(c.getParam(3));
-	string userSID = Util::emptyString;
+	string userSID;
 	c.getParam("ID", 0, userSID);
+
+	// bundles
+
+
 	if(prepareFile(*aSource, type, fname, aStartPos, aBytes, userSID, c.hasFlag("RE", 4), c.hasFlag("TL", 4))) {
 		Upload* u = aSource->getUpload();
 		dcassert(u);
@@ -937,8 +911,7 @@ void UploadManager::on(AdcCommand::GET, UserConnection* aSource, const AdcComman
 			.addParam(Util::toString(u->getSize()));
 
 		if(c.hasFlag("ZL", 4)) {
-			u->setStream(new FilteredInputStream<ZFilter, true>(u->getStream()));
-			u->setFlag(Upload::FLAG_ZUPLOAD);
+			u->setFiltered();
 			cmd.addParam("ZL1");
 		}
 		if(c.hasFlag("TL", 4) && type == Transfer::names[Transfer::TYPE_PARTIAL_LIST]) {
@@ -947,8 +920,9 @@ void UploadManager::on(AdcCommand::GET, UserConnection* aSource, const AdcComman
 
 		aSource->send(cmd);
 		
+		if (!u->isSet(Upload::FLAG_RESUMED))
+			u->setStart(GET_TICK());
 
-		u->setStart(GET_TICK());
 		u->tick();
 		aSource->setState(UserConnection::STATE_RUNNING);
 		aSource->transmitFile(u->getStream());
@@ -959,7 +933,7 @@ void UploadManager::on(AdcCommand::GET, UserConnection* aSource, const AdcComman
 void UploadManager::on(UserConnectionListener::BytesSent, UserConnection* aSource, size_t aBytes, size_t aActual) noexcept {
 	dcassert(aSource->getState() == UserConnection::STATE_RUNNING);
 	Upload* u = aSource->getUpload();
-	dcassert(u != NULL);
+	dcassert(u);
 	u->addPos(aBytes, aActual);
 	u->tick();
 }
@@ -980,18 +954,20 @@ void UploadManager::on(UserConnectionListener::Failed, UserConnection* aSource, 
 void UploadManager::on(UserConnectionListener::TransmitDone, UserConnection* aSource) noexcept {
 	dcassert(aSource->getState() == UserConnection::STATE_RUNNING);
 	Upload* u = aSource->getUpload();
-	dcassert(u != NULL);
+	dcassert(u);
 
 	aSource->setState(UserConnection::STATE_GET);
 
-	if(!u->isSet(Upload::FLAG_CHUNKED)) {
+	bool partialSegmentFinished = u->isSet(Upload::FLAG_CHUNKED) && u->getSegment().getEnd() != u->getFileSize();
+	if(!partialSegmentFinished) {
 		logUpload(u);
 	}
-	removeUpload(u, (u->isSet(Upload::FLAG_CHUNKED) || u->getBundle()) ? true : false);
+
+	removeUpload(u, partialSegmentFinished || u->getBundle());
 }
 
 void UploadManager::logUpload(const Upload* u) {
-	if(BOOLSETTING(LOG_UPLOADS) && u->getType() != Transfer::TYPE_TREE && (BOOLSETTING(LOG_FILELIST_TRANSFERS) || u->getType() != Transfer::TYPE_FULL_LIST)) {
+	if(SETTING(LOG_UPLOADS) && u->getType() != Transfer::TYPE_TREE && (SETTING(LOG_FILELIST_TRANSFERS) || u->getType() != Transfer::TYPE_FULL_LIST)) {
 		ParamMap params;
 		u->getParams(u->getUserConnection(), params);
 		LOG(LogManager::UPLOAD, params);
@@ -1000,21 +976,21 @@ void UploadManager::logUpload(const Upload* u) {
 	fire(UploadManagerListener::Complete(), u);
 }
 
-size_t UploadManager::addFailedUpload(const UserConnection& source, const string& file, int64_t pos, int64_t size) {
+size_t UploadManager::addFailedUpload(const UserConnection& source, const string& aFile, int64_t pos, int64_t size) {
 	size_t queue_position = 0;
 	Lock l(cs);
 	auto it = find_if(uploadQueue.begin(), uploadQueue.end(), [&](const UserPtr& u) -> bool { ++queue_position; return u == source.getUser(); });
 	if(it != uploadQueue.end()) {
 		it->token = source.getToken();
-		for(auto fileIter = it->files.cbegin(); fileIter != it->files.cend(); ++fileIter) {
-			if((*fileIter)->getFile() == file) {
-				(*fileIter)->setPos(pos);
+		for(const auto f: it->files) {
+			if(f->getFile() == aFile) {
+				f->setPos(pos);
 				return queue_position;
 			}
 		}
 	}
 
-	UploadQueueItem* uqi = new UploadQueueItem(source.getHintedUser(), file, pos, size);
+	UploadQueueItem* uqi = new UploadQueueItem(source.getHintedUser(), aFile, pos, size);
 	if(it == uploadQueue.end()) {
 		++queue_position;
 
@@ -1034,9 +1010,9 @@ void UploadManager::clearUserFiles(const UserPtr& aUser) {
 	Lock l (cs);
 	auto it = find_if(uploadQueue.cbegin(), uploadQueue.cend(), [&](const UserPtr& u) { return u == aUser; });
 	if(it != uploadQueue.cend()) {
-		for(auto i = it->files.cbegin(); i != it->files.cend(); ++i) {
-			fire(UploadManagerListener::QueueItemRemove(), (*i));
-			(*i)->dec();
+		for(const auto f: it->files) {
+			fire(UploadManagerListener::QueueItemRemove(), f);
+			f->dec();
 		}
 		uploadQueue.erase(it);
 		fire(UploadManagerListener::QueueRemove(), aUser);
@@ -1099,14 +1075,13 @@ void UploadManager::on(TimerManagerListener::Minute, uint64_t aTick) noexcept {
 		for(auto i = notifiedUsers.begin(); i != notifiedUsers.end();) {
 			if((i->second + (90 * 1000)) < aTick) {
 				clearUserFiles(i->first);
-				notifiedUsers.erase(i++);
+				i = notifiedUsers.erase(i);
 			} else
 				++i;
 		}
 
-		if( BOOLSETTING(AUTO_KICK) ) {
-			for(auto i = uploads.begin(); i != uploads.end(); ++i) {
-				Upload* u = *i;
+		if( SETTING(AUTO_KICK) ) {
+			for(auto u: uploads) {
 				if(u->getUser()->isOnline()) {
 					u->unsetFlag(Upload::FLAG_PENDING_KICK);
 					continue;
@@ -1117,7 +1092,7 @@ void UploadManager::on(TimerManagerListener::Minute, uint64_t aTick) noexcept {
 					continue;
 				}
 
-				if(BOOLSETTING(AUTO_KICK_NO_FAVS) && FavoriteManager::getInstance()->isFavoriteUser(u->getUser())) {
+				if(SETTING(AUTO_KICK_NO_FAVS) && FavoriteManager::getInstance()->isFavoriteUser(u->getUser())) {
 					continue;
 				}
 
@@ -1126,9 +1101,9 @@ void UploadManager::on(TimerManagerListener::Minute, uint64_t aTick) noexcept {
 		}
 	}
 		
-	for(auto i = disconnects.begin(); i != disconnects.end(); ++i) {
-		LogManager::getInstance()->message(STRING(DISCONNECTED_USER) + " " + Util::toString(ClientManager::getInstance()->getNicks((*i)->getCID())), LogManager::LOG_INFO);
-		ConnectionManager::getInstance()->disconnect(*i, false);
+	for(auto i: disconnects) {
+		LogManager::getInstance()->message(STRING(DISCONNECTED_USER) + " " + Util::toString(ClientManager::getInstance()->getNicks(i->getCID())), LogManager::LOG_INFO);
+		ConnectionManager::getInstance()->disconnect(i, false);
 	}
 
 	int freeSlots = getFreeSlots();
@@ -1181,12 +1156,9 @@ void UploadManager::on(TimerManagerListener::Second, uint64_t /*aTick*/) noexcep
 			if(++u->delayTime > 10) {
 				if (u->isSet(Upload::FLAG_CHUNKED))
 					logUpload(u);
-				if (u->getBundle())
-					u->getBundle()->removeUpload(u);
 				
-				delayUploads.erase(i);
 				delete u;
-				i = delayUploads.begin();
+				i = delayUploads.erase(i);
 			} else {
 				i++;
 			}
@@ -1196,8 +1168,7 @@ void UploadManager::on(TimerManagerListener::Second, uint64_t /*aTick*/) noexcep
 			UploadBundlePtr ub = i->second;
 			if (ub->getUploads().empty() && ++ub->delayTime > 10) {
 				ConnectionManager::getInstance()->tokens.removeToken((*i).second->getToken());
-				bundles.erase(i);
-				i = bundles.begin();
+				i = bundles.erase(i);
 			} else {
 				if (ub->countSpeed() > 0)
 					tickBundles.push_back(ub);
@@ -1205,10 +1176,10 @@ void UploadManager::on(TimerManagerListener::Second, uint64_t /*aTick*/) noexcep
 			}
 		}
 
-		for(auto i = uploads.begin(); i != uploads.end(); ++i) {
-			if((*i)->getPos() > 0) {
-				ticks.push_back(*i);
-				(*i)->tick();
+		for(auto u: uploads) {
+			if(u->getPos() > 0) {
+				ticks.push_back(u);
+				u->tick();
 			}
 		}
 		
@@ -1234,10 +1205,7 @@ void UploadManager::removeDelayUpload(const UserConnection& aSource) {
 	auto i = find_if(delayUploads.begin(), delayUploads.end(), [&](Upload* up) { return &aSource == &up->getUserConnection(); });
 	if (i != delayUploads.end()) {
 		Upload* up = *i;
-		if (up->getBundle())
-			up->getBundle()->removeUpload(up);
 		delayUploads.erase(i);
-		dcassert(find(delayUploads.begin(), delayUploads.end(), up) == delayUploads.end());
 		dcassert(find_if(uploads.begin(), uploads.end(), [&](Upload* up) { return &aSource == &up->getUserConnection(); }) == uploads.end());
 		delete up;
 		return;
@@ -1253,19 +1221,17 @@ void UploadManager::abortUpload(const string& aFile, bool waiting){
 
 	{
 		Lock l(cs);
-		for(auto i = delayUploads.begin(); i != delayUploads.end(); i++){
-			Upload* u = (*i);
 
-			if(u->getPath() == aFile){
+		//delayUploads also keep the file open...
+		for(auto u: delayUploads) {
+			if(u->getPath() == aFile) {
 				u->getUserConnection().disconnect(true);
 				nowait = false;
 			}
 		}
 
-		for(auto i = uploads.begin(); i != uploads.end(); i++){
-			Upload* u = (*i);
-
-			if(u->getPath() == aFile){
+		for(auto u: uploads) {
+			if(u->getPath() == aFile) {
 				u->getUserConnection().disconnect(true);
 				nowait = false;
 			}
@@ -1281,9 +1247,7 @@ void UploadManager::abortUpload(const string& aFile, bool waiting){
 			Lock l(cs);
 
 			nowait = true;
-			for(auto i = uploads.begin(); i != uploads.end(); i++){
-				Upload* u = (*i);
-
+			for(auto u: uploads) {
 				if(u->getPath() == aFile){
 					dcdebug("upload %s is not removed\n", aFile.c_str());
 					nowait = false;
@@ -1292,9 +1256,7 @@ void UploadManager::abortUpload(const string& aFile, bool waiting){
 			}
 
 			nowait = true;
-			for(auto i = delayUploads.begin(); i != delayUploads.end(); i++){
-				Upload* u = (*i);
-
+			for(auto u: delayUploads) {
 				if(u->getPath() == aFile){
 					dcdebug("delayUpload %s is not removed\n", aFile.c_str());
 					nowait = false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ class SpyFrame : public MDITabChildWindowImpl<SpyFrame>, public StaticFrame<SpyF
 	private ClientManagerListener, private TimerManagerListener, private SettingsManagerListener
 {
 public:
-	SpyFrame() : total(0), cur(0), closed(false), ignoreTth(BOOLSETTING(SPY_FRAME_IGNORE_TTH_SEARCHES)), ignoreTthContainer(WC_BUTTON, this, IGNORETTH_MESSAGE_MAP) {
+	SpyFrame() : total(0), cur(0), closed(false), ignoreTth(SETTING(SPY_FRAME_IGNORE_TTH_SEARCHES)), ignoreTthContainer(WC_BUTTON, this, IGNORETTH_MESSAGE_MAP) {
 		memzero(perSecond, sizeof(perSecond));
 	}
 

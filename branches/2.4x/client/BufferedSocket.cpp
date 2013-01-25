@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -526,7 +526,7 @@ void BufferedSocket::shutdown(function<void ()> f) {
 
 void BufferedSocket::addTask(Tasks task, TaskData* data) {
 	dcassert(task == DISCONNECT || task == SHUTDOWN || sock.get());
-	tasks.push_back(make_pair(task, unique_ptr<TaskData>(data))); taskSem.signal();
+	tasks.emplace_back(task, unique_ptr<TaskData>(data)); taskSem.signal();
 }
 
 } // namespace dcpp

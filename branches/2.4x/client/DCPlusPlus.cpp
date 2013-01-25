@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,13 +49,14 @@
 
 #include "../windows/IgnoreManager.h"
 #include "../windows/PopupManager.h"
-#include "../windows/Wizard.h"
 #include "HighlightManager.h"
 #include "AutoSearchManager.h"
 #include "ShareScannerManager.h"
+
+#include "format.h"
 namespace dcpp {
 
-void startup(function<void (const string&)> f) {
+void startup(function<void (const string&)> splashF, function<void (const string&)> messageF, function<void ()> runWizard) {
 	// "Dedicated to the near-memory of Nev. Let's start remembering people while they're still alive."
 	// Nev's great contribution to dc++
 	while(1) break;
@@ -100,13 +101,14 @@ void startup(function<void (const string&)> f) {
 	DirectoryListingManager::newInstance();
 	UpdateManager::newInstance();
 
-	SettingsManager::getInstance()->load();	
+	SettingsManager::getInstance()->load(messageF);
+
+
 	AutoSearchManager::getInstance()->AutoSearchLoad();
 	UploadManager::getInstance()->setFreeSlotMatcher();
 	Localization::init();
-	if(BOOLSETTING(WIZARD_RUN_NEW)) {
-		WizardDlg dlg;
-		dlg.DoModal(/*m_hWnd*/);
+	if(SETTING(WIZARD_RUN_NEW)) {
+		runWizard();
 		SettingsManager::getInstance()->set(SettingsManager::WIZARD_RUN_NEW, false); //wizard has run on startup
 	}
 
@@ -120,9 +122,9 @@ void startup(function<void (const string&)> f) {
 
 	CryptoManager::getInstance()->loadCertificates();
 
-	auto announce = [&f](const string& str) {
-		if(f) {
-			f(str);
+	auto announce = [&splashF](const string& str) {
+		if(splashF) {
+			splashF(str);
 		}
 	};
 
@@ -133,11 +135,11 @@ void startup(function<void (const string&)> f) {
 	QueueManager::getInstance()->loadQueue();
 
 	announce(STRING(SHARED_FILES));
-	ShareManager::getInstance()->startup(); 
+	ShareManager::getInstance()->startup(splashF); 
 
 	FavoriteManager::getInstance()->load();
 
-	if(BOOLSETTING(GET_USER_COUNTRY)) {
+	if(SETTING(GET_USER_COUNTRY)) {
 		announce(STRING(COUNTRY_INFORMATION));
 		GeoManager::getInstance()->init();
 	}
@@ -151,6 +153,8 @@ void shutdown(function<void (const string&)> f) {
 			f(str);
 		}
 	};
+
+	ShareManager::getInstance()->abortRefresh();
 
 	announce(STRING(SAVING_HASH_DATA));
 	HashManager::getInstance()->shutdown();

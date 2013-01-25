@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -119,8 +119,6 @@ public:
 		PATH_GLOBAL_CONFIG,
 		/** Per-user configuration (queue, favorites, ...) */
 		PATH_USER_CONFIG,
-		/** Per-user local data (cache, temp files, ...) */
-		PATH_USER_LANGUAGE,
 		/** Language files */
 		PATH_USER_LOCAL,
 		/** Various resources (help files etc) */
@@ -159,6 +157,7 @@ public:
 
 	/** Migrate from pre-localmode config location */
 	static void migrate(const string& file);
+	static void migrate(const string& aDir, const string& aPattern);
 
 	/** Path of file lists */
 	static string getListPath() { return getPath(PATH_FILE_LISTS); }
@@ -403,7 +402,7 @@ static string getShortTimeString(time_t t = time(NULL) );
 
 	static string toString(const StringSet& lst) { return listToString<StringSet>(lst); }
 	static string toString(const StringList& lst) { return listToString<StringList>(lst); }
-	static string toString(const HubSet& lst) { return listToString<HubSet>(lst); }
+	static string toString(const OrderedStringSet& lst) { return listToString<OrderedStringSet>(lst); }
 
 	static wstring toStringW( int32_t val ) {
 		wchar_t buf[32];
@@ -502,19 +501,12 @@ static string getShortTimeString(time_t t = time(NULL) );
 	static TCHAR* strstr(const TCHAR *str1, const TCHAR *str2, int *pnIdxFound);
 	static tstring replace(const tstring& aString, const tstring& fStr, const tstring& rStr);
 
-	static bool getAway() { return away; }
-	static void setAway(bool aAway, bool byminimize = false);
-	static string getAwayMessage(ParamMap& params);
-	
 	static bool toBool(const int aNumber) {
 		return (aNumber > 0 ? true : false);
 	}
 	
 	static string base64_encode(unsigned char const*, unsigned int len);
     static string base64_decode(string const& s);
-
-	
-	static void setAwayMessage(const string& aMsg) { awayMsg = aMsg; }
 
 	static uint64_t getDirSize(const string &sFullPath);
 	static bool validatePath(const string &sPath);
@@ -538,9 +530,6 @@ private:
 
 	static StringList params;
 
-	static bool away;
-	static string awayMsg;
-	static time_t awayTime;
 	static time_t startTime;
 	
 	static void loadBootConfig();

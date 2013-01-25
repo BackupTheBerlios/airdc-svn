@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,8 +101,8 @@ public:
 	typedef multimap<double, QueueItemPtr> SourceSpeedMapQI;
 
 
-	Bundle(const string& target, time_t added, Priority aPriority, const ProfileTokenSet& aAutoSearch = ProfileTokenSet(), time_t aDirDate=0, const string& aToken = Util::emptyString) noexcept;
-	Bundle(QueueItemPtr qi, const ProfileTokenSet& aAutoSearches = ProfileTokenSet(), const string& aToken = Util::emptyString) noexcept;
+	Bundle(const string& target, time_t added, Priority aPriority, const ProfileTokenSet& aAutoSearch = ProfileTokenSet(), time_t aDirDate=0, const string& aToken = Util::emptyString, bool aDirty = true) noexcept;
+	Bundle(QueueItemPtr qi, const ProfileTokenSet& aAutoSearches = ProfileTokenSet(), const string& aToken = Util::emptyString, bool aDirty = true) noexcept;
 	~Bundle();
 
 	GETSET(string, token, Token);
@@ -162,8 +162,8 @@ public:
 	string getBundleFile() const;
 	void deleteBundleFile();
 
-	void setDirty(bool dirty);
-	bool getDirty() const { return dirty; }
+	void setDirty();
+	bool getDirty() const;
 	bool checkRecent();
 	bool isRecent() const { return recent; }
 
@@ -171,15 +171,15 @@ public:
 
 	/* QueueManager */
 	void save();
-	bool removeQueue(QueueItemPtr qi, bool finished) noexcept;
-	bool addQueue(QueueItemPtr qi) noexcept;
+	bool removeQueue(QueueItemPtr& qi, bool finished) noexcept;
+	bool addQueue(QueueItemPtr& qi) noexcept;
 
 	void getDirQIs(const string& aDir, QueueItemList& ql) const noexcept;
 
-	bool addFinishedItem(QueueItemPtr qi, bool finished) noexcept;
-	bool removeFinishedItem(QueueItemPtr qi) noexcept;
+	bool addFinishedItem(QueueItemPtr& qi, bool finished) noexcept;
+	bool removeFinishedItem(QueueItemPtr& qi) noexcept;
 	void finishBundle() noexcept;
-	bool allowHash();
+	bool allowHash() const;
 
 	void clearFinishedNotifications(FinishedNotifyList& fnl) noexcept;
 	bool isFinishedNotified(const UserPtr& aUser) const noexcept;
@@ -229,19 +229,18 @@ public:
 	bool isSource(const UserPtr& aUser) const noexcept;
 	bool isBadSource(const UserPtr& aUser) const noexcept;
 	bool isFinished() const { return queueItems.empty(); }
-	void removeBadSource(const HintedUser& aUser) noexcept;
 
 	/** All queue items indexed by user */
-	void addUserQueue(QueueItemPtr qi) noexcept;
-	bool addUserQueue(QueueItemPtr qi, const HintedUser& aUser) noexcept;
-	QueueItemPtr getNextQI(const UserPtr& aUser, const HubSet& onlineHubs, string aLastError, Priority minPrio, int64_t wantedSize, int64_t lastSpeed, bool smallSlot, bool allowOverlap) noexcept;
+	void addUserQueue(QueueItemPtr& qi) noexcept;
+	bool addUserQueue(QueueItemPtr& qi, const HintedUser& aUser, bool isBad = false) noexcept;
+	QueueItemPtr getNextQI(const UserPtr& aUser, const OrderedStringSet& onlineHubs, string aLastError, Priority minPrio, int64_t wantedSize, int64_t lastSpeed, bool smallSlot, bool allowOverlap) noexcept;
 	void getItems(const UserPtr& aUser, QueueItemList& ql) const noexcept;
 
-	void removeUserQueue(QueueItemPtr qi) noexcept;
-	bool removeUserQueue(QueueItemPtr qi, const UserPtr& aUser, bool addBad) noexcept;
+	void removeUserQueue(QueueItemPtr& qi) noexcept;
+	bool removeUserQueue(QueueItemPtr& qi, const UserPtr& aUser, bool addBad) noexcept;
 
 	//moves the file back in userqueue for the given user (only within the same priority)
-	void rotateUserQueue(QueueItemPtr qi, const UserPtr& aUser) noexcept;
+	void rotateUserQueue(QueueItemPtr& qi, const UserPtr& aUser) noexcept;
 private:
 	int64_t finishedSegments;
 	int64_t currentDownloaded; //total downloaded for the running downloads

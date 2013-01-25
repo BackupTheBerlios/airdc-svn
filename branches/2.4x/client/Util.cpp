@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,10 +61,6 @@ long Util::mUptimeSeconds = 0;
 string Util::emptyString;
 wstring Util::emptyStringW;
 tstring Util::emptyStringT;
-
-bool Util::away = false;
-string Util::awayMsg;
-time_t Util::awayTime;
 
 string Util::paths[Util::PATH_LAST];
 StringList Util::params;
@@ -190,9 +186,6 @@ void Util::initialize() {
 	paths[PATH_GLOBAL_CONFIG] = exePath;
 
 	paths[PATH_USER_CONFIG] = paths[PATH_GLOBAL_CONFIG] + "Settings\\";
-	paths[PATH_USER_LANGUAGE] = paths[PATH_GLOBAL_CONFIG] + "Language\\";
-
-
 
 	loadBootConfig();
 
@@ -210,12 +203,12 @@ void Util::initialize() {
 			paths[PATH_USER_CONFIG] = Text::fromT(buf) + "\\AirDC++\\";
 		}
 
-		paths[PATH_USER_LOCAL] = ::SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, buf) == S_OK ? Text::fromT(buf) + "\\AirDC++\\" : paths[PATH_USER_CONFIG];
+		paths[PATH_USER_LOCAL] = ::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, buf) == S_OK ? Text::fromT(buf) + "\\AirDC++\\" : paths[PATH_USER_CONFIG];
 	}
 	
 	paths[PATH_DOWNLOADS] = getDownloadsPath(paths[PATH_USER_CONFIG]);
 	paths[PATH_RESOURCES] = exePath;
-	paths[PATH_LOCALE] = exePath;
+	paths[PATH_LOCALE] = paths[PATH_USER_LOCAL] + "Language\\";
 	paths[PATH_DOWNLOADS] = getDownloadsPath(paths[PATH_USER_CONFIG]);
 
 #else
@@ -243,16 +236,17 @@ void Util::initialize() {
 	paths[PATH_DOWNLOADS] = home + "/Downloads/";
 #endif
 
-	paths[PATH_FILE_LISTS] = paths[PATH_USER_LOCAL] + "FileLists" PATH_SEPARATOR_STR;
+	paths[PATH_FILE_LISTS] = paths[PATH_USER_CONFIG] + "FileLists" PATH_SEPARATOR_STR;
 	paths[PATH_HUB_LISTS] = paths[PATH_USER_LOCAL] + "HubLists" PATH_SEPARATOR_STR;
 	paths[PATH_NOTEPAD] = paths[PATH_USER_CONFIG] + "Notepad.txt";
 	paths[PATH_EMOPACKS] = paths[PATH_RESOURCES] + "EmoPacks" PATH_SEPARATOR_STR;
-	paths[PATH_BUNDLES] = paths[PATH_USER_LOCAL] + "Bundles" PATH_SEPARATOR_STR;
+	paths[PATH_BUNDLES] = paths[PATH_USER_CONFIG] + "Bundles" PATH_SEPARATOR_STR;
 	paths[PATH_THEMES] = paths[PATH_GLOBAL_CONFIG] + "Themes" PATH_SEPARATOR_STR;
 
 	File::ensureDirectory(paths[PATH_USER_CONFIG]);
 	File::ensureDirectory(paths[PATH_USER_LOCAL]);
 	File::ensureDirectory(paths[PATH_THEMES]);
+	File::ensureDirectory(paths[PATH_LOCALE]);
 }
 
 void Util::migrate(const string& file) {
@@ -275,6 +269,24 @@ void Util::migrate(const string& file) {
 		File::renameFile(old, file);
 	} catch(const FileException& /*e*/) {
 		//LogManager::getInstance()->message("Settings migration for failed: " + e.getError());
+	}
+}
+
+void Util::migrate(const string& aDir, const string& aPattern) {
+	if (localMode)
+		return;
+
+	string old = Util::getPath(Util::PATH_GLOBAL_CONFIG) + "Settings\\" + Util::getLastDir(aDir) + "\\";
+
+	if (Util::fileExists(old)) {
+		StringList fileList = File::findFiles(old, aPattern);
+		for (auto& path: fileList) {
+			try {
+				File::renameFile(path, aDir + Util::getFileName(path));
+			} catch(const FileException& /*e*/) {
+				//LogManager::getInstance()->message("Settings migration for failed: " + e.getError());
+			}
+		}
 	}
 }
 
@@ -562,21 +574,6 @@ map<string, string> Util::decodeQuery(const string& query) {
 	}
 
 	return ret;
-}
-
-void Util::setAway(bool aAway, bool byminimize /*false*/) {
-	away = aAway;
-	
-	if(!byminimize) //only save the state if away mode is set by user
-	SettingsManager::getInstance()->set(SettingsManager::AWAY, aAway);
-
-	if (away)
-		awayTime = time(NULL);
-}
-
-string Util::getAwayMessage(ParamMap& params) { 
-	params["idleTI"] = formatSeconds(time(NULL) - awayTime);
-	return formatParams(awayMsg.empty() ? SETTING(DEFAULT_AWAY_MESSAGE) : awayMsg, params);
 }
 
 wstring Util::formatSecondsW(int64_t aSec, bool supressHours /*false*/) {
@@ -1021,7 +1018,7 @@ uint64_t Util::getDirSize(const string &sFullPath) {
 				continue;
 			if(name.find('$') != string::npos)
 				continue;
-			if(!BOOLSETTING(SHARE_HIDDEN) && (fData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))
+			if(!SETTING(SHARE_HIDDEN) && (fData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN))
 				continue;
 			if(fData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 				string newName = sFullPath + PATH_SEPARATOR + name;
@@ -1071,17 +1068,29 @@ bool Util::fileExists(const string &aFile) {
 
 string Util::formatTime(const string &msg, const time_t t) {
 	if (!msg.empty()) {
+		string ret = msg;
 		tm* loc = localtime(&t);
 		if(!loc) {
 			return Util::emptyString;
 		}
 
-		size_t bufsize = msg.size() + 256;
+#ifndef _WIN64
+		// Work it around :P
+		string::size_type i = 0;
+		while((i = ret.find("%", i)) != string::npos) {
+			if(string("aAbBcdHIjmMpSUwWxXyYzZ%").find(ret[i+1]) == string::npos) {
+				ret.replace(i, 1, "%%");
+			}
+			i += 2;
+		}
+#endif
+
+		size_t bufsize = ret.size() + 256;
 		string buf(bufsize, 0);
 
 		errno = 0;
 
-		buf.resize(strftime(&buf[0], bufsize-1, msg.c_str(), loc));
+		buf.resize(strftime(&buf[0], bufsize-1, ret.c_str(), loc));
 		
 		while(buf.empty()) {
 			if(errno == EINVAL)
@@ -1089,7 +1098,7 @@ string Util::formatTime(const string &msg, const time_t t) {
 
 			bufsize+=64;
 			buf.resize(bufsize);
-			buf.resize(strftime(&buf[0], bufsize-1, msg.c_str(), loc));
+			buf.resize(strftime(&buf[0], bufsize-1, ret.c_str(), loc));
 		}
 
 #ifdef _WIN32
@@ -1361,7 +1370,7 @@ TCHAR* Util::strstr(const TCHAR *str1, const TCHAR *str2, int *pnIdxFound) {
 /* natural sorting */ 
 
 int Util::DefaultSort(const wchar_t *a, const wchar_t *b, bool noCase /*=  true*/) {
-	if(BOOLSETTING(NAT_SORT)) {
+	if(SETTING(NAT_SORT)) {
 		int v1, v2;
 		while(*a != 0 && *b != 0) {
 			v1 = 0; v2 = 0;

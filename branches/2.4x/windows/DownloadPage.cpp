@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,19 +17,14 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
-#include "../client/SettingsManager.h"
 
 #include "Resource.h"
 
 #include "DownloadPage.h"
-#include "CommandDlg.h"
 #include "WinUtil.h"
 #include "PropertiesDlg.h"
 
 PropPage::TextItem DownloadPage::texts[] = {
-	{ IDC_AIRDC_ANTI_VIR, ResourceManager::SETAIRDC_ANTI_VIR },
-	{ IDC_ANTIVIR_BROWSE, ResourceManager::BROWSE },
 	{ IDC_AUTO_SEARCH_ALT, ResourceManager::SETTINGS_AUTO_BUNDLE_SEARCH },
 	{ IDC_DONTBEGIN, ResourceManager::DONT_ADD_SEGMENT_TEXT },
 	{ IDC_ENABLE_SEGMENTS, ResourceManager::ENABLE_MULTI_SOURCE },
@@ -45,7 +40,7 @@ PropPage::TextItem DownloadPage::texts[] = {
 	{ IDC_INTERVAL_TEXT, ResourceManager::MINIMUM_SEARCH_INTERVAL },
 	{ IDC_AUTO_ADD_SOURCES, ResourceManager::AUTO_ADD_SOURCE },
 	{ IDC_ALLOW_MATCH_FULL, ResourceManager::SETTINGS_ALLOW_MATCH_FULL_LIST },
-	{ IDC_OTHER_QUEUE_OPTIONS, ResourceManager::FINISHED_DOWNLOADS },
+	{ IDC_FINISHED_OPTIONS, ResourceManager::FINISHED_DOWNLOADS },
 	{ 0, ResourceManager::SETTINGS_AUTO_AWAY }
 };
 
@@ -135,14 +130,3 @@ void DownloadPage::checkItems() {
 	::EnableWindow(GetDlgItem(IDC_SETTINGS_AUTO_SEARCH_LIMIT),	IsDlgButtonChecked(IDC_AUTO_SEARCH_ALT) && IsDlgButtonChecked(IDC_AUTO_ADD_SOURCES));
 }
 
-LRESULT DownloadPage::onBrowse(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	TCHAR buf[MAX_PATH];
-
-	GetDlgItemText(IDC_ANTIVIR_PATH, buf, MAX_PATH);
-	tstring x = buf;
-
-	if(WinUtil::browseFile(x, m_hWnd, false) == IDOK) {
-		SetDlgItemText(IDC_ANTIVIR_PATH, x.c_str());
-	}
-	return 0;
-}

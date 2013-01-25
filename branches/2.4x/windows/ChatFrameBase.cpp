@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "MainFrm.h"
 #include "Players.h"
 #include "ExMessageBox.h"
+#include "ChatCommands.h"
 
 #include "../client/AutoSearchManager.h"
 #include "../client/HashManager.h"
@@ -43,11 +44,17 @@
 extern EmoticonsManager* emoticonsManager;
 
 ChatFrameBase::ChatFrameBase(FrameMessageBase* aFrameBase) : /*clientContainer(WC_EDIT, this, EDIT_MESSAGE_MAP)*/ frame(aFrameBase), menuItems(0),
-		lineCount(1), curCommandPosition(0) {
+		lineCount(1), curCommandPosition(0), cancelHashing(false) {
 }
 
-ChatFrameBase::~ChatFrameBase() {
+ChatFrameBase::~ChatFrameBase() { }
 
+LRESULT ChatFrameBase::onClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled) {
+	cancelHashing = true;
+	tasks.wait();
+
+	bHandled = FALSE;
+	return 0;
 }
 
 LRESULT ChatFrameBase::OnForwardMsg(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
@@ -122,7 +129,7 @@ LRESULT ChatFrameBase::onChar(UINT uMsg, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 		}
 
 		 if ((uMsg == WM_CHAR) && (GetFocus() == ctrlMessage.m_hWnd) && (wParam != VK_RETURN) && (wParam != VK_TAB) && (wParam != VK_BACK)) {
-			if ((!SETTING(SOUND_TYPING_NOTIFY).empty()) && (!BOOLSETTING(SOUNDS_DISABLED)))
+			if ((!SETTING(SOUND_TYPING_NOTIFY).empty()) && (!SETTING(SOUNDS_DISABLED)))
 				WinUtil::playSound(Text::toT(SETTING(SOUND_TYPING_NOTIFY)));
 		}
 		return 0;
@@ -155,7 +162,7 @@ LRESULT ChatFrameBase::onChar(UINT uMsg, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 				}
 			break;
 		case VK_UP:
-			if ( (GetKeyState(VK_MENU) & 0x8000) ||	( ((GetKeyState(VK_CONTROL) & 0x8000) == 0) ^ (BOOLSETTING(USE_CTRL_FOR_LINE_HISTORY) == true) ) ) {
+			if ( (GetKeyState(VK_MENU) & 0x8000) ||	( ((GetKeyState(VK_CONTROL) & 0x8000) == 0) ^ (SETTING(USE_CTRL_FOR_LINE_HISTORY) == true) ) ) {
 				//scroll up in chat command history
 				//currently beyond the last command?
 				if (curCommandPosition > 0) {
@@ -175,7 +182,7 @@ LRESULT ChatFrameBase::onChar(UINT uMsg, WPARAM wParam, LPARAM /*lParam*/, BOOL&
 
 			break;
 		case VK_DOWN:
-			if ( (GetKeyState(VK_MENU) & 0x8000) ||	( ((GetKeyState(VK_CONTROL) & 0x8000) == 0) ^ (BOOLSETTING(USE_CTRL_FOR_LINE_HISTORY) == true) ) ) {
+			if ( (GetKeyState(VK_MENU) & 0x8000) ||	( ((GetKeyState(VK_CONTROL) & 0x8000) == 0) ^ (SETTING(USE_CTRL_FOR_LINE_HISTORY) == true) ) ) {
 				//scroll down in chat command history
 
 				//currently beyond the last command?
@@ -347,16 +354,17 @@ LRESULT ChatFrameBase::onDropFiles(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam
 	
 	nrFiles = DragQueryFile(drop, (UINT)-1, NULL, 0);
 	
+	StringList paths;
 	for(UINT i = 0; i < nrFiles; ++i){
 		if(DragQueryFile(drop, i, &buf[0], MAX_PATH)){
 			if(!PathIsDirectory(&buf[0])){
-				addMagnet(Text::fromT(buf).data());
+				paths.push_back(Text::fromT(buf).data());
 			}
 		}
 	}
-
 	DragFinish(drop);
 
+	addMagnet(paths);
 	return 0;
 }
 
@@ -366,12 +374,14 @@ LRESULT ChatFrameBase::onAddMagnet(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hW
 
 	 tstring file;
 	 if(WinUtil::browseFile(file, /*m_hWnd*/ 0, false) == IDOK) {
-		 addMagnet(Text::fromT(file));
+		 StringList tmp;
+		 tmp.push_back(Text::fromT(file));
+		 addMagnet(tmp);
 	 }
 	 return 0;
  }
 
-void ChatFrameBase::addMagnet(string&& path) {
+void ChatFrameBase::addMagnet(const StringList& aPaths) {
 	if(!getClient())
 		return;
 
@@ -384,20 +394,55 @@ void ChatFrameBase::addMagnet(string&& path) {
 		SettingsManager::getInstance()->set(SettingsManager::NMDC_MAGNET_WARN, bCheck != BST_CHECKED);
 	}
 
-	TTHValue tth;
-	int64_t size = 0;
+	setStatusText(aPaths.size() > 1 ? TSTRING_F(CREATING_MAGNET_FOR_X, aPaths.size()) : TSTRING_F(CREATING_MAGNET_FOR, Text::toT(aPaths.front())));
+	tasks.run([=] {
+		int64_t sizeLeft = 0;
+		for(auto& path: aPaths)
+			sizeLeft += File::getSize(path);
 
-	try {
-		HashManager::getInstance()->getFileTTH(path, true, tth, size);
-	} catch (const Exception& e) { 
-		LogManager::getInstance()->message(STRING(HASHING_FAILED) + " " + e.getError(), LogManager::LOG_ERROR);
-		return;
-	}
-	bool useKey = getUser() && (!getUser()->isSet(User::BOT) || !getUser()->isSet(User::NMDC));
-	ShareManager::getInstance()->addTempShare((useKey ? getUser()->getCID().toBase32() : Util::emptyString), tth, path, size, getClient()->getShareProfile());
-		
-	appendTextLine(Text::toT(WinUtil::makeMagnet(tth, Util::getFileName(path), size)), true);
+		tstring ret;
+		int pos = 1;
+		for (auto& path: aPaths) {
+			TTHValue tth;
+			auto size = File::getSize(path);
+			try {
+				HashManager::getInstance()->getFileTTH(path, size, true, tth, sizeLeft, cancelHashing, [=] (int64_t aTimeLeft, const string& aFileName) -> void {
+					//update the statusbar
+					if (aTimeLeft == 0)
+						return;
 
+					MainFrame::getMainFrame()->callAsync([=] {
+						tstring status = TSTRING_F(HASHING_X_LEFT, Text::toT(aFileName) % Text::toT(Util::formatTime(aTimeLeft, true)));
+						if (aPaths.size() > 1) 
+							status += _T(" (") + Text::toLower(TSTRING(FILE)) + _T(" ") + Util::toStringW(pos) + _T("/") + Util::toStringW(aPaths.size()) + _T(")");
+						setStatusText(status);
+					});
+				});
+			} catch (const Exception& e) { 
+				LogManager::getInstance()->message(STRING(HASHING_FAILED) + " " + e.getError(), LogManager::LOG_ERROR);
+				return;
+			}
+
+			if (!cancelHashing) {
+				bool useKey = getUser() && (!getUser()->isSet(User::BOT) || !getUser()->isSet(User::NMDC));
+				ShareManager::getInstance()->addTempShare((useKey ? getUser()->getCID().toBase32() : Util::emptyString), tth, path, size, getClient()->getShareProfile());
+			}
+			ret += Text::toT(WinUtil::makeMagnet(tth, Util::getFileName(path), size));
+			pos++;
+		}
+
+		MainFrame::getMainFrame()->callAsync([=] {
+			if (!cancelHashing) {
+				setStatusText(aPaths.size() > 1 ? TSTRING_F(MAGNET_CREATED_FOR_X, aPaths.size()) : TSTRING_F(MAGNET_CREATED_FOR, Text::toT(aPaths.front())));
+				appendTextLine(ret, true);
+			}
+		});
+	});
+
+}
+
+void ChatFrameBase::setStatusText(const tstring& aLine) {
+	ctrlStatus.SetText(0, (_T("[") + Text::toT(Util::getShortTimeString()) + _T("] ") + aLine).c_str());
 }
 
 LRESULT ChatFrameBase::onWinampSpam(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
@@ -524,19 +569,19 @@ void ChatFrameBase::onEnter() {
 		if(s[0] == _T('/')) {
 			tstring cmd = s;
 			tstring param;
-			if(BOOLSETTING(CLIENT_COMMANDS)) {
+			if(SETTING(CLIENT_COMMANDS)) {
 				frame->addStatusLine(_T("Client command: ") + s);
 			}
 		
 			if(!checkCommand(cmd, param, message, status, thirdPerson)) {
-				if (BOOLSETTING(SEND_UNKNOWN_COMMANDS)) {
+				if (SETTING(SEND_UNKNOWN_COMMANDS)) {
 					message = s;
 				} else {
 					status = TSTRING(UNKNOWN_COMMAND) + _T(" ") + cmd;
 				}
 			}
 		} else {
-			if(BOOLSETTING(SERVER_COMMANDS)) {
+			if(SETTING(SERVER_COMMANDS)) {
 				if(s[0] == '!' || s[0] == '+' || s[0] == '-')
 					status = _T("Server command: ") + s;
 			}
@@ -718,24 +763,23 @@ bool ChatFrameBase::checkCommand(tstring& cmd, tstring& param, tstring& message,
 	} else if(stricmp(cmd.c_str(), _T("setlistdirty")) == 0) {
 		auto profiles = ShareManager::getInstance()->getProfiles();
 		ProfileTokenSet pts;
-		for(auto i = profiles.begin(); i != profiles.end(); ++i) {
-			pts.insert((*i)->getToken());
-		}
+		for(auto& sp: profiles)
+			pts.insert(sp->getToken());
+
 		ShareManager::getInstance()->setDirty(pts, false, true);
 	} else if(stricmp(cmd.c_str(), _T("away")) == 0) {
-		if(Util::getAway() && param.empty()) {
-			Util::setAway(false);
+		if(AirUtil::getAway() && param.empty()) {
+			AirUtil::setAway(AWAY_OFF);
 			MainFrame::setAwayButton(false);
 			status = TSTRING(AWAY_MODE_OFF);
 		} else {
-			Util::setAway(true);
+			AirUtil::setAway(AWAY_MANUAL);
 			MainFrame::setAwayButton(true);
-			Util::setAwayMessage(Text::fromT(param));
+			AirUtil::setAwayMessage(Text::fromT(param));
 			
 			ParamMap sm;
-			status = TSTRING(AWAY_MODE_ON) + _T(" ") + Text::toT(Util::getAwayMessage(sm));
+			status = TSTRING(AWAY_MODE_ON) + _T(" ") + Text::toT(AirUtil::getAwayMessage(sm));
 		}
-		ClientManager::getInstance()->infoUpdated();
 	} else if(WebShortcuts::getInstance()->getShortcutByKey(cmd) != NULL) {
 		WinUtil::SearchSite(WebShortcuts::getInstance()->getShortcutByKey(cmd), param);
 	} else if(stricmp(cmd.c_str(), _T("u")) == 0) {
@@ -753,21 +797,21 @@ bool ChatFrameBase::checkCommand(tstring& cmd, tstring& param, tstring& message,
 			status = TSTRING(SHUTDOWN_OFF);
 		}
 	} else if((stricmp(cmd.c_str(), _T("disks")) == 0) || (stricmp(cmd.c_str(), _T("di")) == 0)) {
-		status = WinUtil::diskInfo();
+		status = ChatCommands::diskInfo();
 	} else if(stricmp(cmd.c_str(), _T("stats")) == 0) {
-		message = Text::toT(WinUtil::generateStats());
+		message = Text::toT(ChatCommands::generateStats());
 	} else if(stricmp(cmd.c_str(), _T("prvstats")) == 0) {
-		status = Text::toT(WinUtil::generateStats());
+		status = Text::toT(ChatCommands::generateStats());
 	} else if(stricmp(cmd.c_str(), _T("speed")) == 0) {
-		status = WinUtil::Speedinfo();
+		status = ChatCommands::Speedinfo();
 	} else if(stricmp(cmd.c_str(), _T("info")) == 0) {
-		status = WinUtil::UselessInfo();
+		status = ChatCommands::UselessInfo();
 	} else if(stricmp(cmd.c_str(), _T("df")) == 0) {
-		status = WinUtil::DiskSpaceInfo();
+		status = ChatCommands::DiskSpaceInfo();
 	} else if(stricmp(cmd.c_str(), _T("dfs")) == 0) {
-		message = WinUtil::DiskSpaceInfo();
+		message = ChatCommands::DiskSpaceInfo();
 	} else if(stricmp(cmd.c_str(), _T("uptime")) == 0) {
-		message = Text::toT(WinUtil::uptimeInfo());
+		message = Text::toT(ChatCommands::uptimeInfo());
 	} else if(stricmp(cmd.c_str(), _T("f")) == 0) {
 		ctrlClient.findText();
 	} else if(stricmp(cmd.c_str(), _T("whois")) == 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ class TransferView : public CWindowImpl<TransferView>, private DownloadManagerLi
 public:
 	DECLARE_WND_CLASS(_T("TransferView"))
 
-	TransferView() : PreviewAppsSize(0) { }
+	TransferView() { }
 	~TransferView(void);
 
 	typedef UserInfoBaseHandler<TransferView> uibBase;
@@ -94,7 +94,6 @@ public:
 		COMMAND_ID_HANDLER(IDC_AUTOPRIORITY, onAutoPriority)
 		MESSAGE_HANDLER_HWND(WM_MEASUREITEM, OMenu::onMeasureItem)
 		MESSAGE_HANDLER_HWND(WM_DRAWITEM, OMenu::onDrawItem)
-		COMMAND_RANGE_HANDLER(IDC_PREVIEW_APP, IDC_PREVIEW_APP + PreviewAppsSize, onPreviewCommand)
 		COMMAND_RANGE_HANDLER(IDC_PRIORITY_PAUSED, IDC_PRIORITY_HIGHEST, onPriority)
 		CHAIN_COMMANDS(ucBase)
 		CHAIN_COMMANDS(uibBase)
@@ -111,7 +110,6 @@ public:
 	LRESULT onDoubleClickTransfers(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/);
 	LRESULT onDisconnectAll(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onSlowDisconnect(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT onPreviewCommand(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onWhoisIP(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onRemoveFile(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT onCopy(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
@@ -358,7 +356,6 @@ private:
 	TaskQueue tasks;
 
 	ParamMap ucLineParams;
-	int PreviewAppsSize;
 
 	void on(ConnectionManagerListener::Added, const ConnectionQueueItem* aCqi) noexcept;
 	void on(ConnectionManagerListener::Failed, const ConnectionQueueItem* aCqi, const string& aReason) noexcept;
@@ -387,19 +384,19 @@ private:
 	void on(UploadManagerListener::BundleComplete, const string& bundleToken, const string& bundleName) noexcept { onBundleComplete(bundleToken, bundleName, true); }
 	void on(UploadManagerListener::BundleSizeName, const string& bundleToken, const string& newTarget, int64_t aSize) noexcept;
 
-	void on(QueueManagerListener::BundleFinished, const BundlePtr aBundle) noexcept { onBundleComplete(aBundle->getToken(), aBundle->getName(), false); }
-	void on(QueueManagerListener::BundleRemoved, const BundlePtr aBundle) noexcept { onBundleStatus(aBundle, true); }
-	void on(QueueManagerListener::BundleSize, const BundlePtr aBundle) noexcept;
-	void on(QueueManagerListener::BundleTarget, const BundlePtr aBundle) noexcept { onBundleName(aBundle); }
-	void on(QueueManagerListener::BundlePriority, const BundlePtr aBundle) noexcept { onBundleName(aBundle); }
+	void on(QueueManagerListener::BundleFinished, const BundlePtr& aBundle) noexcept { onBundleComplete(aBundle->getToken(), aBundle->getName(), false); }
+	void on(QueueManagerListener::BundleRemoved, const BundlePtr& aBundle) noexcept { onBundleStatus(aBundle, true); }
+	void on(QueueManagerListener::BundleSize, const BundlePtr& aBundle) noexcept;
+	void on(QueueManagerListener::BundleTarget, const BundlePtr& aBundle) noexcept { onBundleName(aBundle); }
+	void on(QueueManagerListener::BundlePriority, const BundlePtr& aBundle) noexcept { onBundleName(aBundle); }
 
 	void on(SettingsManagerListener::Save, SimpleXML& /*xml*/) noexcept;
 
 	void onUpdateFileInfo(const HintedUser& aUser, const string& aToken, bool updateStatus);
 
-	void onBundleName(const BundlePtr aBundle);
+	void onBundleName(const BundlePtr& aBundle);
 	void onBundleComplete(const string& bundleToken, const string& bundleName, bool isUpload);
-	void onBundleStatus(const BundlePtr aBundle, bool removed);
+	void onBundleStatus(const BundlePtr& aBundle, bool removed);
 	void onTransferComplete(const Transfer* aTransfer, bool isUpload, const string& aFileName, bool isTree, const string& bundleToken);
 	void starting(UpdateInfo* ui, const Transfer* t);
 	

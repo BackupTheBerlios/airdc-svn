@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,11 @@
 #include "forward.h"
 #include "noexcept.h"
 #include "Exception.h"
+#include "Util.h"
 
-#include "File.h"
 #include "SimpleXMLReader.h"
+
+#include <boost/noncopyable.hpp>
 
 namespace dcpp {
 
@@ -140,7 +142,7 @@ public:
 	void fromXML(const string& aXML);
 	string toXML();
 	string childToXML();
-	void toXML(OutputStream* f) throw(FileException);
+	void toXML(OutputStream* f);
 	
 	static const string& escape(const string& str, string& tmp, bool aAttrib, bool aLoading = false, const string &encoding = Text::utf8) {
 		if(needsEscape(str, aAttrib, aLoading, encoding)) {
@@ -160,7 +162,7 @@ public:
 	}
 	static const string utf8Header;
 private:
-	class Tag {
+	class Tag : boost::noncopyable {
 	public:
 		typedef Tag* Ptr;
 		typedef vector<Ptr> List;
@@ -207,10 +209,6 @@ private:
 				delete *i;
 			}
 		}
-
-	private:
-		Tag(const Tag&);
-		Tag& operator=(Tag&);
 	};
 
 	class TagReader : public SimpleXMLReader::CallBack {

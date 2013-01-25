@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 AirDC++ Project
+ * Copyright (C) 2012-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,9 +65,7 @@ class Localization {
 		static uint8_t getFlagIndexByCode(const char* countryCode);
 		static uint8_t getFlagIndexByName(const char* countryName);
 
-		//static vector<Language> languageList;
-	private:
-		//static Language curLanguage;
+		static bool usingInbuiltLanguage();
 	};
 }
 #endif

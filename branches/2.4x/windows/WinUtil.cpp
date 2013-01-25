@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,21 +17,11 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
-#define COMPILE_MULTIMON_STUBS 1
 #include "Resource.h"
 
-#include <MultiMon.h>
-#include <psapi.h>
-#include <powrprof.h>
-#include <direct.h>
-#include <pdh.h>
-#include <WinInet.h>
-#include <atlwin.h>
 #include <mmsystem.h>
-//#include <afxtaskdialog.h>
+#include <powrprof.h>
 
-#include "Players.h"
 #include "WinUtil.h"
 #include "PrivateFrame.h"
 #include "TextFrame.h"
@@ -42,20 +32,15 @@
 #include "../client/Util.h"
 #include "../client/Localization.h"
 #include "../client/StringTokenizer.h"
-#include "../client/ShareManager.h"
 #include "../client/ClientManager.h"
 #include "../client/TimerManager.h"
 #include "../client/FavoriteManager.h"
 #include "../client/ResourceManager.h"
 #include "../client/QueueManager.h"
 #include "../client/UploadManager.h"
-#include "../client/HashManager.h"
 #include "../client/LogManager.h"
 #include "../client/version.h"
-#include "../client/ShareScannerManager.h"
-#include "../client/AutoSearchManager.h"
 #include "../client/Magnet.h"
-#include "../client/DownloadManager.h"
 
 #include "boost/algorithm/string/replace.hpp"
 #include "boost/algorithm/string/trim.hpp"
@@ -279,9 +264,11 @@ void UserInfoBase::grant() {
 	}
 }
 void UserInfoBase::removeAll() {
-	if(getUser()) {
-		QueueManager::getInstance()->removeSource(getUser(), QueueItem::Source::FLAG_REMOVED);
-	}
+	MainFrame::getMainFrame()->addThreadedTask([=] { 
+		if(getUser()) {
+			QueueManager::getInstance()->removeSource(getUser(), QueueItem::Source::FLAG_REMOVED);
+		}
+	});
 }
 void UserInfoBase::grantHour() {
 	if(getUser()) {
@@ -469,13 +456,13 @@ void WinUtil::init(HWND hWnd) {
 	progressFont = CreateFontIndirect(&lf3);
 	TBprogressTextColor = SETTING(TB_PROGRESS_TEXT_COLOR);
 
-	if(BOOLSETTING(URL_HANDLER)) {
+	if(SETTING(URL_HANDLER)) {
 		registerDchubHandler();
 		registerADChubHandler();
 		registerADCShubHandler();
 		urlDcADCRegistered = true;
 	}
-	if(BOOLSETTING(MAGNET_REGISTER)) {
+	if(SETTING(MAGNET_REGISTER)) {
 		registerMagnetHandler();
 		urlMagnetRegistered = true; 
 	}
@@ -730,9 +717,9 @@ bool WinUtil::browseDirectory(tstring& target, HWND owner /* = NULL */) {
 	}
 	return false;
 }
-bool WinUtil::MessageBoxConfirm(SettingsManager::IntSetting i, const tstring& txt){
+bool WinUtil::MessageBoxConfirm(SettingsManager::BoolSetting i, const tstring& txt){
 	UINT ret = IDYES;
-	UINT bCheck = SettingsManager::getInstance()->getBool(i) ? BST_UNCHECKED : BST_CHECKED;
+	UINT bCheck = SettingsManager::getInstance()->get(i) ? BST_UNCHECKED : BST_CHECKED;
 	if(bCheck == BST_UNCHECKED)
 		ret = ::MessageBox(WinUtil::mainWnd, txt.c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), CTSTRING(DONT_ASK_AGAIN), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, bCheck);
 		
@@ -1074,7 +1061,7 @@ void WinUtil::registerMagnetHandler() {
 	buf[0] = 0;
 
 	// (re)register the handler if magnet.exe isn't the default, or if DC++ is handling it
-	if(BOOLSETTING(MAGNET_REGISTER) && (strnicmp(openCmd, appName, appName.size()) != 0)) {
+	if(SETTING(MAGNET_REGISTER) && (strnicmp(openCmd, appName, appName.size()) != 0)) {
 		SHDeleteKey(HKEY_CURRENT_USER, _T("SOFTWARE\\Classes\\magnet"));
 		if (::RegCreateKeyEx(HKEY_CURRENT_USER, _T("SOFTWARE\\Classes\\magnet"), 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hk, NULL))  {
 			LogManager::getInstance()->message(STRING(ERROR_CREATING_REGISTRY_KEY_MAGNET), LogManager::LOG_ERROR);
@@ -1160,7 +1147,7 @@ void WinUtil::parseMagnetUri(const tstring& aUrl, const HintedUser& aUser) {
 		if(!m.hash.empty() && Encoder::isBase32(m.hash.c_str())){
 			auto sel = SETTING(MAGNET_ACTION);
 			BOOL remember = false;
-			if (BOOLSETTING(MAGNET_ASK)) {
+			if (SETTING(MAGNET_ASK)) {
 				if (WinUtil::getOsMajor() >= 6) {
 					CTaskDialog taskdlg;
 
@@ -1397,10 +1384,12 @@ void WinUtil::getContextMenuPos(CEdit& aEdit, POINT& aPt) {
 void WinUtil::openFolder(const tstring& file) {
 	if(file.empty() )
 		return;
-	if(!Util::fileExists(Text::fromT(file)))
-		return;
 
-	::ShellExecute(NULL, Text::toT("explore").c_str(), Text::toT(Util::FormatPath(Util::getFilePath(Text::fromT(file)))).c_str(), NULL, NULL, SW_SHOWNORMAL);
+	MainFrame::getMainFrame()->addThreadedTask([=] {
+		if(!Util::fileExists(Text::fromT(file)))
+			return;
+		::ShellExecute(NULL, Text::toT("explore").c_str(), Text::toT(Util::FormatPath(Util::getFilePath(Text::fromT(file)))).c_str(), NULL, NULL, SW_SHOWNORMAL);
+	});
 }
 void WinUtil::FlashWindow() {
 	if( GetForegroundWindow() != WinUtil::mainWnd ) {
@@ -1472,388 +1461,32 @@ void WinUtil::saveReBarSettings(HWND bar) {
 }
 
 
-int WinUtil::SetupPreviewMenu(CMenu &previewMenu, string extension){
-	int PreviewAppsSize = 0;
-	PreviewApplication::List lst = FavoriteManager::getInstance()->getPreviewApps();
-	if(lst.size()>0){		
-		PreviewAppsSize = 0;
-		for(PreviewApplication::Iter i = lst.begin(); i != lst.end(); i++){
-			StringList tok = StringTokenizer<string>((*i)->getExtension(), ';').getTokens();
-			bool add = false;
-			if(tok.size()==0)add = true;
+void WinUtil::appendPreviewMenu(OMenu* previewMenu, const string& aTarget) {
+	auto lst = FavoriteManager::getInstance()->getPreviewApps();
+	auto ext = Util::getFileExt(aTarget);
+	if (ext.empty()) return;
 
-			
-			for(StringIter si = tok.begin(); si != tok.end(); ++si) {
-				if(_stricmp(extension.c_str(), si->c_str())==0){
-					add = true;
-					break;
-				}
-			}
-							
-			if (add) previewMenu.AppendMenu(MF_STRING, IDC_PREVIEW_APP + PreviewAppsSize, Text::toT(((*i)->getName())).c_str());
-			PreviewAppsSize++;
-		}
-	}
-	return PreviewAppsSize;
-}
+	ext = ext.substr(1); //remove the dot
 
-void WinUtil::RunPreviewCommand(unsigned int index, const string& target) {
-	PreviewApplication::List lst = FavoriteManager::getInstance()->getPreviewApps();
+	for(auto& i: lst){
+		auto tok = StringTokenizer<string>(i->getExtension(), ';').getTokens();
 
-	if(index <= lst.size()) {
-		string application = lst[index]->getApplication();
-		string arguments = lst[index]->getArguments();
-		ParamMap ucParams;				
+		if (tok.size() == 0 || any_of(tok.begin(), tok.end(), [&ext](const string& si) { return _stricmp(ext.c_str(), si.c_str())==0; })) {
+
+			string application = i->getApplication();
+			string arguments = i->getArguments();
+
+			previewMenu->appendItem(Text::toT((i->getName())).c_str(), [=] {
+				string tempTarget = QueueManager::getInstance()->getTempTarget(aTarget);
+				ParamMap ucParams;				
 	
-		ucParams["file"] = "\"" + target + "\"";
-		ucParams["dir"] = "\"" + Util::getFilePath(target) + "\"";
+				ucParams["file"] = "\"" + tempTarget + "\"";
+				ucParams["dir"] = "\"" + Util::getFilePath(tempTarget) + "\"";
 
-		::ShellExecute(NULL, NULL, Text::toT(application).c_str(), Text::toT(Util::formatParams(arguments, ucParams)).c_str(), Text::toT(Util::getFilePath(target)).c_str(), SW_SHOWNORMAL);
-	}
-}
-
-tstring WinUtil::UselessInfo() {
-	tstring result = _T("\n");
-	TCHAR buf[255];
-	
-	MEMORYSTATUSEX mem;
-	mem.dwLength = sizeof(MEMORYSTATUSEX);
-	if( GlobalMemoryStatusEx(&mem) != 0){
-		result += _T("Memory\n");
-		result += _T("Physical memory (available/total): ");
-		result += Util::formatBytesW( mem.ullAvailPhys ) + _T("/") + Util::formatBytesW( mem.ullTotalPhys );
-		result += _T("\n");
-		result += _T("Pagefile (available/total): ");
-		result += Util::formatBytesW( mem.ullAvailPageFile ) + _T("/") + Util::formatBytesW( mem.ullTotalPageFile );
-		result += _T("\n");
-		result += _T("Memory load: ");
-		result += Util::toStringW(mem.dwMemoryLoad);
-		result += _T("%\n\n");
-	}
-
-	CRegKey key;
-	ULONG len = 255;
-
-	if(key.Open( HKEY_LOCAL_MACHINE, _T("Hardware\\Description\\System\\CentralProcessor\\0"), KEY_READ) == ERROR_SUCCESS) {
-		result += _T("CPU\n");
-        if(key.QueryStringValue(_T("ProcessorNameString"), buf, &len) == ERROR_SUCCESS){
-			result += _T("Name: ");
-			tstring tmp = buf;
-            result += tmp.substr( tmp.find_first_not_of(_T(" ")) );
-			result += _T("\n");
-		}
-		DWORD speed;
-		if(key.QueryDWORDValue(_T("~MHz"), speed) == ERROR_SUCCESS){
-			result += _T("Speed: ");
-			result += Util::toStringW(speed);
-			result += _T("MHz\n");
-		}
-		len = 255;
-		if(key.QueryStringValue(_T("Identifier"), buf, &len) == ERROR_SUCCESS) {
-			result += _T("Identifier: ");
-			result += buf;
-		}
-		result += _T("\n\n");
-	}
-
-	result += _T("OS\n");
-	result += Text::toT(Util::getOsVersion());
-	result += _T("\n");
-
-	result += _T("\nDisk\n");
-	result += _T("Disk space(free/total): ");
-	result += DiskSpaceInfo(true);
-	result += _T("\n\nTransfer\n");
-	result += Text::toT("Upload: " + Util::formatBytes(SETTING(TOTAL_UPLOAD)) + ", Download: " + Util::formatBytes(SETTING(TOTAL_DOWNLOAD)));
-	
-	if(SETTING(TOTAL_DOWNLOAD) > 0) {
-		_stprintf(buf, _T("Ratio (up/down): %.2f"), ((double)SETTING(TOTAL_UPLOAD)) / ((double)SETTING(TOTAL_DOWNLOAD)));
-		result += _T('\n');
-		result += buf;
-	}
-
-	return result;
-}
-
-tstring WinUtil::DiskSpaceInfo(bool onlyTotal /* = false */) {
-	tstring ret = Util::emptyStringT;
-
-	int64_t free = 0, totalFree = 0, size = 0, totalSize = 0, netFree = 0, netSize = 0;
-
-   TStringList volumes = FindVolumes();
-
-   for(TStringIter i = volumes.begin(); i != volumes.end(); i++) {
-	   if(GetDriveType((*i).c_str()) == DRIVE_CDROM || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE)
-		   continue;
-	   if(GetDiskFreeSpaceEx((*i).c_str(), NULL, (PULARGE_INTEGER)&size, (PULARGE_INTEGER)&free)){
-				totalFree += free;
-				totalSize += size;
-		}
-   }
-
-   //check for mounted Network drives
-   ULONG drives = _getdrives();
-   TCHAR drive[3] = { _T('A'), _T(':'), _T('\0') };
-   
-	while(drives != 0) {
-		if(drives & 1 && ( GetDriveType(drive) != DRIVE_CDROM && GetDriveType(drive) != DRIVE_REMOVABLE && GetDriveType(drive) == DRIVE_REMOTE) ){
-			if(GetDiskFreeSpaceEx(drive, NULL, (PULARGE_INTEGER)&size, (PULARGE_INTEGER)&free)){
-				netFree += free;
-				netSize += size;
-			}
-		}
-		++drive[0];
-		drives = (drives >> 1);
-	}
-   
-	if(totalSize != 0)
-		if( !onlyTotal ) {
-			ret += _T("\r\n Local HDD space (free/total): ") + Util::formatBytesW(totalFree) + _T("/") + Util::formatBytesW(totalSize);
-		if(netSize != 0) {
-			ret +=  _T("\r\n Network HDD space (free/total): ") + Util::formatBytesW(netFree) + _T("/") + Util::formatBytesW(netSize);
-			ret +=  _T("\r\n Total HDD space (free/total): ") + Util::formatBytesW((netFree+totalFree)) + _T("/") + Util::formatBytesW(netSize+totalSize);
-			}
-		} else
-			ret += Util::formatBytesW(totalFree) + _T("/") + Util::formatBytesW(totalSize);
-
-	return ret;
-}
-
-TStringList WinUtil::FindVolumes() {
-
-  BOOL  found;
-  TCHAR   buf[MAX_PATH];  
-  HANDLE  hVol;
-  TStringList volumes;
-
-   hVol = FindFirstVolume(buf, MAX_PATH);
-
-   if(hVol != INVALID_HANDLE_VALUE) {
-		volumes.push_back(buf);
-
-		found = FindNextVolume(hVol, buf, MAX_PATH);
-
-		//while we find drive volumes.
-		while(found) { 
-			volumes.push_back(buf);
-			found = FindNextVolume(hVol, buf, MAX_PATH); 
-		}
-   
-	found = FindVolumeClose(hVol);
-   }
-
-    return volumes;
-}
-
-tstring WinUtil::diskInfo() {
-
-	tstring result = Util::emptyStringT;
-		
-	TCHAR   buf[MAX_PATH];
-	int64_t free = 0, size = 0 , totalFree = 0, totalSize = 0;
-	int disk_count = 0;
-   
-	std::vector<tstring> results; //add in vector for sorting, nicer to look at :)
-	// lookup drive volumes.
-	TStringList volumes = FindVolumes();
-
-	for(TStringIter i = volumes.begin(); i != volumes.end(); i++) {
-		if(GetDriveType((*i).c_str()) == DRIVE_CDROM || GetDriveType((*i).c_str()) == DRIVE_REMOVABLE)
-			continue;
-	    
-		if((GetVolumePathNamesForVolumeName((*i).c_str(), buf, 256, NULL) != 0) &&
-			(GetDiskFreeSpaceEx((*i).c_str(), NULL, (PULARGE_INTEGER)&size, (PULARGE_INTEGER)&free) !=0)){
-			tstring mountpath = buf; 
-			if(!mountpath.empty()) {
-				totalFree += free;
-				totalSize += size;
-				results.push_back((_T("MountPath: ") + mountpath + _T(" Disk Space (free/total) ") + Util::formatBytesW(free) + _T("/") +  Util::formatBytesW(size)));
-			}
+				::ShellExecute(NULL, NULL, Text::toT(application).c_str(), Text::toT(Util::formatParams(arguments, ucParams)).c_str(), Text::toT(Util::getFilePath(tempTarget)).c_str(), SW_SHOWNORMAL);
+			});
 		}
 	}
-      
-	// and a check for mounted Network drives, todo fix a better way for network space
-	ULONG drives = _getdrives();
-	TCHAR drive[3] = { _T('A'), _T(':'), _T('\0') };
-   
-	while(drives != 0) {
-		if(drives & 1 && ( GetDriveType(drive) != DRIVE_CDROM && GetDriveType(drive) != DRIVE_REMOVABLE && GetDriveType(drive) == DRIVE_REMOTE) ){
-			if(GetDiskFreeSpaceEx(drive, NULL, (PULARGE_INTEGER)&size, (PULARGE_INTEGER)&free)){
-				totalFree += free;
-				totalSize += size;
-				results.push_back((_T("Network MountPath: ") + (tstring)drive + _T(" Disk Space (free/total) ") + Util::formatBytesW(free) + _T("/") +  Util::formatBytesW(size)));
-			}
-		}
-
-		++drive[0];
-		drives = (drives >> 1);
-	}
-
-	sort(results.begin(), results.end()); //sort it
-	for(std::vector<tstring>::iterator i = results.begin(); i != results.end(); ++i) {
-		disk_count++;
-		result += _T("\r\n ") + *i; 
-	}
-	result +=  _T("\r\n\r\n Total HDD space (free/total): ") + Util::formatBytesW((totalFree)) + _T("/") + Util::formatBytesW(totalSize);
-	result += _T("\r\n Total Drives count: ") + Text::toT(Util::toString(disk_count));
-   
-	results.clear();
-
-   return result;
-}
-
-float ProcSpeedCalc() {
-#ifndef _WIN64
-#define RdTSC __asm _emit 0x0f __asm _emit 0x31
-__int64 cyclesStart = 0, cyclesStop = 0;
-unsigned __int64 nCtr = 0, nFreq = 0, nCtrStop = 0;
-    if(!QueryPerformanceFrequency((LARGE_INTEGER *) &nFreq)) return 0;
-    QueryPerformanceCounter((LARGE_INTEGER *) &nCtrStop);
-    nCtrStop += nFreq;
-    _asm {
-		RdTSC
-        mov DWORD PTR cyclesStart, eax
-        mov DWORD PTR [cyclesStart + 4], edx
-    } do {
-		QueryPerformanceCounter((LARGE_INTEGER *) &nCtr);
-    } while (nCtr < nCtrStop);
-    _asm {
-		RdTSC
-        mov DWORD PTR cyclesStop, eax
-        mov DWORD PTR [cyclesStop + 4], edx
-    }
-	return ((float)cyclesStop-(float)cyclesStart) / 1000000;
-#else
-	HKEY hKey;
-	DWORD dwSpeed;
-
-	// Get the key name
-	wchar_t szKey[256];
-	_snwprintf(szKey, sizeof(szKey)/sizeof(wchar_t),
-		L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\%d\\", 0);
-
-	// Open the key
-	if(RegOpenKeyEx(HKEY_LOCAL_MACHINE,szKey, 0, KEY_QUERY_VALUE, &hKey) != ERROR_SUCCESS)
-	{
-		return 0;
-	}
-
-	// Read the value
-	DWORD dwLen = 4;
-	if(RegQueryValueEx(hKey, L"~MHz", NULL, NULL, (LPBYTE)&dwSpeed, &dwLen) != ERROR_SUCCESS)
-	{
-		RegCloseKey(hKey);
-		return 0;
-	}
-
-	// Cleanup and return
-	RegCloseKey(hKey);
-	
-	return dwSpeed;
-#endif
-}
-
-tstring WinUtil::Speedinfo() {
-	tstring result = _T("\n");
-
-result += _T("-= ");
-result += _T("Downloading: ");
-result += Util::formatBytesW(DownloadManager::getInstance()->getRunningAverage()) + _T("/s  [");
-result += Util::toStringW(DownloadManager::getInstance()->getDownloadCount()) + _T("]");
-result += _T(" =- ");
-result += _T(" -= ");
-result += _T("Uploading: ");
-result += Util::formatBytesW(UploadManager::getInstance()->getRunningAverage()) + _T("/s  [");
-result += Util::toStringW(UploadManager::getInstance()->getUploadCount()) + _T("]");
-result += _T(" =-");
-
-return result;
-
-}
-string WinUtil::getSysUptime(){
-			
-	static HINSTANCE kernel32lib = NULL;
-	if(!kernel32lib)
-		kernel32lib = LoadLibrary(_T("kernel32"));
-		
-	//apexdc
-	typedef ULONGLONG (CALLBACK* LPFUNC2)(void);
-	LPFUNC2 _GetTickCount64 = (LPFUNC2)GetProcAddress(kernel32lib, "GetTickCount64");
-	time_t sysUptime = (_GetTickCount64 ? _GetTickCount64() : GetTickCount()) / 1000;
-
-	return Util::formatTime(sysUptime, false);
-
-}
-
-
-string WinUtil::generateStats() {
-	PROCESS_MEMORY_COUNTERS pmc;
-	pmc.cb = sizeof(pmc);
-	typedef bool (CALLBACK* LPFUNC)(HANDLE Process, PPROCESS_MEMORY_COUNTERS ppsmemCounters, DWORD cb);
-		
-	LPFUNC _GetProcessMemoryInfo = (LPFUNC)GetProcAddress(LoadLibrary(_T("psapi")), "GetProcessMemoryInfo");
-	_GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
-	FILETIME tmpa, tmpb, kernelTimeFT, userTimeFT;
-	GetProcessTimes(GetCurrentProcess(), &tmpa, &tmpb, &kernelTimeFT, &userTimeFT);
-	int64_t kernelTime = kernelTimeFT.dwLowDateTime | (((int64_t)kernelTimeFT.dwHighDateTime) << 32);
-	int64_t userTime = userTimeFT.dwLowDateTime | (((int64_t)userTimeFT.dwHighDateTime) << 32);  
-
-	string ret = boost::str(boost::format(
-"\r\n\t-=[ %s   http://www.airdcpp.net ]=-\r\n\
-\t-=[ Uptime: %s ][ CPU time: %s ]=-\r\n\
-\t-=[ Memory usage (peak): %s (%s) ]=-\r\n\
-\t-=[ Virtual Memory usage (peak): %s (%s) ]=-\r\n\
-\t-=[ Downloaded: %s ][  Uploaded %s ]=-\r\n\
-\t-=[ Total download %s ][ Total upload %s ]=-\r\n\
-\t-=[ System: %s (Uptime: %s) ]=-\r\n\
-\t-=[ CPU: %s ]=-")
-
-		% Text::fromT(COMPLETEVERSIONSTRING)
-		% Util::formatTime(Util::getUptime(), false)
-		% Util::formatSeconds((kernelTime + userTime) / (10I64 * 1000I64 * 1000I64))
-		% Util::formatBytes(pmc.WorkingSetSize)
-		% Util::formatBytes(pmc.PeakWorkingSetSize)
-		% Util::formatBytes(pmc.PagefileUsage)
-		% Util::formatBytes(pmc.PeakPagefileUsage)
-		% Util::formatBytes(Socket::getTotalDown())
-		% Util::formatBytes(Socket::getTotalUp())
-		% Util::formatBytes(SETTING(TOTAL_DOWNLOAD))
-		% Util::formatBytes(SETTING(TOTAL_UPLOAD))
-		% Util::getOsVersion()
-		% getSysUptime()
-		% CPUInfo());
-	return ret;
-}
-
-
-string WinUtil::CPUInfo() {
-	tstring result = _T("");
-
-	CRegKey key;
-	ULONG len = 255;
-
-	if(key.Open( HKEY_LOCAL_MACHINE, _T("Hardware\\Description\\System\\CentralProcessor\\0"), KEY_READ) == ERROR_SUCCESS) {
-		TCHAR buf[255];
-		if(key.QueryStringValue(_T("ProcessorNameString"), buf, &len) == ERROR_SUCCESS){
-			tstring tmp = buf;
-			result = tmp.substr( tmp.find_first_not_of(_T(" ")) );
-		}
-		DWORD speed;
-		if(key.QueryDWORDValue(_T("~MHz"), speed) == ERROR_SUCCESS){
-			result += _T(" (");
-			result += Util::toStringW((uint32_t)speed);
-			result += _T(" MHz)");
-		}
-	}
-	return result.empty() ? "Unknown" : Text::fromT(result);
-}
-
-string WinUtil::uptimeInfo() {
-	char buf[512]; 
-	snprintf(buf, sizeof(buf), "\n-=[ Uptime: %s]=-\r\n-=[ System Uptime: %s]=-\r\n", 
-	Util::formatTime(Util::getUptime(), false).c_str(), 
-	getSysUptime().c_str());
-	return buf;
 }
 
 bool WinUtil::shutDown(int action) {
@@ -2076,7 +1709,7 @@ tstring WinUtil::getTitle(const tstring& searchTerm) {
 void WinUtil::viewLog(const string& path, bool aHistory /*false*/) {
 	if (aHistory) {
 		TextFrame::openWindow(Text::toT(path), TextFrame::HISTORY);
-	} else if(BOOLSETTING(OPEN_LOGS_INTERNAL)) {
+	} else if(SETTING(OPEN_LOGS_INTERNAL)) {
 		TextFrame::openWindow(Text::toT(path), TextFrame::LOG);
 	} else {
 		ShellExecute(NULL, NULL, Text::toT(path).c_str(), NULL, NULL, SW_SHOWNORMAL);
@@ -2119,14 +1752,14 @@ void WinUtil::appendLanguageMenu(CComboBoxEx& ctrlLanguage) {
 	ctrlLanguage.SetImageList(ResourceLoader::flagImages);
 	int count = 0;
 	
-	for(auto i = Localization::languageList.begin(); i != Localization::languageList.end(); ++i){
+	for(auto l: Localization::languageList){
 		COMBOBOXEXITEM cbli =  {CBEIF_TEXT|CBEIF_IMAGE|CBEIF_SELECTEDIMAGE};
-		CString str = Text::toT((*i).languageName).c_str();
+		CString str = Text::toT(l.languageName).c_str();
 		cbli.iItem = count;
 		cbli.pszText = (LPTSTR)(LPCTSTR) str;
 		cbli.cchTextMax = str.GetLength();
 
-		auto flagIndex = Localization::getFlagIndexByCode((*i).countryFlagCode);
+		auto flagIndex = Localization::getFlagIndexByCode(l.countryFlagCode);
 		cbli.iImage = flagIndex;
 		cbli.iSelectedImage = flagIndex;
 		ctrlLanguage.InsertItem(&cbli);

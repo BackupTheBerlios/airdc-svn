@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,13 +77,13 @@ public:
 
 	/** Readd a source that was removed */
 	void readdQISource(const string& target, const HintedUser& aUser) throw(QueueException);
-	void readdBundleSource(BundlePtr aBundle, const HintedUser& aUser) throw(QueueException);
-	void onUseSeqOrder(BundlePtr aBundle);
+	void readdBundleSource(BundlePtr aBundle, const HintedUser& aUser);
+	void onUseSeqOrder(BundlePtr& aBundle);
 
 	/** Add a directory to the queue (downloads filelist and matches the directory). */
 	void matchListing(const DirectoryListing& dl, int& matches, int& newFiles, BundleList& bundles);
 
-	void removeQI(QueueItemPtr qi, bool noFiring = false) noexcept;
+	void removeQI(QueueItemPtr& qi, bool noFiring = false) noexcept;
 	void remove(const string aTarget) noexcept;
 	void removeSource(const string& aTarget, const UserPtr& aUser, Flags::MaskType reason, bool removeConn = true) noexcept;
 	void removeSource(const UserPtr& aUser, Flags::MaskType reason) noexcept;
@@ -91,11 +91,12 @@ public:
 	void recheck(const string& aTarget);
 
 	void setQIPriority(const string& aTarget, QueueItem::Priority p) noexcept;
-	void setQIPriority(QueueItemPtr qi, QueueItem::Priority p, bool isAP=false, bool isBundleChange=false) noexcept;
+	void setQIPriority(QueueItemPtr& qi, QueueItem::Priority p, bool isAP=false, bool isBundleChange=false) noexcept;
 	void setQIAutoPriority(const string& aTarget, bool ap, bool isBundleChange=false) noexcept;
 
 	StringList getTargets(const TTHValue& tth);
-	const QueueItem::StringMap& getQueue() noexcept { RLock l (cs); return fileQueue.getQueue(); } ;
+	void readLockedOperation(const function<void (const QueueItem::StringMap&)>& currentQueue);
+	//const QueueItem::StringMap& getQueue() noexcept { RLock l (cs); return fileQueue.getQueue(); } ;
 	//const QueueItem::StringMap& lockQueue() noexcept { cs.lock(); return fileQueue.getQueue(); } ;
 	//void unlockQueue() noexcept { cs.unlock(); }
 	void onSlowDisconnect(const string& aToken);
@@ -104,13 +105,18 @@ public:
 	string getTempTarget(const string& aTarget);
 	void setSegments(const string& aTarget, uint8_t aSegments);
 
-	bool isFinished(const QueueItemPtr qi) const { RLock l(cs); return qi->isFinished(); }
-	bool isWaiting(const QueueItemPtr qi) const { RLock l(cs); return qi->isWaiting(); }
-	uint64_t getDownloadedBytes(const QueueItemPtr qi) const { RLock l(cs); return qi->getDownloadedBytes(); }
-	QueueItem::SourceList getSources(const QueueItemPtr qi) const { RLock l(cs); return qi->getSources(); }
-	QueueItem::SourceList getBadSources(const QueueItemPtr qi) const { RLock l(cs); return qi->getBadSources(); }
-	size_t getSourcesCount(const QueueItemPtr qi) const { RLock l(cs); return qi->getSources().size(); }
-	vector<Segment> getChunksVisualisation(const QueueItemPtr qi, int type) const { RLock l(cs); return qi->getChunksVisualisation(type); }
+	bool isFinished(const QueueItemPtr& qi) const { RLock l(cs); return qi->isFinished(); }
+	bool isWaiting(const QueueItemPtr& qi) const { RLock l(cs); return qi->isWaiting(); }
+	uint64_t getDownloadedBytes(const QueueItemPtr& qi) const { RLock l(cs); return qi->getDownloadedBytes(); }
+
+	QueueItem::SourceList getSources(const QueueItemPtr& qi) const { RLock l(cs); return qi->getSources(); }
+	QueueItem::SourceList getBadSources(const QueueItemPtr& qi) const { RLock l(cs); return qi->getBadSources(); }
+
+	Bundle::SourceInfoList getBundleSources(const BundlePtr& b) const { RLock l(cs); return b->getSources(); }
+	Bundle::SourceInfoList getBadBundleSources(const BundlePtr& b) const { RLock l(cs); return b->getBadSources(); }
+
+	size_t getSourcesCount(const QueueItemPtr& qi) const { RLock l(cs); return qi->getSources().size(); }
+	vector<Segment> getChunksVisualisation(const QueueItemPtr& qi, int type) const { RLock l(cs); return qi->getChunksVisualisation(type); }
 
 	bool getQueueInfo(const HintedUser& aUser, string& aTarget, int64_t& aSize, int& aFlags, string& bundleToken) noexcept;
 	Download* getDownload(UserConnection& aSource, const OrderedStringSet& onlineHubs, string& aMessage, string& newUrl, bool smallSlot) noexcept;
@@ -133,20 +139,20 @@ public:
 	MemoryInputStream* generateTTHList(const string& bundleToken, bool isInSharingHub);
 
 	//merging, adding, deletion
-	bool addBundle(BundlePtr aBundle, bool loading = false);
-	void readdBundle(BundlePtr aBundle);
-	void connectBundleSources(BundlePtr aBundle);
-	void mergeBundle(BundlePtr targetBundle, BundlePtr sourceBundle);
-	void mergeFileBundles(BundlePtr aBundle);
+	bool addBundle(BundlePtr& aBundle, bool loading = false);
+	void readdBundle(BundlePtr& aBundle);
+	void connectBundleSources(BundlePtr& aBundle);
+	void mergeBundle(BundlePtr& targetBundle, BundlePtr& sourceBundle);
+	void mergeFileBundles(BundlePtr& aBundle);
 	void moveBundle(const string& aSource, const string& aTarget, BundlePtr sourceBundle, bool moveFinished);
 	void splitBundle(const string& aSource, const string& aTarget, BundlePtr sourceBundle, bool moveFinished);
-	int changeBundleTarget(BundlePtr aBundle, const string& newTarget);
-	void moveFileBundle(BundlePtr aBundle, const string& aTarget) noexcept;
-	void removeBundleItem(QueueItemPtr qi, bool finished, bool moved = false);
-	void moveBundleItem(QueueItemPtr qi, BundlePtr targetBundle, bool fireAdded);
-	void moveBundleItems(const QueueItemList& ql, BundlePtr targetBundle, bool fireAdded);
-	void moveBundleItems(BundlePtr sourceBundle, BundlePtr targetBundle, bool fireAdded);
-	void removeBundle(BundlePtr aBundle, bool finished, bool removeFinished, bool moved = false);
+	int changeBundleTarget(BundlePtr& aBundle, const string& newTarget);
+	void moveFileBundle(BundlePtr& aBundle, const string& aTarget) noexcept;
+	void removeBundleItem(QueueItemPtr& qi, bool finished, bool moved = false);
+	void moveBundleItem(QueueItemPtr& qi, BundlePtr& targetBundle, bool fireAdded);
+	void moveBundleItems(const QueueItemList& ql, BundlePtr& targetBundle, bool fireAdded);
+	void moveBundleItems(BundlePtr& sourceBundle, BundlePtr& targetBundle, bool fireAdded);
+	void removeBundle(BundlePtr& aBundle, bool finished, bool removeFinished, bool moved = false);
 	uint8_t isDirQueued(const string& aDir) const;
 	tstring getDirPath(const string& aDir) const;
 	void getDiskInfo(TargetUtil::TargetInfoMap& dirMap, const TargetUtil::VolumeSet& volumes) const { RLock l (cs); bundleQueue.getDiskInfo(dirMap, volumes); }
@@ -160,12 +166,10 @@ public:
 	void updatePBD(const HintedUser& aUser, const TTHValue& aTTH);
 	void removeBundleNotify(const UserPtr& aUser, const string& bundleToken);
 	void setBundlePriority(const string& bundleToken, Bundle::Priority p) noexcept;
-	void setBundlePriority(BundlePtr aBundle, Bundle::Priority p, bool isAuto=false, bool isQIChange=false) noexcept;
+	void setBundlePriority(BundlePtr& aBundle, Bundle::Priority p, bool isAuto=false, bool isQIChange=false) noexcept;
 	void setBundleAutoPriority(const string& bundleToken, bool isQIChange=false) noexcept;
-	void getBundleSources(BundlePtr aBundle, Bundle::SourceInfoList& sources, Bundle::SourceInfoList& badSources) noexcept;
 	void removeBundleSource(const string& bundleToken, const UserPtr& aUser) noexcept;
 	void removeBundleSource(BundlePtr aBundle, const UserPtr& aUser) noexcept;
-	void removeBundleSources(BundlePtr aBundle) noexcept;
 	void sendRemovePBD(const HintedUser& aUser, const string& aRemoteToken);
 	void getBundleInfo(const string& aSource, BundleList& retBundles, int& finishedFiles, int& fileBundles) { 
 		RLock l (cs); 
@@ -174,15 +178,15 @@ public:
 	void handleBundleUpdate(const string& bundleToken);
 
 	void removeDir(const string aSource, const BundleList& sourceBundles, bool removeFinished);
-	bool moveBundleFile(QueueItemPtr qs, const string& aTarget, bool movingSingleItems) noexcept;
+	bool moveBundleFile(QueueItemPtr& qs, const string& aTarget, bool movingSingleItems) noexcept;
 
 	void setBundlePriorities(const string& aSource, const BundleList& sourceBundles, Bundle::Priority p, bool autoPrio=false);
 	void calculateBundlePriorities(bool verbose);
-	void searchBundle(BundlePtr aBundle, bool manual);
+	void searchBundle(BundlePtr& aBundle, bool manual);
 
-	int getBundleItemCount(const BundlePtr aBundle) const noexcept;
-	int getFinishedItemCount(const BundlePtr aBundle) const noexcept;
-	int getDirItemCount(const BundlePtr aBundle, const string& aDir) const noexcept;
+	int getBundleItemCount(const BundlePtr& aBundle) const noexcept;
+	int getFinishedItemCount(const BundlePtr& aBundle) const noexcept;
+	int getDirItemCount(const BundlePtr& aBundle, const string& aDir) const noexcept;
 
 	/** Move the target location of a queued item. Running items are silently ignored */
 	void moveFiles(const StringPairList& sourceTargetList) noexcept;
@@ -190,7 +194,7 @@ public:
 	
 	bool dropSource(Download* d);
 
-	bool isChunkDownloaded(const TTHValue& tth, int64_t startPos, int64_t& bytes, string& tempTarget);
+	bool isChunkDownloaded(const TTHValue& tth, int64_t startPos, int64_t& bytes, int64_t& fileSize_, string& tempTarget);
 	string getBundlePath(const string& aBundleToken) const;
 	
 	GETSET(uint64_t, lastSave, LastSave);
@@ -200,13 +204,15 @@ public:
 	class FileMover : public Thread {
 	public:
 		enum Tasks {
-			MOVE_FILE
+			MOVE_FILE,
+			REMOVE_DIR
 		};
 
 		FileMover() { }
 		virtual ~FileMover() { join(); }
 
 		void moveFile(const string& source, const string& target, QueueItemPtr aBundle);
+		void removeDir(const string& aDir);
 		virtual int run();
 	private:
 
@@ -215,24 +221,20 @@ public:
 	} mover;
 
 	class Rechecker : public Thread {
-		struct DummyOutputStream : OutputStream {
-			virtual size_t write(const void*, size_t n) throw(Exception) { return n; }
-			virtual size_t flush() throw(Exception) { return 0; }
-		};
 
-	public:
-		explicit Rechecker(QueueManager* qm_) : qm(qm_), active(false) { }
-		virtual ~Rechecker() { join(); }
+		public:
+			explicit Rechecker(QueueManager* qm_) : qm(qm_), active(false) { }
+			virtual ~Rechecker() { join(); }
 
-		void add(const string& file);
-		virtual int run();
+			void add(const string& file);
+			virtual int run();
 
-	private:
-		QueueManager* qm;
-		bool active;
+		private:
+			QueueManager* qm;
+			bool active;
 
-		StringList files;
-		CriticalSection cs;
+			StringList files;
+			CriticalSection cs;
 	} rechecker;
 
 	/** QueueItems by target and TTH */
@@ -267,34 +269,34 @@ private:
 	/** Sanity check for the target filename */
 	static string checkTarget(const string& aTarget, bool checkExsistence, BundlePtr aBundle = NULL) throw(QueueException, FileException);
 	/** Add a source to an existing queue item */
-	bool addSource(QueueItemPtr qi, const HintedUser& aUser, Flags::MaskType addBad, const string& aRemotePath, bool newBundle=false, bool checkTLS=true) throw(QueueException, FileException);
+	bool addSource(QueueItemPtr& qi, const HintedUser& aUser, Flags::MaskType addBad, const string& aRemotePath, bool newBundle=false, bool checkTLS=true) throw(QueueException, FileException);
 	 
 	void matchTTHList(const string& name, const HintedUser& user, int flags);
 
-	void addBundleUpdate(const BundlePtr aBundle);
+	void addBundleUpdate(const BundlePtr& aBundle);
 
-	void addFinishedItem(const TTHValue& tth, BundlePtr aBundle, const string& aTarget, time_t aSize, int64_t aFinished);
+	void addFinishedItem(const TTHValue& tth, BundlePtr& aBundle, const string& aTarget, time_t aSize, int64_t aFinished);
 
 	void load(const SimpleXML& aXml);
 
 	//always use forceThreading if this is called from within a lock and it's being used for bundle items
 	void moveFile(const string& source, const string& target, QueueItemPtr q = nullptr, bool forceThreading = false);
-	static void moveFile_(const string& source, const string& target, QueueItemPtr q);
+	static void moveFile_(const string& source, const string& target, QueueItemPtr& q);
 
-	void handleMovedBundleItem(QueueItemPtr q);
+	void handleMovedBundleItem(QueueItemPtr& q);
 
-	void moveStuckFile(QueueItemPtr qi);
-	void rechecked(QueueItemPtr qi);
+	void moveStuckFile(QueueItemPtr& qi);
+	void rechecked(QueueItemPtr& qi);
 	void onFileHashed(const string& fname, const TTHValue& root, bool failed);
-	void hashBundle(BundlePtr aBundle);
-	bool scanBundle(BundlePtr aBundle);
+	void hashBundle(BundlePtr& aBundle);
+	bool scanBundle(BundlePtr& aBundle);
 	void checkBundleHashed(BundlePtr aBundle);
-	void onBundleStatusChanged(BundlePtr aBundle, AutoSearch::Status aStatus);
-	void onBundleRemoved(BundlePtr aBundle, bool finished);
+	void onBundleStatusChanged(BundlePtr& aBundle, AutoSearch::Status aStatus);
+	void onBundleRemoved(BundlePtr& aBundle, bool finished);
 
 	bool replaceFinishedItem(QueueItemPtr qi);
 
-	void removeSource(QueueItemPtr qi, const UserPtr& aUser, Flags::MaskType reason, bool removeConn = true) noexcept;
+	void removeSource(QueueItemPtr& qi, const UserPtr& aUser, Flags::MaskType reason, bool removeConn = true) noexcept;
 
 	string getListPath(const HintedUser& user);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #include "version.h"
 #include "AirUtil.h"
 
+#include "ResourceManager.h"
+
 namespace dcpp {
 
 ConnectivityManager::ConnectivityManager() :
@@ -36,18 +38,18 @@ running(false)
 {
 }
 
-const string& ConnectivityManager::get(SettingsManager::StrSetting setting) const {
-	if(BOOLSETTING(AUTO_DETECT_CONNECTION)) {
+bool ConnectivityManager::get(SettingsManager::BoolSetting setting) const {
+	if(SETTING(AUTO_DETECT_CONNECTION)) {
 		auto i = autoSettings.find(setting);
 		if(i != autoSettings.end()) {
-			return boost::get<const string&>(i->second);
+			return boost::get<bool>(i->second);
 		}
 	}
 	return SettingsManager::getInstance()->get(setting);
 }
 
 int ConnectivityManager::get(SettingsManager::IntSetting setting) const {
-	if(BOOLSETTING(AUTO_DETECT_CONNECTION)) {
+	if(SETTING(AUTO_DETECT_CONNECTION)) {
 		auto i = autoSettings.find(setting);
 		if(i != autoSettings.end()) {
 			return boost::get<int>(i->second);
@@ -56,13 +58,24 @@ int ConnectivityManager::get(SettingsManager::IntSetting setting) const {
 	return SettingsManager::getInstance()->get(setting);
 }
 
+const string& ConnectivityManager::get(SettingsManager::StrSetting setting) const {
+	if(SETTING(AUTO_DETECT_CONNECTION)) {
+		auto i = autoSettings.find(setting);
+		if(i != autoSettings.end()) {
+			return boost::get<const string&>(i->second);
+		}
+	}
+	return SettingsManager::getInstance()->get(setting);
+}
+
 void ConnectivityManager::set(SettingsManager::StrSetting setting, const string& str) {
-	if(BOOLSETTING(AUTO_DETECT_CONNECTION)) {
+	if(SETTING(AUTO_DETECT_CONNECTION)) {
 		autoSettings[setting] = str;
 	} else {
 		SettingsManager::getInstance()->set(setting, str);
 	}
 }
+
 
 void ConnectivityManager::detectConnection() {
 	if(running)
@@ -83,20 +96,25 @@ void ConnectivityManager::detectConnection() {
 		SettingsManager::EXTERNAL_IP, SettingsManager::EXTERNAL_IP6, SettingsManager::NO_IP_OVERRIDE,
 		SettingsManager::BIND_ADDRESS, SettingsManager::BIND_ADDRESS6,
 		SettingsManager::INCOMING_CONNECTIONS, SettingsManager::OUTGOING_CONNECTIONS };
-	std::for_each(settings, settings + sizeof(settings) / sizeof(settings[0]), [this](int setting) {
+
+	for(const auto setting: settings) {
 		if(setting >= SettingsManager::STR_FIRST && setting < SettingsManager::STR_LAST) {
 			autoSettings[setting] = SettingsManager::getInstance()->getDefault(static_cast<SettingsManager::StrSetting>(setting));
 		} else if(setting >= SettingsManager::INT_FIRST && setting < SettingsManager::INT_LAST) {
 			autoSettings[setting] = SettingsManager::getInstance()->getDefault(static_cast<SettingsManager::IntSetting>(setting));
+		} else if(setting >= SettingsManager::BOOL_FIRST && setting < SettingsManager::BOOL_LAST) {
+			autoSettings[setting] = SettingsManager::getInstance()->getDefault(static_cast<SettingsManager::BoolSetting>(setting));
+		} else {
+			dcassert(0);
 		}
-	});
+	}
 
-	log((string)("Determining the best connectivity settings..."), LogManager::LOG_INFO);
+	log(STRING(CONN_DETERMINING), LogManager::LOG_INFO);
 	try {
 		listen();
 	} catch(const Exception& e) {
-		autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_FIREWALL_PASSIVE;
-		log(str(boost::format("Unable to open %1% port(s); connectivity settings must be configured manually") % e.getError()), LogManager::LOG_ERROR);
+		autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_PASSIVE;
+		log(STRING_F(CONN_PORT_X_FAILED, e.getError()), LogManager::LOG_ERROR);
 		fire(ConnectivityManagerListener::Finished());
 		running = false;
 		return;
@@ -105,21 +123,21 @@ void ConnectivityManager::detectConnection() {
 	autoDetected = true;
 
 	if(!Util::isPrivateIp(AirUtil::getLocalIp())) {
-		autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_DIRECT;
-		log((string)("Public IP address detected, selecting active mode with direct connection"), LogManager::LOG_INFO);
+		autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_ACTIVE;
+		log(STRING(CONN_DIRECT_DETECTED), LogManager::LOG_INFO);
 		fire(ConnectivityManagerListener::Finished());
 		running = false;
 		return;
 	}
 
-	autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_FIREWALL_UPNP;
-	log((string)("Local network with possible NAT detected, trying to map the ports..."), LogManager::LOG_INFO);
+	autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_ACTIVE_UPNP;
+	log(STRING(CONN_NAT_DETECTED), LogManager::LOG_INFO);
 
 	startMapping();
 }
 
 void ConnectivityManager::setup(bool settingsChanged) {
-	if(BOOLSETTING(AUTO_DETECT_CONNECTION)) {
+	if(SETTING(AUTO_DETECT_CONNECTION)) {
 		if(!autoDetected) {
 			detectConnection();
 		}
@@ -128,11 +146,11 @@ void ConnectivityManager::setup(bool settingsChanged) {
 			autoSettings.clear();
 		}
 		if(autoDetected || settingsChanged) {
-			if(settingsChanged || (SETTING(INCOMING_CONNECTIONS) != SettingsManager::INCOMING_FIREWALL_UPNP)) {
+			if(settingsChanged || (SETTING(INCOMING_CONNECTIONS) != SettingsManager::INCOMING_ACTIVE_UPNP)) {
 				MappingManager::getInstance()->close();
 			}
 			startSocket();
-		} else if(SETTING(INCOMING_CONNECTIONS) == SettingsManager::INCOMING_FIREWALL_UPNP && !running) {
+		} else if(SETTING(INCOMING_CONNECTIONS) == SettingsManager::INCOMING_ACTIVE_UPNP && !running) {
 			// previous mappings had failed; try again
 			startMapping();
 		}
@@ -165,23 +183,18 @@ string ConnectivityManager::getInformation() const {
 	string mode;
 
 	switch(CONNSETTING(INCOMING_CONNECTIONS)) {
-	case SettingsManager::INCOMING_DIRECT:
+	case SettingsManager::INCOMING_ACTIVE:
 		{
 			mode = "Direct connection to the Internet (no router)";
 			break;
 		}
-	case SettingsManager::INCOMING_FIREWALL_UPNP:
+	case SettingsManager::INCOMING_ACTIVE_UPNP:
 		{
 			mode = str(boost::format("Active mode behind a router that %1% can configure; port mapping status: %2%") %
 				APPNAME % MappingManager::getInstance()->getStatus());
 			break;
 		}
-	case SettingsManager::INCOMING_FIREWALL_NAT:
-		{
-			mode = "Active mode behind a router";
-			break;
-		}
-	case SettingsManager::INCOMING_FIREWALL_PASSIVE:
+	case SettingsManager::INCOMING_PASSIVE:
 		{
 			mode = "Passive mode";
 			break;
@@ -215,11 +228,11 @@ void ConnectivityManager::startMapping() {
 }
 
 void ConnectivityManager::mappingFinished(const string& mapper) {
-	if(BOOLSETTING(AUTO_DETECT_CONNECTION)) {
+	if(SETTING(AUTO_DETECT_CONNECTION)) {
 		if(mapper.empty()) {
 			disconnect();
-			autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_FIREWALL_PASSIVE;
-			log((string)("Active mode could not be achieved; a manual configuration is recommended for better connectivity"), LogManager::LOG_WARNING);
+			autoSettings[SettingsManager::INCOMING_CONNECTIONS] = SettingsManager::INCOMING_PASSIVE;
+			log(STRING(CONN_ACTIVE_FAILED), LogManager::LOG_WARNING);
 		} else {
 			SettingsManager::getInstance()->set(SettingsManager::MAPPER, mapper);
 		}
@@ -229,10 +242,10 @@ void ConnectivityManager::mappingFinished(const string& mapper) {
 	running = false;
 }
 
-void ConnectivityManager::log(string&& message, LogManager::Severity sev) {
-	if(BOOLSETTING(AUTO_DETECT_CONNECTION)) {
+void ConnectivityManager::log(const string& message, LogManager::Severity sev) {
+	if(SETTING(AUTO_DETECT_CONNECTION)) {
 		status = move(message);
-		LogManager::getInstance()->message("Connectivity: " + status, sev);
+		LogManager::getInstance()->message(STRING(CONNECTIVITY) + ": " + status, sev);
 		fire(ConnectivityManagerListener::Message(), status);
 	} else {
 		LogManager::getInstance()->message(message, sev);
@@ -248,7 +261,7 @@ void ConnectivityManager::startSocket() {
 		listen();
 
 		// must be done after listen calls; otherwise ports won't be set
-		if(SETTING(INCOMING_CONNECTIONS) == SettingsManager::INCOMING_FIREWALL_UPNP && !running)
+		if(SETTING(INCOMING_CONNECTIONS) == SettingsManager::INCOMING_ACTIVE_UPNP && !running)
 			startMapping();
 	}
 }

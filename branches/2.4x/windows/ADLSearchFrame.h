@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@
 
 #include "FlatTabCtrl.h"
 #include "ExListViewCtrl.h"
-#include "WinUtil.h"
 
 #include "../client/ADLSearch.h"
 
@@ -90,19 +89,7 @@ public:
 	LRESULT onReload(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	
 	// Update colors
-	LRESULT onCtlColor(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) 
-	{
-		HWND hWnd = (HWND)lParam;
-		HDC hDC   = (HDC)wParam;
-		if(hWnd == ctrlList.m_hWnd) 
-		{
-			::SetBkColor(hDC, WinUtil::bgColor);
-			::SetTextColor(hDC, WinUtil::textColor);
-			return (LRESULT)WinUtil::bgBrush;
-		}
-		bHandled = FALSE;
-		return FALSE;
-	}
+	LRESULT onCtlColor(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 	// Update control layouts
 	void UpdateLayout(BOOL bResizeBars = TRUE);

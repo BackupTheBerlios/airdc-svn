@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 AirDC++ Project
+ * Copyright (C) 2012-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ namespace dcpp {
 	}
 
 	string Localization::Language::getLanguageFilePath() {
-		return languageFile.empty() ? Util::emptyString : Util::getPath(Util::PATH_GLOBAL_CONFIG) + "Language\\" + languageFile;
+		return languageFile.empty() ? Util::emptyString : Util::getPath(Util::PATH_LOCALE) + languageFile;
 	}
 
 	double Localization::Language::getLanguageVersion() {
@@ -115,21 +115,21 @@ namespace dcpp {
 
 	void Localization::init() {
 
-		languageList.push_back(Language("English", "GB", "en-US", Util::emptyString));
-		languageList.push_back(Language("Danish", "DK", "da-DK", "Danish_for_AirDC.xml"));
-		languageList.push_back(Language("Dutch", "NL", "nl-NL", "Dutch_for_AirDC.xml"));
-		languageList.push_back(Language("Finnish", "FI", "fi-FI", "Finnish_for_AirDC.xml"));
-		languageList.push_back(Language("French", "FR", "fr-FR", "French_for_AirDC.xml"));
-		languageList.push_back(Language("German", "DE", "de-DE", "German_for_AirDC.xml"));
-		languageList.push_back(Language("Hungarian", "HU", "hu-HU", "Hungarian_for_AirDC.xml"));
-		languageList.push_back(Language("Italian", "IT", "it-IT", "Italian_for_AirDC.xml"));
-		languageList.push_back(Language("Norwegian", "NO", "no-NO", "Norwegian_for_AirDC.xml"));
-		languageList.push_back(Language("Polish", "PL", "pl-PL", "Polish_for_AirDC.xml"));
-		languageList.push_back(Language("Portuguese", "PT", "pt-PT", "Port_Br_for_AirDC.xml"));
-		languageList.push_back(Language("Romanian", "RO", "ro-RO", "Romanian_for_AirDC.xml"));
-		languageList.push_back(Language("Russian", "RU", "ru-RU", "Russian_for_AirDC.xml"));
+		languageList.emplace_back("English", "GB", "en-US", Util::emptyString);
+		languageList.emplace_back("Danish", "DK", "da-DK", "Danish_for_AirDC.xml");
+		languageList.emplace_back("Dutch", "NL", "nl-NL", "Dutch_for_AirDC.xml");
+		languageList.emplace_back("Finnish", "FI", "fi-FI", "Finnish_for_AirDC.xml");
+		languageList.emplace_back("French", "FR", "fr-FR", "French_for_AirDC.xml");
+		languageList.emplace_back("German", "DE", "de-DE", "German_for_AirDC.xml");
+		languageList.emplace_back("Hungarian", "HU", "hu-HU", "Hungarian_for_AirDC.xml");
+		languageList.emplace_back("Italian", "IT", "it-IT", "Italian_for_AirDC.xml");
+		languageList.emplace_back("Norwegian", "NO", "no-NO", "Norwegian_for_AirDC.xml");
+		languageList.emplace_back("Polish", "PL", "pl-PL", "Polish_for_AirDC.xml");
+		languageList.emplace_back("Portuguese", "PT", "pt-PT", "Port_Br_for_AirDC.xml");
+		languageList.emplace_back("Romanian", "RO", "ro-RO", "Romanian_for_AirDC.xml");
+		languageList.emplace_back("Russian", "RU", "ru-RU", "Russian_for_AirDC.xml");
 		//languageList.push_back(Language("Spanish", "ES", "es-ES", "Spanish_for_AirDC.xml"));
-		languageList.push_back(Language("Swedish", "SE", "sv-SE", "Swedish_for_AirDC.xml"));
+		languageList.emplace_back("Swedish", "SE", "sv-SE", "Swedish_for_AirDC.xml");
 
 		//sort(languageList.begin()+1, languageList.end(), Language::NameSort());
 
@@ -139,17 +139,23 @@ namespace dcpp {
 			boost::replace_all(langFile, "/", "\\"); //eh, the previous versions have saved the language path in a wrong format, remove this workaround in some point
 			langFile = Util::getFileName(langFile);
 
-			auto s = find_if(languageList.begin(), languageList.end(), [&langFile](const Language aLang) { return aLang.languageFile == langFile; });
+			auto s = find_if(languageList.begin(), languageList.end(), [&langFile](const Language& aLang) { return aLang.languageFile == langFile; });
 			if (s != languageList.end()) {
 				curLanguage = distance(languageList.begin(), s);
 			} else {
 				/* Not one of the predefined language files, add a custom list item */
 				/*TCHAR buf[512];
 				GetUserDefaultLocaleName(buf, 512); // get the system locale name, breaks things on XP */
-				languageList.push_back(Language("(Custom: " + langFile + ")", "", "en-US" , langFile));
+				languageList.emplace_back("(Custom: " + langFile + ")", "", "en-US" , langFile);
 				curLanguage = languageList.size()-1;
 			}
 		}
+
+		languageList.shrink_to_fit();
+	}
+
+	bool Localization::usingInbuiltLanguage() {
+		return languageList[curLanguage].locale != "en-US";
 	}
 
 	double Localization::getCurLanguageVersion() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ tstring HtmlToRtf::convert(const string& html, RichTextBox* box) {
 
 Parser::Parser(RichTextBox* box) {
 	// create a default context with the Rich Edit control's current formatting.
-	contexts.push_back(Context(box, *this));
+	contexts.emplace_back(box, *this);
 }
 
 void Parser::startTag(const string& name_, StringPairList& attribs, bool simple) {

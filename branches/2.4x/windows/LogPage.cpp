@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
 
 #include "stdafx.h"
 
-#include "../client/DCPlusPlus.h"
-#include "../client/SettingsManager.h"
 #include "../client/LogManager.h"
 #include "../client/File.h"
 

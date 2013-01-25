@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "ChatMessage.h"
 #include "ClientManager.h"
 #include "ConnectionManager.h"
+#include "ConnectivityManager.h"
 #include "FavoriteManager.h"
 #include "Localization.h"
 #include "ShareManager.h"
@@ -82,7 +83,7 @@ OnlineUser& AdcHub::getUser(const uint32_t aSID, const CID& aCID) {
 
 	{
 		WLock l(cs);
-		ou = users.insert(make_pair(aSID, new OnlineUser(p, *this, aSID))).first->second;
+		ou = users.emplace(aSID, new OnlineUser(p, *this, aSID)).first->second;
 		ou->inc();
 	}
 
@@ -99,12 +100,21 @@ OnlineUser* AdcHub::findUser(const uint32_t aSID) const {
 
 OnlineUser* AdcHub::findUser(const CID& aCID) const {
 	RLock l(cs);
-	for(auto i = users.begin(); i != users.end(); ++i) {
-		if(i->second->getUser()->getCID() == aCID) {
-			return i->second;
+	for(const auto& ou: users | map_values) {
+		if(ou->getUser()->getCID() == aCID) {
+			return ou;
 		}
 	}
 	return 0;
+}
+
+void AdcHub::getUserList(OnlineUserList& list) const {
+	RLock l(cs);
+	for(const auto& i: users) {
+		if(i.first != AdcCommand::HUB_SID) {
+			list.push_back(i.second);
+		}
+	}
 }
 
 void AdcHub::putUser(const uint32_t aSID, bool disconnect) {
@@ -136,10 +146,10 @@ void AdcHub::clearUsers() {
 		availableBytes = 0;
 	}
 
-	for(auto i = tmp.begin(); i != tmp.end(); ++i) {
-		if(i->first != AdcCommand::HUB_SID)
-			ClientManager::getInstance()->putOffline(i->second, false);
-		i->second->dec();
+	for(auto& i: tmp) {
+		if(i.first != AdcCommand::HUB_SID)
+			ClientManager::getInstance()->putOffline(i.second, false);
+		i.second->dec();
 	}
 }
 
@@ -182,20 +192,20 @@ void AdcHub::handle(AdcCommand::INF, AdcCommand& c) noexcept {
 		return;
 	}
 
-	for(auto i = c.getParameters().begin(); i != c.getParameters().end(); ++i) {
-		if(i->length() < 2)
+	for(const auto& p: c.getParameters()) {
+		if(p.length() < 2)
 			continue;
 
-		if(i->substr(0, 2) == "SS") {
+		if(p.substr(0, 2) == "SS") {
 			availableBytes -= u->getIdentity().getBytesShared();
-			u->getIdentity().setBytesShared(i->substr(2));
+			u->getIdentity().setBytesShared(p.substr(2));
 			availableBytes += u->getIdentity().getBytesShared();
 		} else {
-			u->getIdentity().set(i->c_str(), i->substr(2));
+			u->getIdentity().set(p.c_str(), p.substr(2));
 		}
 		
-		if((i->substr(0, 2) == "VE") || (i->substr(0, 2) == "AP")) {
-			if (i->find("AirDC++") != string::npos) {
+		if((p.substr(0, 2) == "VE") || (p.substr(0, 2) == "AP")) {
+			if (p.find("AirDC++") != string::npos) {
 				u->getUser()->setFlag(User::AIRDCPLUSPLUS);
 			}
 		}
@@ -231,13 +241,13 @@ void AdcHub::handle(AdcCommand::SUP, AdcCommand& c) noexcept {
 		return;
 	bool baseOk = false;
 	bool tigrOk = false;
-	for(StringIter i = c.getParameters().begin(); i != c.getParameters().end(); ++i) {
-		if(*i == BAS0_SUPPORT) {
+	for(const auto& p: c.getParameters()) {
+		if(p == BAS0_SUPPORT) {
 			baseOk = true;
 			tigrOk = true;
-		} else if(*i == BASE_SUPPORT) {
+		} else if(p == BASE_SUPPORT) {
 			baseOk = true;
-		} else if(*i == TIGR_SUPPORT) {
+		} else if(p == TIGR_SUPPORT) {
 			tigrOk = true;
 		}
 	}
@@ -429,7 +439,7 @@ void AdcHub::handle(AdcCommand::RCM, AdcCommand& c) noexcept {
 		return;
 	}
 
-	if (!u->getIdentity().supports(NAT0_FEATURE) || !BOOLSETTING(ALLOW_NAT_TRAVERSAL))
+	if (!u->getIdentity().supports(NAT0_FEATURE))
 		return;
 
 	// Attempt to traverse NATs and/or firewalls with TCP.
@@ -641,7 +651,7 @@ void AdcHub::handle(AdcCommand::GET, AdcCommand& c) noexcept {
 		size_t n = 0;
 		
 		if (getShareProfile() != SP_HIDDEN) {
-			if (BOOLSETTING(USE_PARTIAL_SHARING))
+			if (SETTING(USE_PARTIAL_SHARING))
 				n = QueueManager::getInstance()->getQueuedFiles();
 
 			int64_t tmp = 0;
@@ -662,7 +672,7 @@ void AdcHub::handle(AdcCommand::GET, AdcCommand& c) noexcept {
 			HashBloom bloom;
 			bloom.reset(k, m, h);
 			ShareManager::getInstance()->getBloom(bloom);
-			if (BOOLSETTING(USE_PARTIAL_SHARING))
+			if (SETTING(USE_PARTIAL_SHARING))
 				QueueManager::getInstance()->getBloom(bloom);
 			bloom.copy_to(v);
 		}
@@ -816,9 +826,9 @@ void AdcHub::sendUserCmd(const UserCommand& command, const ParamMap& params) {
 		} else {
 			const string& to = command.getTo();
 			RLock l(cs);
-			for(auto i = users.begin(); i != users.end(); ++i) {
-				if(i->second->getIdentity().getNick() == to) {
-					privateMessage(i->second, cmd);
+			for(const auto& ou: users | map_values) {
+				if(ou->getIdentity().getNick() == to) {
+					privateMessage(ou, cmd);
 					return;
 				}
 			}
@@ -934,12 +944,11 @@ void AdcHub::constructSearch(AdcCommand& c, int aSizeMode, int64_t aSize, int aF
 		}
 
 		StringTokenizer<string> st(aString, ' ');
-		for(auto i = st.getTokens().begin(); i != st.getTokens().end(); ++i) {
-			c.addParam("AN", *i);
-		}
+		for(const auto& t: st.getTokens())
+			c.addParam("AN", t);
 
-		for(auto i = excluded.begin(); i != excluded.end(); ++i) {
-			c.addParam("NO", *i);
+		for(const auto& e: excluded) {
+			c.addParam("NO", e);
 		}
 
 		if(aFileType == SearchManager::TYPE_DIRECTORY) {
@@ -994,11 +1003,12 @@ void AdcHub::constructSearch(AdcCommand& c, int aSizeMode, int64_t aSize, int aF
 
 			if(gr) {
 				auto appendGroupInfo = [rx, exts, gr] (AdcCommand& aCmd) -> void {
-					for(auto i = exts.cbegin(), iend = exts.cend(); i != iend; ++i)
-						aCmd.addParam("EX", *i);
+					for(const auto& ext: exts)
+						aCmd.addParam("EX", ext);
+
 					aCmd.addParam("GR", Util::toString(gr));
-					for(auto i = rx.cbegin(), iend = rx.cend(); i != iend; ++i)
-						aCmd.addParam("RX", *i);
+					for(const auto& i: rx)
+						aCmd.addParam("RX", i);
 				};
 
 				if (isDirect) {
@@ -1011,8 +1021,8 @@ void AdcHub::constructSearch(AdcCommand& c, int aSizeMode, int64_t aSize, int aF
 					c_gr.setFeatures('+' + SEGA_FEATURE);
 
 					const auto& params = c.getParameters();
-					for(auto i = params.cbegin(), iend = params.cend(); i != iend; ++i)
-						c_gr.addParam(*i);
+					for(const auto& p: params)
+						c_gr.addParam(p);
 
 					appendGroupInfo(c_gr);
 					sendSearch(c_gr);
@@ -1024,8 +1034,8 @@ void AdcHub::constructSearch(AdcCommand& c, int aSizeMode, int64_t aSize, int aF
 			}
 		}
 
-		for(auto i = aExtList.cbegin(), iend = aExtList.cend(); i != iend; ++i)
-			c.addParam("EX", *i);
+		for(const auto& ex: aExtList)
+			c.addParam("EX", ex);
 	}
 }
 
@@ -1051,13 +1061,10 @@ void AdcHub::sendSearch(AdcCommand& c) {
 	} else {
 		c.setType(AdcCommand::TYPE_FEATURE);
 		string features = c.getFeatures();
-		if(BOOLSETTING(ALLOW_NAT_TRAVERSAL)) {
-			c.setFeatures(features + '+' + TCP4_FEATURE + '-' + NAT0_FEATURE);
-			send(c);		
-			c.setFeatures(features + "+" + NAT0_FEATURE);
-		} else {
-			c.setFeatures(features + "+" + TCP4_FEATURE);
-		}
+		c.setFeatures(features + '+' + TCP4_FEATURE + '-' + NAT0_FEATURE);
+		send(c);		
+		c.setFeatures(features + "+" + NAT0_FEATURE);
+
 		send(c);
 	}
 }
@@ -1093,7 +1100,7 @@ static void addParam(StringMap& lastInfoMap, AdcCommand& c, const string& var, c
 			c.addParam(var, value);
 		}
 	} else if(!value.empty()) {
-		lastInfoMap.insert(make_pair(var, value));
+		lastInfoMap.emplace(var, value);
 		c.addParam(var, value);
 	}
 }
@@ -1113,12 +1120,12 @@ void AdcHub::info(bool /*alwaysSend*/) {
 
 	addParam(lastInfoMap, c, "ID", ClientManager::getInstance()->getMyCID().toBase32());
 	addParam(lastInfoMap, c, "PD", ClientManager::getInstance()->getMyPID().toBase32());
-	addParam(lastInfoMap, c, "NI", getCurrentNick());
-	addParam(lastInfoMap, c, "DE", getCurrentDescription());
+	addParam(lastInfoMap, c, "NI", get(Nick));
+	addParam(lastInfoMap, c, "DE", getDescription());
 	addParam(lastInfoMap, c, "SL", Util::toString(UploadManager::getInstance()->getSlots()));
 	addParam(lastInfoMap, c, "FS", Util::toString(UploadManager::getInstance()->getFreeSlots()));
 
-	size_t fileCount = BOOLSETTING(USE_PARTIAL_SHARING) ? QueueManager::getInstance()->getQueuedFiles() : 0;
+	size_t fileCount = SETTING(USE_PARTIAL_SHARING) ? QueueManager::getInstance()->getQueuedFiles() : 0;
 	int64_t size = 0;
 	if (getShareProfile() != SP_HIDDEN)
 		ShareManager::getInstance()->getProfileInfo(getShareProfile(), size, fileCount);
@@ -1132,7 +1139,7 @@ void AdcHub::info(bool /*alwaysSend*/) {
 	addParam(lastInfoMap, c, "HO", Util::toString(counts[COUNT_OP]));	
 
 	addParam(lastInfoMap, c, "VE", "AirDC++ " SHORTVERSIONSTRING);
-	addParam(lastInfoMap, c, "AW", Util::getAway() ? "1" : Util::emptyString);
+	addParam(lastInfoMap, c, "AW", AirUtil::getAway() ? "1" : Util::emptyString);
 	addParam(lastInfoMap, c, "LC", Localization::getLocale());
 
 	int limit = ThrottleManager::getInstance()->getDownLimit();
@@ -1157,29 +1164,20 @@ void AdcHub::info(bool /*alwaysSend*/) {
 		addParam(lastInfoMap, c, "KP", "SHA256/" + Encoder::toBase32(&kp[0], kp.size()));
 	}
 
-	if(isActive() || BOOLSETTING(ALLOW_NAT_TRAVERSAL))
-	{
-		if(!getFavIp().empty()) {
-			addParam(lastInfoMap, c, "I4", Socket::resolve(getFavIp()));
-		} else if(BOOLSETTING(NO_IP_OVERRIDE) && !SETTING(EXTERNAL_IP).empty()) {
-			addParam(lastInfoMap, c, "I4", Socket::resolve(SETTING(EXTERNAL_IP)));
-		} else {
-			addParam(lastInfoMap, c, "I4", "0.0.0.0");
-		}
+	if(CONNSETTING(NO_IP_OVERRIDE) && !getUserIp().empty()) {
+		addParam(lastInfoMap, c, "I4", Socket::resolve(getUserIp(), AF_INET));
+	} else {
+		addParam(lastInfoMap, c, "I4", "0.0.0.0");
 	}
 
 	if(isActive()) {
 		addParam(lastInfoMap, c, "U4", SearchManager::getInstance()->getPort());
 		su += "," + TCP4_FEATURE;
 		su += "," + UDP4_FEATURE;
-		if (BOOLSETTING(ENABLE_SUDP))
+		if (SETTING(ENABLE_SUDP))
 			su += "," + SUD1_FEATURE;
 	} else {
-		if(BOOLSETTING(ALLOW_NAT_TRAVERSAL)) {
-			su += "," + NAT0_FEATURE;
-		} else {
-			addParam(lastInfoMap, c, "I4", "");
-		}
+		su += "," + NAT0_FEATURE;
 		addParam(lastInfoMap, c, "U4", "");
 	}
 
@@ -1194,9 +1192,9 @@ void AdcHub::refreshUserList(bool) {
 	OnlineUserList v;
 
 	RLock l(cs);
-	for(auto i = users.begin(); i != users.end(); ++i) {
-		if(i->first != AdcCommand::HUB_SID) {
-			v.push_back(i->second);
+	for(const auto& i: users) {
+		if(i.first != AdcCommand::HUB_SID) {
+			v.push_back(i.second);
 		}
 	}
 	fire(ClientListener::UsersUpdated(), this, v);
@@ -1243,11 +1241,11 @@ void AdcHub::on(Connected c) noexcept {
 	AdcCommand cmd(AdcCommand::CMD_SUP, AdcCommand::TYPE_HUB);
 	cmd.addParam(BAS0_SUPPORT).addParam(BASE_SUPPORT).addParam(TIGR_SUPPORT);
 	
-	if(BOOLSETTING(HUB_USER_COMMANDS)) {
+	if(SETTING(HUB_USER_COMMANDS)) {
 		cmd.addParam(UCM0_SUPPORT);
 	}
 
-	if(BOOLSETTING(SEND_BLOOM)) {
+	if(SETTING(BLOOM_MODE) == SettingsManager::BLOOM_ENABLED) {
 		cmd.addParam(BLO0_SUPPORT);
 	}
 	cmd.addParam(ZLIF_SUPPORT);
@@ -1262,9 +1260,6 @@ void AdcHub::on(Line l, const string& aLine) noexcept {
 		return;
 	}
 
-	if(BOOLSETTING(ADC_DEBUG)) {
-		fire(ClientListener::StatusMessage(), this, "<ADC>" + aLine + "</ADC>");
-	}
 	dispatch(aLine);
 }
 
@@ -1282,9 +1277,9 @@ void AdcHub::on(Second s, uint64_t aTick) noexcept {
 
 OnlineUserPtr AdcHub::findUser(const string& aNick) const { 
 	RLock l(cs); 
-	for(auto i = users.begin(); i != users.end(); ++i) { 
-		if(i->second->getIdentity().getNick() == aNick) { 
-			return i->second; 
+	for(auto ou: users | map_values) { 
+		if(ou->getIdentity().getNick() == aNick) { 
+			return ou; 
 		} 
 	} 
 	return nullptr; 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -237,8 +237,7 @@ public:
 		int yPos = GET_Y_LPARAM(lParam);
 		int row = getRows() - ((yPos / getTabHeight()) + 1);
 
-		for(TabInfo::ListIter i = tabs.begin(); i != tabs.end(); ++i) {
-			TabInfo* t = *i;
+		for(auto t: tabs) {
 			if((row == t->row) && (xPos >= t->xpos) && (xPos < (t->xpos + t->getWidth())) ) {
 				// Bingo, this was clicked
 				HWND hWnd = GetParent();
@@ -262,9 +261,7 @@ public:
 
 			bool moveLast = true;
 
-			for(TabInfo::ListIter i = tabs.begin(); i != tabs.end(); ++i) {
-				TabInfo* t = *i;
-			
+			for(auto t: tabs) {
 				if((row == t->row) && (xPos >= t->xpos) && (xPos < (t->xpos + t->getWidth())) ) {
 					// Bingo, this was clicked
 					HWND hWnd = GetParent();
@@ -293,8 +290,7 @@ public:
 		int yPos = GET_Y_LPARAM(lParam); 
 		int row = getRows() - ((yPos / getTabHeight()) + 1);
 
-		for(TabInfo::ListIter i = tabs.begin(); i != tabs.end(); ++i) {
-			TabInfo* t = *i;
+		for(auto t: tabs) {
 			if((row == t->row) && (xPos >= t->xpos) && (xPos < (t->xpos + t->getWidth())) ) {
 				// Bingo, this was clicked
 				HWND hWnd = GetParent();
@@ -314,8 +310,7 @@ public:
 		int xPos = pt.x;
 		int row = getRows() - ((pt.y / getTabHeight()) + 1);
 
-		for(TabInfo::ListIter i = tabs.begin(); i != tabs.end(); ++i) {
-			TabInfo* t = *i;
+		for(auto t: tabs) {
 			if((row == t->row) && (xPos >= t->xpos) && (xPos < (t->xpos + t->getWidth())) ) {
 				// Bingo, this was clicked, check if the owner wants to handle it...
 				if(!::SendMessage(t->hWnd, FTM_CONTEXTMENU, 0, lParam)) {
@@ -385,8 +380,7 @@ public:
 		bool notify = false;
 		bool needInval = false;
 
-		for(TabInfo::ListIter i = tabs.begin(); i != tabs.end(); ++i) {
-			TabInfo* ti = *i;
+		for(auto ti: tabs) {
 			if( (r != 0) && ((w + ti->getWidth() ) > rc.Width()) ) {
 				if(r >= SETTING(MAX_TAB_ROWS)) {
 					notify |= (rows != r);
@@ -457,9 +451,7 @@ public:
 			
 			HFONT oldfont = memDC.SelectFont(WinUtil::font);
 
-			for(TabInfo::ListIter i = tabs.begin(); i != tabs.end(); ++i) {
-				TabInfo* t = *i;
-
+			for(auto t: tabs) {
 				if(t->row != -1 && t->xpos < rc.right && t->xpos + t->getWidth()  >= rc.left ) {
 					if(t != active) {
 						drawTab(memDC, t, t->xpos, t->row);
@@ -537,9 +529,9 @@ public:
 
 	void redraw() {
 		height = WinUtil::getTextHeight(GetParent(), WinUtil::font) + 7;
-		for(TabInfo::ListIter i = tabs.begin(); i != tabs.end(); ++i) {
-			(*i)->update();
-			::SendMessage((*i)->hWnd, WM_PAINT, 0, 0);
+		for(auto t: tabs) {
+			t->update();
+			::SendMessage(t->hWnd, WM_PAINT, 0, 0);
 		}
 		Invalidate();
 	}
@@ -619,7 +611,7 @@ private:
 		}
 
 		int getWidth() {
-			return ( ( dirty && !BOOLSETTING(BLEND_TABS) ) ? boldSize.cx : size.cx) + ((wCode == -1) ? FT_EXTRA_SPACE -7: FT_EXTRA_SPACE) - (BOOLSETTING(TAB_SHOW_ICONS) ? 0 : 16);
+			return ( ( dirty && !SETTING(BLEND_TABS) ) ? boldSize.cx : size.cx) + ((wCode == -1) ? FT_EXTRA_SPACE -7: FT_EXTRA_SPACE) - (SETTING(TAB_SHOW_ICONS) ? 0 : 16);
 			
 		}
 	};
@@ -674,9 +666,9 @@ private:
 	bool inTab;
 
 	TabInfo* getTabInfo(HWND aWnd) {
-		for(TabInfo::ListIter i	= tabs.begin(); i != tabs.end(); ++i) {
-			if((*i)->hWnd == aWnd)
-				return *i;
+		for(auto t: tabs) {
+			if(t->hWnd == aWnd)
+				return t;
 		}
 		return NULL;
 	}
@@ -702,7 +694,7 @@ private:
 			brBackground = ::CreateSolidBrush(SETTING(TAB_INACTIVE_BG_DISCONNECTED));
 		else if(tab->notification)
 			brBackground = ::CreateSolidBrush(SETTING(TAB_INACTIVE_BG_NOTIFY));
-		else if(tab->dirty && BOOLSETTING(BLEND_TABS)){
+		else if(tab->dirty && SETTING(BLEND_TABS)){
 			COLORREF bgBase = SETTING(TAB_INACTIVE_BG);
 			int mod = (HLS_L(RGB2HLS(bgBase)) >= 128) ? - SETTING(TAB_DIRTY_BLEND) : SETTING(TAB_DIRTY_BLEND);
 			brBackground = ::CreateSolidBrush( HLS_TRANSFORM(bgBase, mod, 0) );
@@ -748,11 +740,11 @@ private:
 		int mapMode = dc.SetMapMode(MM_TEXT);
 
 		//Draw the icon
-		if(tab->hIcon != NULL && BOOLSETTING(TAB_SHOW_ICONS)) {
+		if(tab->hIcon != NULL && SETTING(TAB_SHOW_ICONS)) {
 			dc.DrawIconEx(pos+3, ypos + (getTabHeight() / 2) - 8 , tab->hIcon, 16, 16, 0, NULL, DI_NORMAL | DI_COMPAT);
 		}
 		
-		int spacing = BOOLSETTING(TAB_SHOW_ICONS) ? 20 : 2;
+		int spacing = SETTING(TAB_SHOW_ICONS) ? 20 : 2;
 		if(tab->wCode != -1){
 			HFONT f = dc.SelectFont(WinUtil::tabFont);
 			dc.TextOut(pos + spacing, ypos +3, Util::toStringW(tab->wCode).c_str(), 1);
@@ -761,7 +753,7 @@ private:
 			spacing += WinUtil::getTextWidth(m_hWnd, WinUtil::tabFont) + 2;
 		}
 
-		if( tab->dirty && !BOOLSETTING(BLEND_TABS) ) {
+		if( tab->dirty && !SETTING(BLEND_TABS) ) {
 			HFONT f = dc.SelectFont(WinUtil::boldFont);
 			dc.TextOut(pos + spacing, ypos + 3, tab->name.c_str(), tab->name.length());
 			dc.SelectFont(f);		
@@ -845,7 +837,7 @@ public:
 		BOOL bMaximized = FALSE;
 
 		if(MDIGetActive(&bMaximized) == NULL)
-			bMaximized = BOOLSETTING(MDI_MAXIMIZED);
+			bMaximized = SETTING(MDI_MAXIMIZED);
 
 		if(bMaximized)
 			wndParent.SetRedraw(FALSE);

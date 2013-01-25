@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "stdinc.h"
 #include "SimpleXML.h"
+#include "Streams.h"
 
 namespace dcpp {
 
@@ -76,15 +77,15 @@ string& SimpleXML::escape(string& aString, bool aAttrib, bool aLoading /* = fals
 }
 
 void SimpleXML::Tag::appendAttribString(string& tmp) {
-	for(StringPairIter i = attribs.begin(); i!= attribs.end(); ++i) {
-		tmp.append(i->first);
+	for(auto& i: attribs) {
+		tmp.append(i.first);
 		tmp.append("=\"", 2);
-		if(needsEscape(i->second, true)) {
-			string tmp2(i->second);
+		if(needsEscape(i.second, true)) {
+			string tmp2(i.second);
 			escape(tmp2, true);
 			tmp.append(tmp2);
 		} else {
-			tmp.append(i->second);
+			tmp.append(i.second);
 		}
 		tmp.append("\" ", 2);
 	}
@@ -127,8 +128,8 @@ void SimpleXML::Tag::toXML(int indent, OutputStream* f, bool noIndent /*false*/)
 			tmp.append(">\r\n", 3);
 			f->write(tmp);
 			tmp.clear();
-			for(auto i = children.begin(); i!=children.end(); ++i) {
-				(*i)->toXML(noIndent ? 0 : indent + 1, f);
+			for(auto& i: children) {
+				i->toXML(indent + 1, f);
 			}
 			tmp.append(indent, '\t');
 		}
@@ -174,25 +175,24 @@ void SimpleXML::addAttrib(const string& aName, const string& aData) {
 	if(current == &root)
 		throw SimpleXMLException("No tag is currently selected");
 
-	current->attribs.push_back(make_pair(aName, aData));
+	current->attribs.emplace_back(aName, aData);
 }
 
 void SimpleXML::addChildAttrib(const string& aName, const string& aData) {
 	checkChildSelected();
 
-	(*currentChild)->attribs.push_back(make_pair(aName, aData));
+	(*currentChild)->attribs.emplace_back(aName, aData);
 }
 
 void SimpleXML::replaceChildAttrib(const string& aName, const string& aData) {
 	checkChildSelected();
 
-	StringPairIter i = find_if((*currentChild)->attribs.begin(), (*currentChild)->attribs.end(), CompareFirst<string,string>(aName));
-	if(i != (*currentChild)->attribs.end()){
-		(*currentChild)->attribs.erase(i);
-		(*currentChild)->attribs.push_back(make_pair(aName, aData));
-	} else
-		(*currentChild)->attribs.push_back(make_pair(aName, aData));
-
+	auto i = find_if((*currentChild)->attribs.begin(), (*currentChild)->attribs.end(), CompareFirst<string,string>(aName));
+	if(i != (*currentChild)->attribs.end()) {
+		(*i).second = aData;
+	} else {
+		(*currentChild)->attribs.emplace_back(aName, aData);
+	}
 }
 
 string SimpleXML::toXML() { 
@@ -202,7 +202,7 @@ string SimpleXML::toXML() {
 	return tmp; 
 }
 
-void SimpleXML::toXML(OutputStream* f) throw(FileException) { 
+void SimpleXML::toXML(OutputStream* f) { 
 	if(!root.children.empty()) 
 		root.children[0]->toXML(0, f); 
 }

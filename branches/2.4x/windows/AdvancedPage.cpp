@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,14 +18,8 @@
 
 #include "stdafx.h"
 
-#include "../client/DCPlusPlus.h"
-#include "../client/SettingsManager.h"
-#include "../client/FavoriteManager.h"
-
 #include "Resource.h"
 #include "AdvancedPage.h"
-#include "CommandDlg.h"
-#include "WinUtil.h"
 #include "PropertiesDlg.h"
 
 PropPage::TextItem AdvancedPage::texts[] = {
@@ -37,7 +31,6 @@ PropPage::Item AdvancedPage::items[] = {
 };
 
 AdvancedPage::ListItem AdvancedPage::listItems[] = {
-	{ SettingsManager::AUTO_AWAY, ResourceManager::SETTINGS_AUTO_AWAY },
 	{ SettingsManager::AUTO_FOLLOW, ResourceManager::SETTINGS_AUTO_FOLLOW },
 	{ SettingsManager::CLEAR_SEARCH, ResourceManager::SETTINGS_CLEAR_SEARCH },
 	{ SettingsManager::MINIMIZE_ON_STARTUP, ResourceManager::SETTINGS_MINIMIZE_ON_STARTUP },

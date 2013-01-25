@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,12 +80,14 @@
 #include <boost/noncopyable.hpp>
 #include <boost/regex.hpp>
 #include <boost/optional.hpp>
+#include <boost/range/adaptor/reversed.hpp>
 
 namespace dcpp {
 	using namespace std;
 	using boost::optional;
 	using boost::adaptors::map_values;
 	using boost::adaptors::map_keys;
+	using boost::adaptors::reversed;
 	
 	inline int stricmp(const string& a, const string& b) { return _stricmp(a.c_str(), b.c_str()); }
 	inline int strnicmp(const string& a, const string& b, size_t n) { return _strnicmp(a.c_str(), b.c_str(), n); }

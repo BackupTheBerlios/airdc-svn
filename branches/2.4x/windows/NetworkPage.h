@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,13 +42,9 @@ public:
 	BEGIN_MSG_MAP(NetworkPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, onInitDialog)
 		COMMAND_ID_HANDLER(IDC_CONNECTION_DETECTION, onClickedActive)
-		COMMAND_ID_HANDLER(IDC_DIRECT, onClickedActive)
-		COMMAND_ID_HANDLER(IDC_FIREWALL_PASSIVE, onClickedActive)
-		COMMAND_ID_HANDLER(IDC_FIREWALL_UPNP, onClickedActive)
-		COMMAND_ID_HANDLER(IDC_FIREWALL_NAT, onClickedActive)
-		COMMAND_ID_HANDLER(IDC_DIRECT_OUT, onClickedActive)
-		COMMAND_ID_HANDLER(IDC_NATT, onClickedActive)
-		COMMAND_ID_HANDLER(IDC_SOCKS5, onClickedActive)
+		COMMAND_ID_HANDLER(IDC_ACTIVE, onClickedActive)
+		COMMAND_ID_HANDLER(IDC_PASSIVE, onClickedActive)
+		COMMAND_ID_HANDLER(IDC_ACTIVE_UPNP, onClickedActive)
 		COMMAND_ID_HANDLER(IDC_GETIP, onGetIP)
 	END_MSG_MAP()
 
@@ -63,7 +59,6 @@ public:
 private:
 	static Item items[];
 	static TextItem texts[];
-	CEdit desc;
 	CComboBox BindCombo;
 
 	void completeDownload();
@@ -71,6 +66,7 @@ private:
 	void fixControls();
 	void getAddresses();
 
+	map<string, string> bindAddresses;
 	IP_ADAPTER_ADDRESSES* adapterInfo;
 	void on(UpdateManagerListener::SettingUpdated, size_t key, const string& value) noexcept;
 };

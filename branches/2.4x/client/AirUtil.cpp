@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,6 +57,10 @@ boost::regex AirUtil::crcReg;
 string AirUtil::privKeyFile;
 string AirUtil::tempDLDir;
 
+AwayMode AirUtil::away = AWAY_OFF;
+string AirUtil::awayMsg;
+time_t AirUtil::awayTime;
+
 tstring AirUtil::getDirDupePath(DupeType aType, const string& aPath) {
 	if (aType == SHARE_DUPE || aType == PARTIAL_SHARE_DUPE) {
 		return ShareManager::getInstance()->getDirPath(aPath);
@@ -67,7 +71,9 @@ tstring AirUtil::getDirDupePath(DupeType aType, const string& aPath) {
 
 tstring AirUtil::getDupePath(DupeType aType, const TTHValue& aTTH) {
 	if (aType == SHARE_DUPE) {
-		return Text::toT(ShareManager::getInstance()->getRealPath(aTTH));
+		try {
+			return Text::toT(ShareManager::getInstance()->getRealPath(aTTH));
+		} catch(...) { }
 	} else {
 		StringList localPaths = QueueManager::getInstance()->getTargets(aTTH);
 		if (!localPaths.empty()) {
@@ -78,11 +84,11 @@ tstring AirUtil::getDupePath(DupeType aType, const TTHValue& aTTH) {
 }
 
 DupeType AirUtil::checkDirDupe(const string& aDir, int64_t aSize) {
-	auto sd = ShareManager::getInstance()->isDirShared(aDir, aSize);
+	const auto sd = ShareManager::getInstance()->isDirShared(aDir, aSize);
 	if (sd > 0) {
 		return sd == 2 ? SHARE_DUPE : PARTIAL_SHARE_DUPE;
 	} else {
-		auto qd = QueueManager::getInstance()->isDirQueued(aDir);
+		const auto qd = QueueManager::getInstance()->isDirQueued(aDir);
 		if (qd > 0)
 			return qd == 1 ? QUEUE_DUPE : FINISHED_DUPE;
 	}
@@ -93,7 +99,7 @@ DupeType AirUtil::checkFileDupe(const TTHValue& aTTH, const string& aFileName) {
 	if (ShareManager::getInstance()->isFileShared(aTTH, aFileName)) {
 		return SHARE_DUPE;
 	} else {
-		int qd = QueueManager::getInstance()->isFileQueued(aTTH, aFileName);
+		const int qd = QueueManager::getInstance()->isFileQueued(aTTH, aFileName);
 		if (qd > 0) {
 			return qd == 1 ? QUEUE_DUPE : FINISHED_DUPE; 
 		}
@@ -105,7 +111,7 @@ DupeType AirUtil::checkFileDupe(const string& aFileName, int64_t aSize) {
 	if (ShareManager::getInstance()->isFileShared(aFileName, aSize)) {
 		return SHARE_DUPE;
 	} else {
-		int qd = QueueManager::getInstance()->isFileQueued(AirUtil::getTTH(aFileName, aSize), aFileName);
+		const int qd = QueueManager::getInstance()->isFileQueued(AirUtil::getTTH(aFileName, aSize), aFileName);
 		if (qd > 0) {
 			return qd == 1 ? QUEUE_DUPE : FINISHED_DUPE; 
 		}
@@ -213,10 +219,10 @@ int AirUtil::getSlots(bool download, double value, bool rarLimits) {
 	if (value != 0) {
 		speed=value;
 	} else if (download) {
-		int limit = BOOLSETTING(AUTO_DETECTION_USE_LIMITED) ? ThrottleManager::getInstance()->getDownLimit() : 0;
+		int limit = SETTING(AUTO_DETECTION_USE_LIMITED) ? ThrottleManager::getInstance()->getDownLimit() : 0;
 		speed = limit > 0 ? (limit * 8.00) / 1024.00 : Util::toDouble(SETTING(DOWNLOAD_SPEED));
 	} else {
-		int limit = BOOLSETTING(AUTO_DETECTION_USE_LIMITED) ? ThrottleManager::getInstance()->getUpLimit() : 0;
+		int limit = SETTING(AUTO_DETECTION_USE_LIMITED) ? ThrottleManager::getInstance()->getUpLimit() : 0;
 		speed = limit > 0 ? (limit * 8.00) / 1024.00 : Util::toDouble(SETTING(UPLOAD_SPEED));
 	}
 
@@ -601,17 +607,6 @@ bool AirUtil::isHubLink(const string& hubUrl) {
 	return false;
 }
 
-string AirUtil::stripHubUrl(const string& url) {
-	
-	if(strnicmp("adc://", url.c_str(), 6) == 0) {
-		return "_" + Util::validateFileName(url.substr(6, url.length()));
-	} else if(strnicmp("adcs://", url.c_str(), 7) == 0) {
-		return "_" + Util::validateFileName(url.substr(7, url.length()));
-
-	}
-	return Util::emptyString;
-}
-
 string AirUtil::convertMovePath(const string& aPath, const string& aParent, const string& aTarget) {
 	return aTarget + aPath.substr(aParent.length(), aPath.length() - aParent.length());
 }
@@ -631,6 +626,24 @@ string AirUtil::regexEscape(const string& aStr, bool isWildcard) {
 		result = "^(" + result + ")$";
 	}
     return result;
+}
+
+void AirUtil::setAway(AwayMode aAway) {
+	if(aAway != away)
+		ClientManager::getInstance()->infoUpdated();
+
+	if((aAway == AWAY_MANUAL) || (getAwayMode() == AWAY_MANUAL && aAway == AWAY_OFF) ) //only save the state if away mode is set by user
+		SettingsManager::getInstance()->set(SettingsManager::AWAY, aAway > 0);
+
+	away = aAway;
+
+	if (away > AWAY_OFF)
+		awayTime = time(NULL);
+}
+
+string AirUtil::getAwayMessage(ParamMap& params) { 
+	params["idleTI"] = Util::formatSeconds(time(NULL) - awayTime);
+	return Util::formatParams(awayMsg.empty() ? SETTING(DEFAULT_AWAY_MESSAGE) : awayMsg, params);
 }
 
 }

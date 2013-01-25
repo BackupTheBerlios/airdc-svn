@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,10 +17,7 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
-#include "../client/SettingsManager.h"
 #include "../client/version.h"
-#include "../client/SimpleXML.h"
 #include "Resource.h"
 
 
@@ -48,7 +45,6 @@ PropPage::TextItem MiscPage::texts[] = {
 
 PropPage::Item MiscPage::items[] = {
 	{ IDC_FAV_DL_SPEED, SettingsManager::FAV_DL_SPEED, PropPage::T_INT },
-	{ IDC_OPEN_FIRST_X_HUB, SettingsManager::OPEN_FIRST_X_HUBS, PropPage::T_INT },
 	{ IDC_WINAMP, SettingsManager::WINAMP_FORMAT, PropPage::T_STR },
 	{ IDC_PASSWD_PROTECT_CHCKBOX, SettingsManager::PASSWD_PROTECT, PropPage::T_BOOL },
 	{ IDC_PASSWD_PROTECT_TRAY_CHCKBOX, SettingsManager::PASSWD_PROTECT_TRAY, PropPage::T_BOOL },
@@ -96,7 +92,6 @@ LRESULT MiscPage::onInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	}
 	
 	SetDlgItemText(IDC_WINAMP_PATH, Text::toT(SETTING(WINAMP_PATH)).c_str());
-	SetDlgItemText(IDC_ANTIVIR_PATH, Text::toT(SETTING(ANTIVIR_PATH)).c_str());
 	
 	fixControls();
 

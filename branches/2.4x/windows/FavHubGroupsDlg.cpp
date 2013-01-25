@@ -17,7 +17,6 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "../client/FavoriteManager.h"
 
 #include "FavHubGroupsDlg.h"
@@ -66,11 +65,12 @@ LRESULT FavHubGroupsDlg::onItemChanged(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /
 void FavHubGroupsDlg::save() {
 	FavHubGroups groups;
 	string name;
-	FavHubGroupProperties group;
+	//FavHubGroupProperties group;
 
+	HubSettings settings;
 	for(int i = 0; i < ctrlGroups.GetItemCount(); ++i) {
 		name = Text::fromT(getText(0, i));
-		groups.insert(make_pair(name, group));
+		groups.emplace(name, settings);
 	}
 	FavoriteManager::getInstance()->setFavHubGroups(groups);
 	FavoriteManager::getInstance()->save();

@@ -1,6 +1,20 @@
+/*
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "../client/SettingsManager.h"
 #include "../client/HighlightManager.h"
 #include "../client/SimpleXML.h"
@@ -299,7 +313,7 @@ void PropPageTextStyles::TextStyleSettings::Init(
 	PropPageTextStyles *pParent, SettingsManager *pSM, 
 	LPCSTR sText, LPCSTR sPreviewText,
 	SettingsManager::IntSetting iBack, SettingsManager::IntSetting iFore, 
-	SettingsManager::IntSetting iBold, SettingsManager::IntSetting iItalic) {
+	SettingsManager::BoolSetting iBold, SettingsManager::BoolSetting iItalic) {
 
 	cbSize = sizeof(CHARFORMAT2);
 	dwMask = CFM_COLOR | CFM_BOLD | CFM_ITALIC | CFM_BACKCOLOR;
@@ -326,10 +340,10 @@ void PropPageTextStyles::TextStyleSettings::LoadSettings() {
 void PropPageTextStyles::TextStyleSettings::SaveSettings() {
 	settings->set( m_iBackColor, (int) crBackColor);
 	settings->set( m_iForeColor, (int) crTextColor);
-	BOOL boBold = ( ( dwEffects & CFE_BOLD ) == CFE_BOLD );
-	settings->set( m_iBold, (int) boBold);
-	BOOL boItalic = ( ( dwEffects & CFE_ITALIC ) == CFE_ITALIC );
-	settings->set( m_iItalic, (int) boItalic);
+	bool boBold = ( ( dwEffects & CFE_BOLD ) == CFE_BOLD );
+	settings->set( m_iBold, boBold);
+	bool boItalic = ( ( dwEffects & CFE_ITALIC ) == CFE_ITALIC );
+	settings->set( m_iItalic, boItalic);
 }
 
 void PropPageTextStyles::TextStyleSettings::EditBackColor() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,8 @@
 #pragma once
 #endif // _MSC_VER >= 1000
 
-#include "HubFrame.h"
+#include <ppl.h>
+
 #include "../client/TimerManager.h"
 #include "../client/FavoriteManager.h"
 #include "../client/QueueManagerListener.h"
@@ -38,8 +39,6 @@
 #include "FlatTabCtrl.h"
 #include "SingleInstance.h"
 #include "TransferView.h"
-#include "WinUtil.h"
-#include "LineDlg.h"
 #include "HashProgressDlg.h"
 #include "OMenu.h"
 #include "picturewindow.h"
@@ -49,7 +48,7 @@
 #define POPUP_UID 19000
 
 class MainFrame : public CMDIFrameWindowImpl<MainFrame>, public CUpdateUI<MainFrame>,
-		public CMessageFilter, public CIdleHandler, public CSplitterImpl<MainFrame, false>, public Thread,
+		public CMessageFilter, public CIdleHandler, public CSplitterImpl<MainFrame, false>,
 		private TimerManagerListener, private QueueManagerListener,
 		private LogManagerListener, private DirectoryListingManagerListener, private UpdateManagerListener, private ScannerManagerListener
 {
@@ -60,36 +59,16 @@ public:
 
 	CMDICommandBarCtrl m_CmdBar;
 
-	struct Popup {
-		tstring Title;
-		tstring Message;
-		int Icon;
-		bool force;
-		HICON hIcon;
-	};
-
-	struct SizeConfirmInfo {
-		SizeConfirmInfo(const string aName, const string& aMsg) : msg(Text::toT(aMsg)), name(aName) { }
-		tstring msg;
-		string name;
-	};
-
 	enum {
-		PROMPT_SIZE_ACTION,
-		OPEN_FILELIST,
 		STATS,
 		AUTO_CONNECT,
 		PARSE_COMMAND_LINE,
-		VIEW_FILE_AND_DELETE, 
-		VIEW_TEXT, 
+		VIEW_FILE_AND_DELETE,
 		SET_STATUSTEXT,
 		STATUS_MESSAGE,
 		ASYNC,
-		SHOW_POPUP,
-		REMOVE_POPUP,
 		SET_PM_TRAY_ICON,
 		SET_HUB_TRAY_ICON,
-		UPDATE_TBSTATUS_HASHING,
 		UPDATE_TBSTATUS_REFRESHING
 	};
 
@@ -304,7 +283,7 @@ public:
 		HWND hWnd = (HWND)wParam;
 		if(MDIGetActive() != hWnd) {
 			MDIActivate(hWnd);
-		} else if(BOOLSETTING(TOGGLE_ACTIVE_WINDOW)) {
+		} else if(SETTING(TOGGLE_ACTIVE_WINDOW)) {
 			::SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 			MDINext(hWnd);
 			hWnd = MDIGetActive();
@@ -325,10 +304,7 @@ public:
 		return 0;
 	}
 	
-	LRESULT onOpenDownloads(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-		WinUtil::openFile(Text::toT(SETTING(DOWNLOAD_DIRECTORY)));
-		return 0;
-	}
+	LRESULT onOpenDownloads(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	LRESULT OnWindowCascade(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 		MDICascade();
@@ -401,7 +377,7 @@ public:
 	}
 
 	CImageList ToolbarImages, ToolbarImagesHot;
-	int run();
+	void getMagnetForFile();
 	
 	
 	void ShowPopup(tstring szMsg, tstring szTitle, DWORD dwInfoFlags = NIIF_INFO, bool force = false) {
@@ -414,17 +390,16 @@ public:
 	}
 	void ShowPopup(tstring szMsg, tstring szTitle, DWORD dwInfoFlags = NIIF_INFO, HICON hIcon = NULL, bool force = false);
 	void callAsync(function<void ()> f);
+
+	void addThreadedTask(std::function<void ()> aF);
+	concurrency::task_group threadedTasks;
+
+	/* Displays a message box that will also display correctly with the splash */
+	void showMessageBox(const tstring& aMsg, UINT aFlags, const tstring& aTitle = Util::emptyStringT);
 private:
+	//vector<concurrency::task<void>> threadedTasks;
 	NOTIFYICONDATA pmicon;
 	NOTIFYICONDATA hubicon;
-
-	class DirectoryListInfo {
-	public:
-		DirectoryListInfo(DirectoryListing* aDirList, const string& aDir) : dirList(aDirList), dir(aDir) { }
-		DirectoryListing* dirList;
-		tstring file;
-		string dir;
-	};
 	
 	TransferView transferView;
 	static MainFrame* anyMF;
@@ -445,18 +420,7 @@ private:
 	CToolBarCtrl TBStatusCtrl;
 	HWND createTBStatusBar();
 
-	struct HashInfo {
-		HashInfo(const string& aFile, int64_t& aSize, size_t& aFiles, int64_t& aSpeed, bool aPaused) : 
-		file(aFile), size(aSize), files(aFiles), speed(aSpeed), paused(aPaused) { }
-
-		string file; 
-		int64_t size; 
-		size_t files;
-		int64_t speed;
-		bool paused;
-	};
-
-	void updateTBStatusHashing(HashInfo m_HashInfo);
+	void updateTBStatusHashing(const string& aFile, int64_t aSize, size_t aFiles, int64_t aSpeed, int aHashers, bool aPaused);
 	void updateTBStatusRefreshing();
 	bool refreshing;
 	int64_t startBytes;
@@ -532,6 +496,7 @@ private:
 	void updateTray(bool add = true);
 	bool hasPassdlg;
 	void updateTooltipRect();
+	void checkAwayIdle();
 
 	enum {
 		STATUS_LASTLINES,
@@ -576,10 +541,10 @@ private:
 	void on(TimerManagerListener::Second, uint64_t aTick) noexcept;
 
 	// QueueManagerListener
-	void on(QueueManagerListener::Finished, const QueueItemPtr qi, const string& dir, const HintedUser& aUser, int64_t aSpeed) noexcept;
+	void on(QueueManagerListener::Finished, const QueueItemPtr& qi, const string& dir, const HintedUser& aUser, int64_t aSpeed) noexcept;
 
 	// DirectoryListingManagerListener
-	void on(DirectoryListingManagerListener::OpenListing, DirectoryListing* aList, const string& aDir) noexcept;
+	void on(DirectoryListingManagerListener::OpenListing, DirectoryListing* aList, const string& aDir, const string& aXML) noexcept;
 	void on(DirectoryListingManagerListener::PromptAction, const string& aName, const string& aMessage) noexcept;
 
 	void onUpdateAvailable(const string& title, const string& message, const string& aVersionString, const string& infoUrl, bool autoUpdate, int build, const string& autoUpdateUrl) noexcept;

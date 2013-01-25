@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #define SETTINGS_BUF_LEN 1024
 #define DIM_EDIT_EXPERIMENT 0
 
+#include "../client/SettingsManager.h"
 #include "../client/ResourceManager.h"
 #include "../client/Speaker.h"
 

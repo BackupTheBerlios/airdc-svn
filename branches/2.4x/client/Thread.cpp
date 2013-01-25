@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,5 +42,71 @@ void Thread::start() {
 	}
 }
 #endif
+
+#ifdef _WIN64
+
+SharedMutex::SharedMutex() {
+	InitializeSRWLock(&psrw);
+}
+
+SharedMutex::~SharedMutex() {
+
+}
+
+void SharedMutex::lock_shared() {
+	AcquireSRWLockShared(&psrw);
+}
+
+void SharedMutex::lock() {
+	AcquireSRWLockExclusive(&psrw);
+}
+
+void SharedMutex::unlock_shared() {
+	ReleaseSRWLockShared(&psrw);
+}
+
+void SharedMutex::unlock() {
+	ReleaseSRWLockExclusive(&psrw);
+}
+
+
+RLock::RLock(SharedMutex& aCS) : cs(&aCS) {
+	aCS.lock_shared();
+}
+
+RLock::~RLock() {
+	cs->unlock_shared();
+}
+
+WLock::WLock(SharedMutex& aCS) : cs(&aCS) {
+	aCS.lock();
+}
+
+WLock::~WLock() {
+	cs->unlock();
+}
+
+#endif
+
+ConditionalRLock::ConditionalRLock(SharedMutex& aCS, bool aLock) : cs(&aCS), lock(aLock) {
+	if (lock)
+		aCS.lock_shared();
+}
+
+ConditionalRLock::~ConditionalRLock() {
+	if (lock)
+		cs->unlock_shared();
+}
+
+ConditionalWLock::ConditionalWLock(SharedMutex& aCS, bool aLock) : cs(&aCS), lock(aLock) {
+	if (lock)
+		aCS.lock();
+}
+
+ConditionalWLock::~ConditionalWLock() {
+	if (lock)
+		cs->unlock();
+}
+
 
 } // namespace dcpp

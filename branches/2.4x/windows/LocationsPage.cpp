@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 
 #include <boost/range/algorithm.hpp>
 
-#include "../client/DCPlusPlus.h"
 #include "../client/Util.h"
 #include "../client/SettingsManager.h"
 #include "../client/FavoriteManager.h"
@@ -31,8 +30,6 @@
 #include "WinUtil.h"
 #include "LineDlg.h"
 #include "FavoriteDirDlg.h"
-
-#include <boost/range/algorithm/find_if.hpp>
 
 PropPage::TextItem LocationsPage::texts[] = {
 	{ IDC_SETTINGS_FAVORITE_DIRECTORIES, ResourceManager::SETTINGS_FAVORITE_DIRS },
@@ -50,6 +47,8 @@ PropPage::TextItem LocationsPage::texts[] = {
 	{ IDC_AUTOPATH_CAPTION, ResourceManager::AUTOPATH_CAPTION }, 
 	{ IDC_SETTINGS_OPTIONS, ResourceManager::SETTINGS_OPTIONS }, 
 	{ IDC_CLEAR_DIR_HISTORY, ResourceManager::CLEAR_DIR_HISTORY }, 
+	{ IDC_MOVEDOWN, ResourceManager::MOVE_DOWN }, 
+	{ IDC_MOVEUP, ResourceManager::MOVE_UP }, 
 	{ 0, ResourceManager::SETTINGS_AUTO_AWAY }
 };
 
@@ -230,13 +229,15 @@ void LocationsPage::addDirs(const string& vName, const StringList& aPaths){
 	auto i = boost::find_if(favoriteDirs, CompareFirst<string, StringList>(vName));
 	if (i != favoriteDirs.end()) {
 		pos = ctrlDirectories.find(Text::toT(vName));
-		boost::for_each(aPaths, [&](string p) {
+		//merge(paths.begin(), paths.end(), i->second.begin(), i->second.end(), back_inserter(i->second));
+
+		for(auto& p: aPaths) {
 			if (find(i->second, p) == i->second.end())
 				i->second.push_back(p); 
-		});
+		}
 		paths = i->second;
 	} else {
-		favoriteDirs.push_back(make_pair(vName, paths));
+		favoriteDirs.emplace_back(vName, paths);
 		pos = ctrlDirectories.insert(ctrlDirectories.GetItemCount(), Text::toT(vName) );
 	}
 	dcassert(pos != -1);

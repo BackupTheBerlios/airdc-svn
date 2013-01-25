@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,16 +42,20 @@ public:
 		return compare(getToken(), u->getToken()) == 0;
 	}
 
-	Upload(UserConnection& conn, const string& path, const TTHValue& tth);
+	Upload(UserConnection& aSource, const string& aPath, const TTHValue& aTTH, unique_ptr<InputStream> aIS);
 	~Upload();
 
 	void getParams(const UserConnection& aSource, ParamMap& params) const;
 
 	GETSET(int64_t, fileSize, FileSize);
-	GETSET(InputStream*, stream, Stream);
 	GETSET(UploadBundlePtr, bundle, Bundle);
 
 	uint8_t delayTime;
+	InputStream* getStream();
+	void setFiltered();
+	void resume(int64_t aStart, int64_t aSize) noexcept;
+private:
+	unique_ptr<InputStream> stream;
 };
 
 } // namespace dcpp

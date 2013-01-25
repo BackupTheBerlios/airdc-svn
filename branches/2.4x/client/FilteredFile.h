@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,8 +95,14 @@ class FilteredOutputStream : public OutputStream {
 public:
 	using OutputStream::write;
 
-	FilteredOutputStream(OutputStream* aFile) : f(aFile), buf(new uint8_t[BUF_SIZE]), flushed(false), more(true) { }
-	~FilteredOutputStream() { if(manage) delete f; }
+	FilteredOutputStream(OutputStream* aFile) : buf(new uint8_t[BUF_SIZE]), flushed(false), more(true) { 
+		f.reset(aFile);
+	}
+
+	~FilteredOutputStream() { 
+		if(!manage) 
+			f.release(); 
+	}
 
 	size_t flush() {
 		if(flushed)
@@ -144,12 +150,16 @@ public:
 		return written;
 	}
 
-	virtual bool eof() { return !more; }
+	OutputStream* releaseRootStream() { 
+		auto as = f.release();
+		return as->releaseRootStream();
+	}
 
+	virtual bool eof() { return !more; }
 private:
 	static const size_t BUF_SIZE = 128*1024; //increase buffer from 64, test
 
-	OutputStream* f;
+	unique_ptr<OutputStream> f;
 	Filter filter;
 
 	boost::scoped_array<uint8_t> buf;
@@ -160,8 +170,14 @@ private:
 template<class Filter, bool managed>
 class FilteredInputStream : public InputStream {
 public:
-	FilteredInputStream(InputStream* aFile) : f(aFile), buf(new uint8_t[BUF_SIZE]), pos(0), valid(0), more(true) { }
-	~FilteredInputStream() noexcept { if(managed) delete f; }
+	FilteredInputStream(InputStream* aFile) : buf(new uint8_t[BUF_SIZE]), pos(0), valid(0), more(true) { 
+		f.reset(aFile);
+	}
+
+	~FilteredInputStream() noexcept { 
+		if(!managed) 
+			f.release(); 
+	}
 
 	/**
 	* Read data through filter, keep calling until len returns 0.
@@ -197,10 +213,14 @@ public:
 		return totalProduced;
 	}
 
+	InputStream* releaseRootStream() { 
+		auto as = f.release();
+		return as->releaseRootStream();
+	}
 private:
 	static const size_t BUF_SIZE = 128*1024; //increase buffer from 64
 
-	InputStream* f;
+	unique_ptr<InputStream> f;
 	Filter filter;
 	boost::scoped_array<uint8_t> buf;
 	size_t pos;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ public:
 
 	string getField(const CID& cid, const string& hintUrl, const char* field) const;
 
-	HubSet getHubSet(const CID& cid) const;
+	OrderedStringSet getHubSet(const CID& cid) const;
 	StringList getHubUrls(const CID& cid, const string& hintUrl = Util::emptyString) const;
 	StringList getHubNames(const CID& cid, const string& hintUrl = Util::emptyString) const;
 	StringList getNicks(const CID& cid, const string& hintUrl = Util::emptyString) const;
@@ -127,8 +127,8 @@ public:
 	void privateMessage(const HintedUser& user, const string& msg, bool thirdPerson);
 	void userCommand(const HintedUser& user, const UserCommand& uc, ParamMap& params, bool compatibility);
 
-	int getMode(const string& aHubUrl) const;
-	bool isActive(const string& aHubUrl = Util::emptyString) const { return getMode(aHubUrl) != SettingsManager::INCOMING_FIREWALL_PASSIVE; }
+	bool isActive() const;
+	bool isActive(const string& aHubUrl) const;
 
 	void lockRead() noexcept { cs.lock_shared(); }
 	void unlockRead() noexcept { cs.unlock_shared(); }

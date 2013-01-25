@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,10 @@
  */
 
 #include "stdafx.h"
-//#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 #include "WinUtil.h"
 #include "DirectoryListingDlg.h"
 
-//#include "../client/StringTokenizer.h"
 #include "../client/SearchManager.h"
 #include "../client/ResourceManager.h"
 

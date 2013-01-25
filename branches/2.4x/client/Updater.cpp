@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 AirDC++ Project
+ * Copyright (C) 2012-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -133,7 +133,7 @@ void Updater::createUpdate() {
 					xml.replaceChildAttrib("TTH", TTH(updaterFilePath + updaterFile));
 					xml.replaceChildAttrib("Build", SVNVERSION);
 					xml.stepIn();
-					xml.setData("http://builds.airdcpp.net/updater/" + updaterFile);
+					xml.setData("http://beta.airdcpp.net/updater/" + updaterFile);
 
 					File f(updaterFilePath + "version.xml", File::WRITE, File::CREATE | File::TRUNCATE);
 					f.write(SimpleXML::utf8Header);

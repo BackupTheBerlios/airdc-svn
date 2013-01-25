@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -176,10 +176,10 @@ public:
 	vector<uint8_t> getKeyprint() const { return socket ? socket->getKeyprint() : vector<uint8_t>(); }
 
 	const string& getRemoteIp() const { if(socket) return socket->getIp(); else return Util::emptyString; }
-	Download* getDownload() { dcassert(isSet(FLAG_DOWNLOAD)); return download; }
-	void setDownload(Download* d) { dcassert(isSet(FLAG_DOWNLOAD)); download = d; }
-	Upload* getUpload() { dcassert(isSet(FLAG_UPLOAD)); return upload; }
-	void setUpload(Upload* u) { dcassert(isSet(FLAG_UPLOAD)); upload = u; }
+	Download* getDownload();
+	void setDownload(Download* d, bool isDeleting = false);
+	Upload* getUpload();
+	void setUpload(Upload* u);
 	
 	void handle(AdcCommand::SUP t, const AdcCommand& c) { fire(t, this, c); }
 	void handle(AdcCommand::INF t, const AdcCommand& c) { fire(t, this, c); }
@@ -229,9 +229,7 @@ private:
 	};
 
 	// We only want ConnectionManager to create this...
-	UserConnection(bool secure_) noexcept : encoding(Text::systemCharset), state(STATE_UNCONNECTED),
-		lastActivity(0), speed(0), chunkSize(0), secure(secure_), socket(0), download(NULL), slotType(NOSLOT), lastBundle(Util::emptyString) {
-	}
+	UserConnection(bool secure_) noexcept;
 
 	virtual ~UserConnection() {
 		BufferedSocket::putSocket(socket);

@@ -16,10 +16,10 @@
 
 #include "stdafx.h"
 #include "Resource.h"
-#include "../client/DCPlusPlus.h"
 #include "../client/FavoriteManager.h"
 #include "../client/UploadManager.h"
 #include "../client/QueueManager.h"
+#include "../client/Util.h"
 
 #include <algorithm>
 #include <boost/lambda/lambda.hpp>
@@ -28,7 +28,9 @@
 
 #include "RichTextBox.h"
 #include "EmoticonsManager.h"
+#include "HubFrame.h"
 #include "PrivateFrame.h"
+#include "LineDlg.h"
 #include "atlstr.h"
 #include "MainFrm.h"
 #include "IgnoreManager.h"
@@ -74,6 +76,10 @@ RichTextBox::~RichTextBox() {
 	} else {
 		emoticonsManager->dec();
 	}
+
+	for (auto cl: links)
+		delete cl.second;
+
 	delete[] findBuffer;
 }
 
@@ -152,6 +158,7 @@ bool RichTextBox::AppendText(const Identity& i, const tstring& sMyNick, const ts
 		//remove old links (the list must be in the same order than in text)
 		for(auto i = links.begin(); i != links.end();) {
 			if ((*i).first.cpMin < lRemoveChars) {
+				delete i->second;
 				links.erase(i);
 				i = links.begin();
 			} else {
@@ -321,20 +328,18 @@ void RichTextBox::FormatChatLine(const tstring& sMyNick, tstring& sText, CHARFOR
 	}
 	
 	if(found) {
-		if(	!SETTING(CHATNAMEFILE).empty() && !BOOLSETTING(SOUNDS_DISABLED) &&
+		if(	!SETTING(CHATNAMEFILE).empty() && !SETTING(SOUNDS_DISABLED) &&
 			!sAuthor.empty() && (stricmp(sAuthor.c_str(), sNick) != 0)) {
 				WinUtil::playSound(Text::toT(SETTING(CHATNAMEFILE)));	 	
         }
-		if(BOOLSETTING(FLASH_WINDOW_ON_MYNICK) 
+		if(SETTING(FLASH_WINDOW_ON_MYNICK) 
 			&& !sAuthor.empty() && (stricmp(sAuthor.c_str(), sNick) != 0))
 					WinUtil::FlashWindow();
 	}
 
 	// highlight all occurences of favourite users' nicks
 	FavoriteManager::FavoriteMap ul = FavoriteManager::getInstance()->getFavoriteUsers();
-	for(FavoriteManager::FavoriteMap::const_iterator i = ul.begin(); i != ul.end(); ++i) {
-		const FavoriteUser& pUser = i->second;
-
+	for(const auto& pUser: ul | map_values) {
 		lSearchFrom = 0;
 		sNick = Text::toT(pUser.getNick());
 		std::transform(sNick.begin(), sNick.end(), sNick.begin(), _totlower);
@@ -348,7 +353,7 @@ void RichTextBox::FormatChatLine(const tstring& sMyNick, tstring& sText, CHARFOR
 	}
 	
 
-	if(BOOLSETTING(USE_HIGHLIGHT)) {
+	if(SETTING(USE_HIGHLIGHT)) {
 
 		ColorList *cList = HighlightManager::getInstance()->getList();
 		CHARFORMAT2 hlcf;
@@ -417,17 +422,18 @@ void RichTextBox::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/
 				std::string link( result[0].first, result[0].second );
 
 				//create the link
-				ChatLink cl = link.find("magnet:?") != string::npos ? ChatLink(link, ChatLink::TYPE_MAGNET) : ChatLink(link, (link.find("spotify:") != string::npos ? ChatLink::TYPE_SPOTIFY : ChatLink::TYPE_URL));
-				if (cl.dupe == SHARE_DUPE) {
-					SetSelectionCharFormat(WinUtil::m_TextStyleDupe);
-				} else if (cl.dupe == QUEUE_DUPE) {
-					SetSelectionCharFormat(WinUtil::m_TextStyleQueue);
-				} else {
-					SetSelectionCharFormat(WinUtil::m_TextStyleURL);
+				ChatLink::LinkType type = ChatLink::TYPE_URL;
+				if (link.find("magnet:?") != string::npos) {
+					type = ChatLink::TYPE_MAGNET;
+				} else if (link.find("spotify:") != string::npos) {
+					type = ChatLink::TYPE_SPOTIFY;
 				}
 
+				ChatLink* cl = new ChatLink(link, type, user);
+				formatLink(cl->getDupe(), false);
+
 				//replace the text displayed in chat
-				tstring displayText = Text::toT(cl.getDisplayText());
+				tstring displayText = Text::toT(cl->getDisplayText());
 				sMsg.replace(result[0].first, result[0].second, displayText.c_str());
 				setText(displayText);
 
@@ -435,10 +441,11 @@ void RichTextBox::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/
 				CHARRANGE cr;
 				cr.cpMin = linkStart;
 				cr.cpMax = linkStart + displayText.length();
-				links.push_back(make_pair(cr, cl));
+				links.emplace_back(cr, cl);
 
 				pos=pos+result.position() + displayText.length();
 				start = result[0].first + displayText.length();
+				end = sMsg.end();
 			}
 	
 		} catch(...) { 
@@ -461,21 +468,11 @@ void RichTextBox::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/
 			SetSel(cr.cpMin, cr.cpMax);
 
 			std::string link (result[0].first, result[0].second);
-			ChatLink cl = ChatLink(link, ChatLink::TYPE_RELEASE);
+			ChatLink* cl = new ChatLink(link, ChatLink::TYPE_RELEASE, user);
 
-			if (SETTING(DUPES_IN_CHAT) && cl.dupe == SHARE_DUPE) {
-				SetSelectionCharFormat(WinUtil::m_TextStyleDupe);
-			} else if (SETTING(DUPES_IN_CHAT) && cl.dupe == QUEUE_DUPE) {
-				SetSelectionCharFormat(WinUtil::m_TextStyleQueue);
-			} else if (SETTING(DUPES_IN_CHAT) && cl.dupe == FINISHED_DUPE) {
-				CHARFORMAT2 newFormat = WinUtil::m_TextStyleQueue;
-				newFormat.crTextColor = WinUtil::getDupeColors(cl.dupe).first;
-				SetSelectionCharFormat(newFormat);
-			} else if (SETTING(FORMAT_RELEASE)) {
-				SetSelectionCharFormat(WinUtil::m_TextStyleURL);
-			}
+			formatLink(cl->getDupe(), true);
 
-			links.push_back(make_pair(cr, cl));
+			links.emplace_back(cr, cl);
 			start = result[0].second;
 			pos=pos+result.position() + result.length();
 		}
@@ -497,8 +494,8 @@ void RichTextBox::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/
 			SetSelectionCharFormat(WinUtil::m_ChatTextServer);
 
 			std::string path (result[0].first, result[0].second);
-			ChatLink cl = ChatLink(path, ChatLink::TYPE_PATH);
-			links.push_back(make_pair(cr, cl));
+			ChatLink* cl = new ChatLink(path, ChatLink::TYPE_PATH, nullptr);
+			links.emplace_back(cr, cl);
 
 			start = result[0].second;
 			pos=pos+result.position() + result.length();
@@ -516,11 +513,11 @@ void RichTextBox::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/
 			tstring::size_type curReplace = tstring::npos;
 			Emoticon* foundEmoticon = NULL;
 
-			for(auto emoticon = emoticonsList.begin(); emoticon != emoticonsList.end(); ++emoticon) {
-				tstring::size_type idxFound = sMsg.find((*emoticon)->getEmoticonText(), lastReplace);
+			for(auto emoticon: emoticonsList) {
+				tstring::size_type idxFound = sMsg.find(emoticon->getEmoticonText(), lastReplace);
 				if(idxFound < curReplace || curReplace == tstring::npos) {
 					curReplace = idxFound;
-					foundEmoticon = (*emoticon);
+					foundEmoticon = emoticon;
 				}
 			}
 
@@ -546,10 +543,10 @@ void RichTextBox::FormatEmoticonsAndLinks(tstring& sMsg, /*tstring& sMsgLower,*/
 					++lSelBegin;
 
 					//fix the positions for links after this emoticon....
-					for(auto i = links.rbegin(); i != links.rend(); ++i) {
-						if ((*i).first.cpMin > lSelBegin) {
-							(*i).first.cpMin = (*i).first.cpMin - foundEmoticon->getEmoticonText().size() + 1;
-							(*i).first.cpMax = (*i).first.cpMax - foundEmoticon->getEmoticonText().size() + 1;
+					for(auto l: links | reversed) {
+						if (l.first.cpMin > lSelBegin) {
+							l.first.cpMin = l.first.cpMin - foundEmoticon->getEmoticonText().size() + 1;
+							l.first.cpMax = l.first.cpMax - foundEmoticon->getEmoticonText().size() + 1;
 						} else {
 							break;
 						}
@@ -705,24 +702,50 @@ tstring RichTextBox::LineFromPos(const POINT& p) const {
 	return tmp;
 }
 
+void RichTextBox::formatLink(DupeType aDupeType, bool isRelease) {
+	if (SETTING(DUPES_IN_CHAT) && aDupeType == SHARE_DUPE) {
+		SetSelectionCharFormat(WinUtil::m_TextStyleDupe);
+	} else if (SETTING(DUPES_IN_CHAT) && aDupeType == QUEUE_DUPE) {
+		SetSelectionCharFormat(WinUtil::m_TextStyleQueue);
+	} else if (SETTING(DUPES_IN_CHAT) && aDupeType == FINISHED_DUPE) {
+		CHARFORMAT2 newFormat = WinUtil::m_TextStyleQueue;
+		newFormat.crTextColor = WinUtil::getDupeColors(aDupeType).first;
+		SetSelectionCharFormat(newFormat);
+	} else if (!isRelease || (SETTING(FORMAT_RELEASE)) && aDupeType == DUPE_NONE) {
+		SetSelectionCharFormat(WinUtil::m_TextStyleURL);
+	}
+}
+
+DupeType RichTextBox::updateDupeType(ChatLink* aChatLink) {
+	auto oldDT = aChatLink->getDupe();
+	if (oldDT != aChatLink->updateDupeType(user)) {
+		formatLink(aChatLink->getDupe(), isRelease);
+	}
+	return aChatLink->getDupe();
+}
+
 LRESULT RichTextBox::OnRButtonDown(POINT pt) {
 	selectedLine = LineFromPos(pt);
 	selectedUser.clear();
 	selectedIP.clear();
 
-	shareDupe=false, queueDupe=false, isMagnet=false, isTTH=false, release=false, isPath=false;
-	ChatLink cl;
+	dupeType = DUPE_NONE, isMagnet=false, isTTH=false, isRelease=false, isPath=false;
 	CHARRANGE cr;
 	GetSel(cr);
 
-	if (getLink(pt, cr, cl)) {
-		selectedWord = Text::toT(cl.url);
-		shareDupe = cl.dupe == SHARE_DUPE;
-		queueDupe = (cl.dupe == QUEUE_DUPE || cl.dupe == FINISHED_DUPE);
-		isMagnet = cl.type == ChatLink::TYPE_MAGNET;
-		release = cl.type == ChatLink::TYPE_RELEASE;
-		isPath = cl.type == ChatLink::TYPE_PATH;
+	ChatLink* cl = getLink(pt, cr);
+	if (cl) {
+		selectedWord = Text::toT(cl->url);
 		SetSel(cr.cpMin, cr.cpMax);
+
+		isMagnet = cl->getType() == ChatLink::TYPE_MAGNET;
+		isRelease = cl->getType() == ChatLink::TYPE_RELEASE;
+		isPath = cl->getType() == ChatLink::TYPE_PATH;
+
+		if (isMagnet || isRelease) {
+			//check if the dupe status has changed
+			dupeType = updateDupeType(cl);
+		}
 	} else {
 		if(cr.cpMax != cr.cpMin) {
 			TCHAR *buf = new TCHAR[cr.cpMax - cr.cpMin + 1];
@@ -794,7 +817,12 @@ LRESULT RichTextBox::onSetCursor(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lPar
 	return 0;
 }
 
-LRESULT RichTextBox::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
+LRESULT RichTextBox::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
+	SCROLLBARINFO sbi;
+	memset(&sbi, 0, sizeof(SCROLLBARINFO));
+	sbi.cbSize = sizeof(SCROLLBARINFO);
+	GetScrollBarInfo(m_hWnd, OBJID_VSCROLL, &sbi);
+
 	POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };        // location of mouse click
 
 	if(pt.x == -1 && pt.y == -1) {
@@ -803,6 +831,12 @@ LRESULT RichTextBox::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 		pt.x = erc.Width() / 2;
 		pt.y = erc.Height() / 2;
 		ClientToScreen(&pt);
+	}
+
+	if (sbi.rcScrollBar.left <= pt.x && sbi.rcScrollBar.right >= pt.x) {
+		//let the system handle those
+		bHandled = FALSE;
+		return 0;
 	}
 
 	POINT ptCl = pt;
@@ -839,7 +873,7 @@ LRESULT RichTextBox::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 				menu.AppendMenu(MF_STRING, IDC_UNBAN_IP, (_T("!unban ") + selectedIP).c_str());
 				menu.AppendMenu(MF_SEPARATOR);
 			}
-		} else if (release) {
+		} else if (isRelease) {
 			menu.InsertSeparatorFirst(CTSTRING(RELEASE));
 		} else if (isPath) {
 			menu.InsertSeparatorFirst(CTSTRING(PATH));
@@ -875,8 +909,8 @@ LRESULT RichTextBox::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 			}
 
 			targets.clear();
-			if (isMagnet || release) {
-				if (shareDupe || queueDupe) {
+			if (isMagnet || isRelease) {
+				if (dupeType > 0) {
 					menu.AppendMenu(MF_SEPARATOR);
 					menu.AppendMenu(MF_STRING, IDC_OPEN_FOLDER, CTSTRING(OPEN_FOLDER));
 				}
@@ -890,10 +924,11 @@ LRESULT RichTextBox::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 					} else if (!author.empty()) {
 						targets = QueueManager::getInstance()->getTargets(m.getTTH());
 						appendDownloadMenu(menu, DownloadBaseHandler::MAGNET, false, false);
-						if (!shareDupe && !queueDupe)
-							menu.AppendMenu(MF_STRING, IDC_OPEN, CTSTRING(OPEN));
 					}
-				} else if (release) {
+
+					if (!author.empty() || dupeType == SHARE_DUPE || dupeType == FINISHED_DUPE)
+						menu.AppendMenu(MF_STRING, IDC_OPEN, CTSTRING(OPEN));
+				} else if (isRelease) {
 					//autosearch menus
 					appendDownloadMenu(menu, DownloadBaseHandler::AUTO_SEARCH, true, true);
 				}
@@ -917,7 +952,7 @@ LRESULT RichTextBox::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 
 		menu.InsertSeparatorFirst(selectedUser);
 
-		if(BOOLSETTING(LOG_PRIVATE_CHAT)) {
+		if(SETTING(LOG_PRIVATE_CHAT)) {
 			menu.AppendMenu(MF_STRING, IDC_OPEN_USER_LOG,  CTSTRING(OPEN_USER_LOG));
 			menu.AppendMenu(MF_SEPARATOR);
 			menu.AppendMenu(MF_STRING, IDC_USER_HISTORY,  CTSTRING(VIEW_HISTORY));
@@ -1114,10 +1149,16 @@ LRESULT RichTextBox::onOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/
 	if (m.hash.empty())
 		return 0;
 
-	auto u = getMagnetSource();
-	try {
-		QueueManager::getInstance()->addFile(Util::getOpenPath(m.fname), m.fsize, m.getTTH(), u, Util::emptyString, QueueItem::FLAG_OPEN);
-	} catch(...) { }
+	if (dupeType > 0) {
+		auto p = AirUtil::getDupePath(dupeType, m.getTTH());
+		if (!p.empty())
+			Util::openFile(Text::fromT(p));
+	} else {
+		auto u = getMagnetSource();
+		try {
+			QueueManager::getInstance()->addFile(Util::getOpenPath(m.fname), m.fsize, m.getTTH(), u, Util::emptyString, QueueItem::FLAG_OPEN);
+		} catch(...) { }
+	}
 	return 0;
 }
 
@@ -1139,16 +1180,22 @@ HintedUser RichTextBox::getMagnetSource() {
 }
 
 LRESULT RichTextBox::onRemoveTemp(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	Magnet m = Magnet(Text::fromT(selectedWord));
+	string link = Text::fromT(selectedWord);
+	Magnet m = Magnet(link);
 	ShareManager::getInstance()->removeTempShare(user ? user->getCID().toBase32() : Util::emptyString, m.getTTH());
+	for (auto cl: links | map_values) {
+		if (cl->getType() == ChatLink::TYPE_MAGNET && cl->url == link) {
+			updateDupeType(cl);
+		}
+	}
 	return 0;
 }
 
 LRESULT RichTextBox::onOpenDupe(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	tstring path;
 	try{
-		if (release) {
-			path = AirUtil::getDirDupePath(shareDupe ? SHARE_DUPE : QUEUE_DUPE, Text::fromT(selectedWord));
+		if (isRelease) {
+			path = AirUtil::getDirDupePath(dupeType, Text::fromT(selectedWord));
 		} else if (isPath) {
 			path = Util::getFilePath(selectedWord);
 		} else {
@@ -1156,19 +1203,12 @@ LRESULT RichTextBox::onOpenDupe(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndC
 			if (m.hash.empty())
 				return 0;
 
-			if (shareDupe) {
-				path = SettingsManager::lanMode ? Text::toT(ShareManager::getInstance()->getRealPath(m.fname, m.fsize)) : Text::toT(ShareManager::getInstance()->getRealPath(m.getTTH()));
-			} else {
-				StringList targets = QueueManager::getInstance()->getTargets(m.getTTH());
-				if (!targets.empty()) {
-					path = Text::toT(targets.front());
-				}
-			}
+			path = AirUtil::getDupePath(dupeType, m.getTTH());
+			if (!path.empty())
+				path = Util::getFilePath(path);
+
 		}
 	}catch(...) {}
-	
-	if (path.empty())
-		return 0;
 
 	WinUtil::openFolder(path);
 	return 0;
@@ -1178,8 +1218,13 @@ void RichTextBox::handleDownload(const string& aTarget, QueueItem::Priority /*p*
 	if (!isRelease) {
 		auto u = move(getMagnetSource());
 		Magnet m = Magnet(Text::fromT(selectedWord));
+		if (getUser() && ShareManager::getInstance()->isDirShared(aTarget, m.fsize) > 0 && 
+			MessageBox(CTSTRING_F(PM_MAGNET_SHARED_WARNING, Text::toT(Util::getFilePath(aTarget))), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES) {
+				return;
+		}
+
 		try {
-			QueueManager::getInstance()->addFile(aTarget + (aTarget[aTarget.length()-1] != PATH_SEPARATOR ? Util::emptyString : m.fname), m.fsize, m.getTTH(), u, Util::emptyString);
+			QueueManager::getInstance()->addFile(aTarget + (aTarget[aTarget.length()-1] != PATH_SEPARATOR ? Util::emptyString : m.fname), m.fsize, m.getTTH(), u, Util::emptyString, getUser() ? QueueItem::FLAG_PRIVATE : 0);
 		} catch (...) {}
 	} else {
 		AutoSearchManager::getInstance()->addAutoSearch(Text::fromT(selectedWord), aTarget, aTargetType, true);
@@ -1278,8 +1323,8 @@ bool RichTextBox::isLink(POINT pt) {
 	}
 
 
-	for(auto i = links.rbegin(); i != links.rend(); ++i) {
-		if( iCharPos >= i->first.cpMin && iCharPos <= i->first.cpMax ) {
+	for(auto l: links | reversed) {
+		if( iCharPos >= l.first.cpMin && iCharPos <= l.first.cpMax ) {
 			return true;
 		}
 	}
@@ -1287,26 +1332,25 @@ bool RichTextBox::isLink(POINT pt) {
 	return false;
 }
 
-bool RichTextBox::getLink(POINT pt, CHARRANGE& cr, ChatLink& link) {
+ChatLink* RichTextBox::getLink(POINT pt, CHARRANGE& cr) {
 	int iCharPos = CharFromPos(pt);
 	POINT p_ichar = PosFromChar(iCharPos);
 	
 	//Validate that we are actually clicking over a link.
 	if(pt.x > (p_ichar.x + 3)) { 
-		return false;
+		return nullptr;
 	}
 	if(pt.y > (p_ichar.y +  (t_height*1.5))) {
-		return false;
+		return nullptr;
 	}
 
-	for(auto i = links.rbegin(); i != links.rend(); ++i) {
-		if( iCharPos >= i->first.cpMin && iCharPos <= i->first.cpMax ) {
-			link = i->second;
-			cr = i->first;
-			return true;
+	for(auto l: links | reversed) {
+		if( iCharPos >= l.first.cpMin && iCharPos <= l.first.cpMax ) {
+			cr = l.first;
+			return l.second;
 		}
 	}
-	return false;
+	return nullptr;
 }
 
 LRESULT RichTextBox::onLeftButtonUp(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
@@ -1323,12 +1367,12 @@ LRESULT RichTextBox::onLeftButtonUp(UINT uMsg, WPARAM wParam, LPARAM lParam, BOO
 
 LRESULT RichTextBox::onOpenLink(UINT /*uMsg*/, WPARAM /*wParam*/, HWND /*lParam*/, BOOL& /*bHandled*/) {
 	string link = Text::fromT(selectedWord);
-	for(auto i = links.rbegin(); i != links.rend(); ++i) {
-		if(compare(i->second.url, link) == 0) {
-			if (i->second.type == ChatLink::TYPE_MAGNET) {
-				WinUtil::parseMagnetUri(Text::toT(i->second.url), getMagnetSource());
+	for(auto l: links | reversed) {
+		if(compare(l.second->url, link) == 0) {
+			if (l.second->getType() == ChatLink::TYPE_MAGNET) {
+				WinUtil::parseMagnetUri(Text::toT(l.second->url), getMagnetSource());
 			} else {
-				WinUtil::openLink(Text::toT(i->second.url));
+				WinUtil::openLink(Text::toT(l.second->url));
 			}
 			return 0;
 		}
@@ -1339,18 +1383,23 @@ LRESULT RichTextBox::onOpenLink(UINT /*uMsg*/, WPARAM /*wParam*/, HWND /*lParam*
 bool RichTextBox::onClientEnLink(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/) {
 	POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 
-	ChatLink cl;
 	CHARRANGE cr;
-	if (!getLink(pt, cr, cl))
+	ChatLink* cl = getLink(pt, cr);
+	if (!cl)
 		return 0;
 
 
-	if (cl.type == ChatLink::TYPE_MAGNET) {
+	if (cl->getType() == ChatLink::TYPE_MAGNET) {
 		selectedLine = LineFromPos(pt);
 		updateAuthor();
-		WinUtil::parseMagnetUri(Text::toT(cl.url), move(getMagnetSource()));
+		WinUtil::parseMagnetUri(Text::toT(cl->url), move(getMagnetSource()));
 	} else {
-		WinUtil::openLink(Text::toT(cl.url));
+		//the url regex also detects web links without any protocol part
+		auto link = cl->url;
+		if (cl->getType() == ChatLink::TYPE_URL && link.find(':') == string::npos)
+			link = "http://" + link;
+
+		WinUtil::openLink(Text::toT(link));
 	}
 
 	return 1;
@@ -1414,15 +1463,7 @@ LRESULT RichTextBox::onWhoisIP(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCt
 LRESULT RichTextBox::onOpenUserLog(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	OnlineUserPtr ou = client->findUser(Text::fromT(selectedUser));
 	if(ou) {
-		ParamMap params;
-
-		params["userNI"] = ou->getIdentity().getNick();
-		params["hubNI"] = client->getHubName();
-		params["myNI"] = client->getMyNick();
-		params["userCID"] = ou->getUser()->getCID().toBase32();
-		params["hubURL"] = client->getHubUrl();
-
-		string file = LogManager::getInstance()->getPath(LogManager::PM, params);
+		auto file = ou->getLogPath();
 		if(Util::fileExists(file)) {
 			WinUtil::viewLog(file, wID == IDC_USER_HISTORY);
 		} else {

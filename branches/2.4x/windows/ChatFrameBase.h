@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
+
+#include <ppl.h>
 
 #include "OMenu.h"
 #include "resource.h"
@@ -48,11 +50,13 @@ public:
 		COMMAND_ID_HANDLER(IDC_WINAMP_SPAM, onWinampSpam)
 		COMMAND_ID_HANDLER(IDC_EMOT, onEmoticons)
 		COMMAND_ID_HANDLER(IDC_SEND_MESSAGE, onSendMessage)
+		MESSAGE_HANDLER(WM_CLOSE, onClose)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, onContextMenu)
 		MESSAGE_HANDLER(WM_FORWARDMSG, OnForwardMsg)
 		COMMAND_RANGE_HANDLER(IDC_EMOMENU, IDC_EMOMENU + menuItems, onEmoPackChange)
 	END_MSG_MAP()
 
+	LRESULT onClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled);
 	LRESULT OnForwardMsg(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/);
 	LRESULT onChar(UINT uMsg, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled);
 	LRESULT onDropFiles(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
@@ -92,7 +96,7 @@ protected:
 	tstring currentCommand;
 	TStringList::size_type curCommandPosition;		//can't use an iterator because StringList is a vector, and vector iterators become invalid after resizing
 
-	void addMagnet(string&& path);
+	void addMagnet(const StringList& aPaths);
 	void init(HWND aHWND, RECT rcDefault);
 
 	void appendTextLine(const tstring& aText, bool addSpace);
@@ -101,6 +105,12 @@ protected:
 	static tstring commands;
 
 	void getLineText(tstring& s);
+
+	bool cancelHashing;
+	concurrency::task_group tasks;
+
+	void setStatusText(const tstring& aLine);
+	CStatusBarCtrl ctrlStatus;
 private:
 	FrameMessageBase* frame;
 

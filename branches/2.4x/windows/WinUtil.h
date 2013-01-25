@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ public:
 			} else if(frame->MDIGetActive() != hWnd) {
 				MainFrame::getMainFrame()->MDIActivate(hWnd);
 				WinUtil::setButtonPressed(ID, true);
-			} else if(BOOLSETTING(TOGGLE_ACTIVE_WINDOW)) {
+			} else if(SETTING(TOGGLE_ACTIVE_WINDOW)) {
 				::SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 				frame->MDINext(hWnd);
 				hWnd = frame->MDIGetActive();
@@ -221,7 +221,7 @@ public:
 	static void saveReBarSettings(HWND bar);
 	static void playSound(const tstring& sound);
 
-	static bool MessageBoxConfirm(SettingsManager::IntSetting i, const tstring& txt);
+	static bool MessageBoxConfirm(SettingsManager::BoolSetting i, const tstring& txt);
 
 	struct ConnectFav {
 		void operator()(UserPtr aUser, const string& aUrl) const;
@@ -407,26 +407,14 @@ public:
 	}
 
 	static void ClearPreviewMenu(OMenu &previewMenu);
-	static int SetupPreviewMenu(CMenu &previewMenu, string extension);
-	static void RunPreviewCommand(unsigned int index, const string& target);
-	static string getSysUptime();
-	static tstring diskInfo();
-	static string generateStats();
-	static string uptimeInfo();
+	static void appendPreviewMenu(OMenu* previewMenu, const string& aTarget);
 	static bool shutDown(int action);
 	static int getFirstSelectedIndex(CListViewCtrl& list);
 	static int setButtonPressed(int nID, bool bPressed = true);
-	static tstring UselessInfo();
-	static tstring Speedinfo();
-	static tstring DiskSpaceInfo(bool onlyTotal = false);
 
 	static void appendLanguageMenu(CComboBoxEx& ctrlLanguage);
 
 	static string getReport(const Identity& identity, HWND hwnd);
-
-	static string CPUInfo();
-	
-	static TStringList FindVolumes();
 
 	static void viewLog(const string& path, bool aHistory=false);
 

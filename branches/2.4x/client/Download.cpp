@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,11 +34,9 @@ namespace dcpp {
 Download::Download(UserConnection& conn, QueueItem& qi) noexcept : Transfer(conn, qi.getTarget(), qi.getTTH()),
 	tempTarget(qi.getTempTarget()), lastTick(GET_TICK()), treeValid(false)
 {
-	conn.setDownload(this);
-	
 	QueueItem::SourceConstIter source = qi.getSource(getUser());
-	if (SettingsManager::lanMode)
-		remotePath = source->getRemotePath();
+	//if (SettingsManager::lanMode)
+	//	remotePath = source->getRemotePath();
 
 	if(qi.isSet(QueueItem::FLAG_PARTIAL_LIST)) {
 		setType(TYPE_PARTIAL_LIST);
@@ -66,10 +64,17 @@ Download::Download(UserConnection& conn, QueueItem& qi) noexcept : Transfer(conn
 	}
 	
 	if(getType() == TYPE_FILE && qi.getSize() != -1) {
-		if(HashManager::getInstance()->getTree(getTTH(), getTigerTree())) {
+		if (conn.getDownload() && conn.getDownload()->getType() == Transfer::TYPE_FILE && conn.getDownload()->getPath() == getPath()) {
+			output.reset(conn.getDownload()->releaseRootStream());
 			setTreeValid(true);
+			tt = conn.getDownload()->getTigerTree();
+		} else {
+			setTreeValid(HashManager::getInstance()->getTree(getTTH(), getTigerTree()));
+		}
+
+		if(treeValid) {
 			setSegment(qi.getNextSegment(getTigerTree().getBlockSize(), conn.getChunkSize(), conn.getSpeed(), source->getPartialSource(), true));
-		} else if(conn.isSet(UserConnection::FLAG_SUPPORTS_TTHL) && !qi.getSource(conn.getUser())->isSet(QueueItem::Source::FLAG_NO_TREE) && qi.getSize() > HashManager::MIN_BLOCK_SIZE) {
+		} else if(conn.isSet(UserConnection::FLAG_SUPPORTS_TTHL) && !source->isSet(QueueItem::Source::FLAG_NO_TREE) && qi.getSize() > HashManager::MIN_BLOCK_SIZE) {
 			// Get the tree unless the file is small (for small files, we'd probably only get the root anyway)
 			setType(TYPE_TREE);
 			getTigerTree().setFileSize(qi.getSize());
@@ -81,7 +86,7 @@ Download::Download(UserConnection& conn, QueueItem& qi) noexcept : Transfer(conn
 			setSegment(qi.getNextSegment(getTigerTree().getBlockSize(), 0, 0, source->getPartialSource(), true));
 		}
 		
-		if((getStartPos() + getSize()) != qi.getSize()) {
+		if((getStartPos() + getSize()) != qi.getSize() || (conn.getDownload() && conn.getDownload()->isSet(FLAG_CHUNKED))) {
 			setFlag(FLAG_CHUNKED);
 		}
 
@@ -89,18 +94,24 @@ Download::Download(UserConnection& conn, QueueItem& qi) noexcept : Transfer(conn
 			setFlag(FLAG_OVERLAP);
 
 			// set overlapped flag to original segment
-			for(auto i = qi.getDownloads().begin(); i != qi.getDownloads().end(); ++i) {
-				if((*i)->getSegment().contains(getSegment())) {
-					(*i)->setOverlapped(true);
+			for(auto d: qi.getDownloads()) {
+				if(d->getSegment().contains(getSegment())) {
+					d->setOverlapped(true);
 					break;
 				}
 			}
 		}
 	}
+
+	conn.setDownload(this);
 }
 
 Download::~Download() {
-	getUserConnection().setDownload(0);
+	getUserConnection().setDownload(nullptr, true);
+}
+
+OutputStream* Download::releaseRootStream() {
+	return output.get()->releaseRootStream();
 }
 
 AdcCommand Download::getCommand(bool zlib, const string& mySID) const {
@@ -132,7 +143,7 @@ AdcCommand Download::getCommand(bool zlib, const string& mySID) const {
 	if(!mySID.empty()) //add requester's SID (mySID) to the filelist request, so he can find the hub we are calling from.
 		cmd.addParam("ID", mySID); 
 
-	if(zlib && BOOLSETTING(COMPRESS_TRANSFERS)) {
+	if(zlib && SETTING(COMPRESS_TRANSFERS)) {
 		cmd.addParam("ZL1");
 	}
 
@@ -166,25 +177,23 @@ const string& Download::getDownloadTarget() const {
 
 void Download::open(int64_t bytes, bool z, bool hasDownloadedBytes) {
 	if(getType() == Transfer::TYPE_FILE) {
-		auto target = getDownloadTarget();
-		auto fullSize = tt.getFileSize();
 
 		if(getOverlapped() && bundle) {
 			setOverlapped(false);
  	 
 			bool found = false;
 			// ok, we got a fast slot, so it's possible to disconnect original user now
-			for(auto i = bundle->getDownloads().begin(); i != bundle->getDownloads().end(); ++i) {
-				if((*i) != this && compare((*i)->getPath(), getPath()) == 0 && (*i)->getSegment().contains(getSegment())) {
+			for(auto d: bundle->getDownloads()) {
+				if(d != this && compare(d->getPath(), getPath()) == 0 && d->getSegment().contains(getSegment())) {
  	 
 					// overlapping has no sense if segment is going to finish
-					if((*i)->getSecondsLeft() < 10)
+					if(d->getSecondsLeft() < 10)
 						break;
  	 
 					found = true;
  	 
 					// disconnect slow chunk
-					(*i)->getUserConnection().disconnect();
+					d->getUserConnection().disconnect();
 					break;
 				}
 			}
@@ -195,31 +204,33 @@ void Download::open(int64_t bytes, bool z, bool hasDownloadedBytes) {
 			}
 		}
 
-		if(hasDownloadedBytes) {
-			if(File::getSize(target) != fullSize) {
-				// When trying the download the next time, the resume pos will be reset
-				throw Exception(CSTRING(TARGET_FILE_MISSING));
+		if (!output.get()) {
+			auto target = getDownloadTarget();
+			auto fullSize = tt.getFileSize();
+			if(hasDownloadedBytes) {
+				if(File::getSize(target) != fullSize) {
+					// When trying the download the next time, the resume pos will be reset
+					throw Exception(CSTRING(TARGET_FILE_MISSING));
+				}
+			} else {
+				File::ensureDirectory(target);
 			}
-		} else {
-			File::ensureDirectory(target);
+
+			int flags = File::OPEN | File::CREATE | File::SHARED;
+			if (getSegment().getEnd() != fullSize) {
+				//segmented download
+				flags |= File::NO_CACHE_HINT;
+			}
+
+			unique_ptr<File> f(new File(target, File::WRITE, flags));
+
+			if(f->getSize() != fullSize) {
+				f->setSize(fullSize);
+			}
+			tempTarget = target;
+			output = move(f);
 		}
-
-		int flags = File::OPEN | File::CREATE | File::SHARED;
-		if (getSegment().getEnd() != fullSize) {
-			//segmented download
-			flags |= File::NO_CACHE_HINT;
-		}
-
-		//unique_ptr<SharedFileStream> f(new SharedFileStream(target, File::WRITE, flags));
-		unique_ptr<File> f(new File(target, File::WRITE, File::OPEN | File::CREATE | File::SHARED));
-
-		if(f->getSize() != fullSize) {
-			f->setSize(fullSize);
-		}
-
-		f->setPos(getSegment().getStart());
-		output = move(f);
-		tempTarget = target;
+		output->setPos(getSegment().getStart());
 	} else if(getType() == Transfer::TYPE_FULL_LIST) {
 		auto target = getPath();
 		File::ensureDirectory(target);

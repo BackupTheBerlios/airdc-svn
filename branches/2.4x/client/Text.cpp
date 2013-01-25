@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -280,8 +280,8 @@ const wstring& toLower(const wstring& str, wstring& tmp) noexcept {
 		return Util::emptyStringW;
 	tmp.clear();
 	tmp.reserve(str.length());
-	for (auto i = str.begin(); i != str.end(); ++i) {
-		tmp += toLower(*i);
+	for(auto& i: str) {
+		tmp += toLower(i);
 	}
 	return tmp;
 }

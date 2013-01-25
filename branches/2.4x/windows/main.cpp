@@ -196,7 +196,7 @@ LONG __stdcall DCUnhandledExceptionFilter( LPEXCEPTION_POINTERS e )
 
 	f.close();
 
-	if ((!SETTING(SOUND_EXC).empty()) && (!BOOLSETTING(SOUNDS_DISABLED)))
+	if ((!SETTING(SOUND_EXC).empty()) && (!SETTING(SOUNDS_DISABLED)))
 		WinUtil::playSound(Text::toT(SETTING(SOUND_EXC)));
 
 	NOTIFYICONDATA m_nid;
@@ -324,10 +324,17 @@ static int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	WinUtil::splash = unique_ptr<SplashWindow>(new SplashWindow());
 	(*WinUtil::splash)("Starting up");
 
-	startup([&](const string& str) { (*WinUtil::splash)(str); });
+	startup(
+		[&](const string& str) { (*WinUtil::splash)(str); },
+		[&](const string& str) { ::MessageBox(WinUtil::splash->getHWND(), Text::toT(str).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_OK); },
+		[&]() { 
+			WizardDlg dlg;
+			dlg.DoModal(/*m_hWnd*/);
+		}
+	);
 	
 
-	if(BOOLSETTING(PASSWD_PROTECT)) {
+	if(SETTING(PASSWD_PROTECT)) {
 		PassDlg dlg;
 		dlg.description = TSTRING(PASSWORD_DESC);
 		dlg.title = TSTRING(PASSWORD_TITLE);
@@ -369,7 +376,7 @@ static int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 		return 0;
 	}
 	
-	if(BOOLSETTING(MINIMIZE_ON_STARTUP)) {
+	if(SETTING(MINIMIZE_ON_STARTUP)) {
 		wndMain.ShowWindow(SW_SHOWMINIMIZED);
 	} else {
 		wndMain.ShowWindow(((nCmdShow == SW_SHOWDEFAULT) || (nCmdShow == SW_SHOWNORMAL)) ? SETTING(MAIN_WINDOW_STATE) : nCmdShow);
@@ -380,7 +387,6 @@ static int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 
 	dcassert(WinUtil::splash);
 	shutdown([&](const string& str) { (*WinUtil::splash)(str); });
-	WinUtil::splash.reset();
 
 	WinUtil::runPendingUpdate();
 	return nRet;
@@ -457,7 +463,6 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 				//append the passed params (but leave out the update commands...)
 				argv++;
 				checkParams();
-				WinUtil::splash.reset();
 
 				//start the updated instance
 				if (!startElevated) {

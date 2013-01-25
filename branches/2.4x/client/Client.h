@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 
 #include "BufferedSocketListener.h"
 #include "ClientListener.h"
+#include "HubSettings.h"
 #include "OnlineUser.h"
 #include "Search.h"
 #include "SearchQueue.h"
@@ -32,6 +33,8 @@
 #include "Speaker.h"
 #include "TimerManager.h"
 #include "User.h"
+
+#include <boost/noncopyable.hpp>
 
 namespace dcpp {
 
@@ -50,7 +53,7 @@ public:
 };
 
 /** Yes, this should probably be called a Hub */
-class Client : public ClientBase, public Speaker<ClientListener>, public BufferedSocketListener, protected TimerManagerListener {
+class Client : public ClientBase, public Speaker<ClientListener>, public BufferedSocketListener, protected TimerManagerListener, public HubSettings, private boost::noncopyable {
 public:
 	typedef unordered_map<string*, Client*, noCaseStringHash, noCaseStringEq> List;
 	typedef List::const_iterator Iter;
@@ -105,15 +108,6 @@ public:
 
 	static string getCounts();
 	
-	void setSearchInterval(uint32_t aInterval) {
-		// min interval is 5 seconds
-		searchQueue.minInterval = max(aInterval, (uint32_t)(5 * 1000));
-	}
-
-	uint32_t getSearchInterval() const {
-		return searchQueue.minInterval;
-	}	
-	
 	void reconnect();
 	void shutdown();
 	bool isActive() const;
@@ -137,10 +131,6 @@ public:
 	GETSET(Identity, hubIdentity, HubIdentity);
 
 	GETSET(string, defpassword, Password);
-	
-	GETSET(string, currentNick, CurrentNick);
-	GETSET(string, currentDescription, CurrentDescription);
-	GETSET(string, favIp, FavIp);
 	GETSET(bool, favnoPM, FavNoPM);
 
 	GETSET(uint64_t, lastActivity, LastActivity);
@@ -151,11 +141,11 @@ public:
 	GETSET(bool, registered, Registered);
 	GETSET(bool, autoReconnect, AutoReconnect);
 	GETSET(bool, stealth, Stealth);
-	GETSET(bool, hubShowJoins, HubShowJoins); // Show joins
-	GETSET(bool, hubLogMainchat, HubLogMainchat);
-	GETSET(bool, chatNotify, ChatNotify);
 	GETSET(ProfileToken, shareProfile, ShareProfile);
 	GETSET(ProfileToken, favToken, FavToken);
+
+	/* Set a hub setting and return the new value */
+	bool changeBoolHubSetting(HubSettings::HubBoolSetting aSetting);
 
 	enum CountType {
 		COUNT_NORMAL = 0x00,
@@ -190,6 +180,9 @@ protected:
 
 	/** Reload details from favmanager or settings */
 	void reloadSettings(bool updateNick);
+	/// Get the external IP the user has defined for this hub, if any.
+	const string& getUserIp() const;
+	string getDescription() const;
 
 	virtual string checkNick(const string& nick) = 0;
 	virtual void search(Search* aSearch) = 0;

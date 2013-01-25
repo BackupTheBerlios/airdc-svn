@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,13 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 
 #include "SystemFrame.h"
 #include "WinUtil.h"
 #include "TextFrame.h"
+#include "ResourceLoader.h"
+
 #include "../client/File.h"
 #include "../client/LogManager.h"
 #include "../client/ShareManager.h"
@@ -66,7 +67,7 @@ LRESULT SystemFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 	}
 
 	tabMenu = CreatePopupMenu();
-	if(BOOLSETTING(LOG_SYSTEM)) {
+	if(SETTING(LOG_SYSTEM)) {
 		tabMenu.AppendMenu(MF_STRING, IDC_OPEN_SYSTEM_LOG, CTSTRING(OPEN_SYSTEM_LOG));
 		tabMenu.AppendMenu(MF_SEPARATOR);
 	}
@@ -345,7 +346,7 @@ LRESULT SystemFrame::onContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lPar
 	}
 
 	menu.AppendMenu(MF_SEPARATOR);
-	if(BOOLSETTING(LOG_SYSTEM)) {
+	if(SETTING(LOG_SYSTEM)) {
 		menu.AppendMenu(MF_STRING, IDC_OPEN_SYSTEM_LOG, CTSTRING(OPEN_SYSTEM_LOG));
 		menu.AppendMenu(MF_SEPARATOR);
 	}

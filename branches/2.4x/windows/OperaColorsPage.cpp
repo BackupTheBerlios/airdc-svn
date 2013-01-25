@@ -18,7 +18,6 @@
 
 #include "stdafx.h"
 
-#include "../client/DCPlusPlus.h"
 #include "../client/SettingsManager.h"
 
 #include "Resource.h"
@@ -136,8 +135,8 @@ LRESULT OperaColorsPage::onInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /
 	ctrlBumped.Attach(GetDlgItem(IDC_SETTINGS_ODC_MENUBAR_BUMPED));
 	ctrlMenubarDrawer.Attach(GetDlgItem(IDC_SETTINGS_ODC_MENUBAR_COLOR));
 
-	checkBox(IDC_SETTINGS_ODC_MENUBAR_BUMPED, BOOLSETTING(MENUBAR_BUMPED));
-	checkBox(IDC_SETTINGS_ODC_MENUBAR_USETWO, BOOLSETTING(MENUBAR_TWO_COLORS));
+	checkBox(IDC_SETTINGS_ODC_MENUBAR_BUMPED, SETTING(MENUBAR_BUMPED));
+	checkBox(IDC_SETTINGS_ODC_MENUBAR_USETWO, SETTING(MENUBAR_TWO_COLORS));
 
 	BOOL b;
 	onMenubarClicked(0, IDC_SETTINGS_ODC_MENUBAR_USETWO, 0, b);

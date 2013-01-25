@@ -58,7 +58,7 @@ UpdateManager::~UpdateManager() {
 }
 
 void UpdateManager::on(TimerManagerListener::Minute, uint64_t aTick) noexcept {
-	if (BOOLSETTING(UPDATE_IP_HOURLY) && lastIPUpdate + 60*60*1000 < aTick) {
+	if (SETTING(UPDATE_IP_HOURLY) && lastIPUpdate + 60*60*1000 < aTick) {
 		checkIP(false);
 		lastIPUpdate = aTick;
 	}
@@ -191,11 +191,11 @@ void UpdateManager::completeUpdateDownload(int buildID, bool manualCheck) {
 
 bool UpdateManager::checkPendingUpdates(const string& aDstDir, string& updater_, bool updated) {
 	StringList fileList = File::findFiles(UPDATE_TEMP_DIR, "UpdateInfo_*");
-	for (auto i = fileList.begin(); i != fileList.end(); ++i) {
-		if (Util::getFileExt(*i) == ".xml") {
+	for (auto& uiPath: fileList) {
+		if (Util::getFileExt(uiPath) == ".xml") {
 			try {
 				SimpleXML xml;
-				xml.fromXML(File(*i, File::READ, File::OPEN).read());
+				xml.fromXML(File(uiPath, File::READ, File::OPEN).read());
 				if(xml.findChild("UpdateInfo")) {
 					xml.stepIn();
 					if(xml.findChild("DestinationPath")) {
@@ -216,7 +216,7 @@ bool UpdateManager::checkPendingUpdates(const string& aDstDir, string& updater_,
 								if (xml.getData() <= SVNVERSION || updated) {
 									//we have an old update for this instance, delete the files
 									cleanTempFiles(Util::getFilePath(updater_));
-									File::deleteFile(*i);
+									File::deleteFile(uiPath);
 									continue;
 								}
 								return true;
@@ -226,7 +226,7 @@ bool UpdateManager::checkPendingUpdates(const string& aDstDir, string& updater_,
 
 				}
 			} catch(const Exception& e) {
-				LogManager::getInstance()->message(STRING_F(FAILED_TO_READ, *i % e.getError()), LogManager::LOG_WARNING);
+				LogManager::getInstance()->message(STRING_F(FAILED_TO_READ, uiPath % e.getError()), LogManager::LOG_WARNING);
 			}
 		}
 	}
@@ -264,6 +264,8 @@ void UpdateManager::failUpdateDownload(const string& aError, bool manualCheck) {
 	} else {
 		LogManager::getInstance()->message(msg, LogManager::LOG_WARNING);
 	}
+
+	checkAdditionalUpdates(manualCheck);
 }
 
 void UpdateManager::checkIP(bool manual) {
@@ -319,7 +321,7 @@ void UpdateManager::checkGeoUpdate(bool v6) {
 }
 
 /*void UpdateManager::updateGeo() {
-	if(BOOLSETTING(GET_USER_COUNTRY)) {
+	if(SETTING(GET_USER_COUNTRY)) {
 		updateGeo(true);
 		updateGeo(false);
 	} else {
@@ -333,7 +335,7 @@ void UpdateManager::updateGeo(bool v6) {
 	if(conn)
 		return;
 
-	LogManager::getInstance()->message(str(boost::format("Updating the %1% GeoIP database...") % (v6 ? "IPv6" : "IPv4")), LogManager::LOG_INFO);
+	LogManager::getInstance()->message(STRING_F(GEOIP_UPDATING, (v6 ? "IPv6" : "IPv4")), LogManager::LOG_INFO);
 	conn.reset(new HttpDownload(v6 ? links.geoip6 : links.geoip4,
 		[this, v6] { completeGeoDownload(v6); }, false));
 }
@@ -347,11 +349,11 @@ void UpdateManager::completeGeoDownload(bool v6) {
 		try {
 			File(GeoManager::getDbPath(v6) + ".gz", File::WRITE, File::CREATE | File::TRUNCATE).write(conn->buf);
 			GeoManager::getInstance()->update(v6);
-			LogManager::getInstance()->message(str(boost::format("The %1% GeoIP database has been successfully updated") % (v6 ? "IPv6" : "IPv4")), LogManager::LOG_INFO);
+			LogManager::getInstance()->message(STRING_F(GEOIP_UPDATED, (v6 ? "IPv6" : "IPv4")), LogManager::LOG_INFO);
 			return;
 		} catch(const FileException&) { }
 	}
-	LogManager::getInstance()->message(str(boost::format("The %1% GeoIP database could not be updated") % (v6 ? "IPv6" : "IPv4")), LogManager::LOG_WARNING);
+	LogManager::getInstance()->message(STRING_F(GEOIP_UPDATING_FAILED, (v6 ? "IPv6" : "IPv4")), LogManager::LOG_WARNING);
 }
 
 void UpdateManager::completeLanguageDownload() {
@@ -540,14 +542,17 @@ void UpdateManager::completeVersionDownload(bool manualCheck) {
 		failUpdateDownload(STRING_F(VERSION_PARSING_FAILED, e.getError()), manualCheck);
 	}
 
+	checkAdditionalUpdates(manualCheck);
+}
 
-	if(BOOLSETTING(IP_UPDATE) && !BOOLSETTING(AUTO_DETECT_CONNECTION)) {
+void UpdateManager::checkAdditionalUpdates(bool manualCheck) {
+	if(!manualCheck && SETTING(IP_UPDATE) && !SETTING(AUTO_DETECT_CONNECTION)) {
 		checkIP(false);
 	}
 
 	checkLanguage();
 
-	if(BOOLSETTING(GET_USER_COUNTRY)) {
+	if(SETTING(GET_USER_COUNTRY)) {
 		checkGeoUpdate();
 	}
 }
@@ -565,7 +570,7 @@ void UpdateManager::downloadUpdate(const string& aUrl, int newBuildID, bool manu
 }
 
 void UpdateManager::checkLanguage() {
-	if(SETTING(LANGUAGE_FILE).empty() || links.language.empty()) {
+	if(!Localization::usingInbuiltLanguage() || links.language.empty()) {
 		return;
 	}
 
@@ -613,7 +618,7 @@ void UpdateManager::init(const string& aExeName) {
 
 	checkVersion(false);
 
-	/*if(BOOLSETTING(GET_USER_COUNTRY)) {
+	/*if(SETTING(GET_USER_COUNTRY)) {
 		GeoManager::getInstance()->init();
 		checkGeoUpdate();
 	} else {

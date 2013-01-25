@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ public:
 		MESSAGE_HANDLER(WM_CHAR, onChar)
 		MESSAGE_HANDLER(WM_ERASEBKGND, onEraseBkgnd)
 		MESSAGE_HANDLER(WM_CONTEXTMENU, onContextMenu)
+		MESSAGE_HANDLER(WM_ENABLE, onEnable)
 		CHAIN_MSG_MAP(arrowBase)
 	END_MSG_MAP();
 
@@ -132,7 +133,7 @@ public:
 	}
 	
 	LRESULT onInfoTip(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/) {
-		if(!BOOLSETTING(SHOW_INFOTIPS)) return 0;
+		if(!SETTING(SHOW_INFOTIPS)) return 0;
 
 		NMLVGETINFOTIP* pInfoTip = (NMLVGETINFOTIP*) pnmh;
 
@@ -348,49 +349,17 @@ public:
 		}
 			DeleteAllItems();
 	}
-
-	LRESULT onEraseBkgnd(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
-		bHandled = FALSE;
-		if(!leftMargin || !hBrBg) 
-			return 0;
-
-		dcassert(hBrBg);
-		if(!hBrBg) return 0;
-
-		bHandled = TRUE;
-		HDC dc = (HDC)wParam;
-		int n = GetItemCount();
-		RECT r = {0, 0, 0, 0}, full;
-		GetClientRect(&full);
-
-		if (n > 0) {
-			GetItemRect(0, &r, LVIR_BOUNDS);
-			r.bottom = r.top + ((r.bottom - r.top) * n);
-		}
-
-		RECT full2 = full; // Keep a backup
-
-
-		full.bottom = r.top;
-		FillRect(dc, &full, hBrBg);
-
-		full = full2; // Revert from backup
-		full.right = r.left + leftMargin; // state image
-		//full.left = 0;
-		FillRect(dc, &full, hBrBg);
-
-		full = full2; // Revert from backup
-		full.left = r.right;
-		FillRect(dc, &full, hBrBg);
-
-		full = full2; // Revert from backup
-		full.top = r.bottom;
-		full.right = r.right;
-		FillRect(dc, &full, hBrBg);
-
-		
-		return S_OK;
+	
+	/*Override handling of window cancelmode, let the owner do the necessary drawing*/
+	LRESULT onEnable(UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& bHandled) {
+		bHandled = !wParam;
+		return 0;
 	}
+
+	LRESULT onEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
+		return 1;
+	}
+
 	void setFlickerFree(HBRUSH flickerBrush) { hBrBg = flickerBrush; }
 
 	LRESULT onContextMenu(UINT /*msg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled) {
@@ -484,19 +453,16 @@ public:
 			lvc.cchTextMax = 512;
 			lvc.pszText = buf;
 			GetColumn(i, &lvc);
-			for(ColumnIter j = columnList.begin(); j != columnList.end(); ++j){
-				if(_tcscmp(buf, (*j)->name.c_str()) == 0) {
-					(*j)->pos = lvc.iOrder;
-					(*j)->width = lvc.cx;
+			for(auto c: columnList){
+				if(_tcscmp(buf, c->name.c_str()) == 0) {
+					c->pos = lvc.iOrder;
+					c->width = lvc.cx;
 					break;
 				}
 			}
 		}
 
-		for(ColumnIter i = columnList.begin(); i != columnList.end(); ++i){
-			ColumnInfo* ci = *i;
-			
-
+		for(auto ci: columnList) {
 			if(ci->visible){
 				visible += "1,";
 			} else {
@@ -504,8 +470,8 @@ public:
 				visible += "0,";
 			}
 			
-			order += Util::toString((*i)->pos) + ",";
-			widths += Util::toString((*i)->width) + ",";
+			order += Util::toString(ci->pos) + ",";
+			widths += Util::toString(ci->width) + ",";
 		}
 
 		order.erase(order.size()-1, 1);
@@ -697,10 +663,10 @@ public:
 
 	void Collapse(T* parent, int itemPos) {
 		SetRedraw(false);
-		const vector<T*>& children = findChildren(parent->getGroupCond());
-		for(vector<T*>::const_iterator i = children.begin(); i != children.end(); i++) {
-			deleteItem(*i);
-		}
+		auto& children = findChildren(parent->getGroupCond());
+		for(const auto c: children)
+			deleteItem(c);
+
 		parent->collapsed = true;
 		SetItemState(itemPos, INDEXTOSTATEIMAGEMASK(1), LVIS_STATEIMAGEMASK);
 		SetRedraw(true);
@@ -708,12 +674,12 @@ public:
 
 	void Expand(T* parent, int itemPos) {
 		SetRedraw(false);
-		const vector<T*>& children = findChildren(parent->getGroupCond());
+		const auto& children = findChildren(parent->getGroupCond());
 		if(children.size() > (size_t)(uniqueParent ? 1 : 0)) {
 			parent->collapsed = false;
-			for(vector<T*>::const_iterator i = children.begin(); i != children.end(); i++) {
-				insertChild(*i, itemPos + 1);
-			}
+			for(const auto c: children)
+				insertChild(c, itemPos + 1);
+
 			SetItemState(itemPos, INDEXTOSTATEIMAGEMASK(2), LVIS_STATEIMAGEMASK);
 			resort();
 		}
@@ -760,7 +726,7 @@ public:
 			parent = item;
 
 			ParentPair newPP = { parent };
-			parents.insert(make_pair(const_cast<K*>(&parent->getGroupCond()), newPP));
+			parents.emplace(const_cast<K*>(&parent->getGroupCond()), newPP);
 
 			parent->parent = NULL; // ensure that parent of this item is really NULL
 			insertItem(getSortPos(parent), parent, parent->getImageIndex());
@@ -774,7 +740,7 @@ public:
 				deleteItem(oldParent);
 
 				ParentPair newPP = { parent };
-				pp = &(parents.insert(make_pair(const_cast<K*>(&parent->getGroupCond()), newPP)).first->second);
+				pp = &(parents.emplace(const_cast<K*>(&parent->getGroupCond()), newPP).first->second);
 
 				parent->parent = NULL; // ensure that parent of this item is really NULL
 				oldParent->parent = parent;
@@ -826,7 +792,7 @@ public:
 			uniqueParent = false;
 
 			ParentPair newPP = { parent };
-			pp = &(parents.insert(make_pair(const_cast<K*>(&parent->getGroupCond()), newPP)).first->second);
+			pp = &(parents.emplace(const_cast<K*>(&parent->getGroupCond()), newPP).first->second);
 
 			parent->parent = NULL; // ensure that parent of this item is really NULL
 			parent->hits++;
@@ -899,9 +865,9 @@ public:
 	void removeParent(T* parent) {
 		ParentPair* pp = findParentPair(parent->getGroupCond());
 		if(pp) {
-			for(vector<T*>::iterator i = pp->children.begin(); i != pp->children.end(); i++) {
-				deleteItem(*i);
-				delete *i;
+			for(auto i: pp->children) {
+				deleteItem(i);
+				delete i;
 			}
 			pp->children.clear();
 			parents.erase(const_cast<K*>(&parent->getGroupCond()));
@@ -935,7 +901,7 @@ public:
 					delete oldParent;
 
 					ParentPair newPP = { parent };
-					parents.insert(make_pair(const_cast<K*>(&parent->getGroupCond()), newPP));
+					parents.emplace(const_cast<K*>(&parent->getGroupCond()), newPP);
 
 					parent->parent = NULL; // ensure that parent of this item is really NULL
 					deleteItem(parent);
@@ -956,14 +922,13 @@ public:
 
 	void deleteAllItems() {
 		// HACK: ugly hack but at least it doesn't crash and there's no memory leak
-		for(ParentMap::iterator i = parents.begin(); i != parents.end(); i++) {
-			T* ti = (*i).second.parent;
-			for(vector<T*>::iterator j = (*i).second.children.begin(); j != (*i).second.children.end(); j++) {
-				deleteItem(*j);
-				delete *j;
+		for(auto p: parents | map_values) {
+			for(auto c: p.children) {
+				deleteItem(c);
+				delete c;
 			}
-			deleteItem(ti);
-			delete ti;
+			deleteItem(p.parent);
+			delete p.parent;
 		}
 		for(int i = 0; i < GetItemCount(); i++) {
 			T* si = getItemData(i);

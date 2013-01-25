@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,9 +37,11 @@ public:
 #else //_DEBUG
 	SSLSocketException(const string& aError) noexcept : SocketException(aError) { }
 #endif // _DEBUG
+	SSLSocketException(int aError) noexcept : SocketException(aError) { }
 
 	virtual ~SSLSocketException() throw() { }
 };
+
 
 class CryptoManager;
 
@@ -67,8 +69,6 @@ private:
 	friend class CryptoManager;
 
 	SSLSocket(SSL_CTX* context);
-	SSLSocket(const SSLSocket&);
-	SSLSocket& operator=(const SSLSocket&);
 
 	SSL_CTX* ctx;
 	ssl::SSL ssl;

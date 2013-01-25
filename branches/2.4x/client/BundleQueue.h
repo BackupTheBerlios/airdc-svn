@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,15 +35,15 @@ class BundleQueue {
 public:
 	BundleQueue();
 	~BundleQueue();
-	void addBundleItem(QueueItemPtr qi, BundlePtr aBundle);
-	void removeBundleItem(QueueItemPtr qi, bool finished);
+	void addBundleItem(QueueItemPtr& qi, BundlePtr aBundle);
+	void removeBundleItem(QueueItemPtr& qi, bool finished);
 
 	size_t getTotalFiles() const;
 
-	void addFinishedItem(QueueItemPtr qi, BundlePtr aBundle);
-	void removeFinishedItem(QueueItemPtr qi);
+	void addFinishedItem(QueueItemPtr& qi, BundlePtr aBundle);
+	void removeFinishedItem(QueueItemPtr& qi);
 
-	void addBundle(BundlePtr aBundle);
+	void addBundle(BundlePtr& aBundle);
 
 	void getInfo(const string& aPath, BundleList& retBundles, int& finishedFiles, int& fileBundles) const;
 	BundlePtr findBundle(const string& bundleToken) const;
@@ -58,13 +58,13 @@ public:
 	int64_t recalculateSearchTimes(bool aRecent, bool prioChange);
 
 	Bundle::StringBundleMap& getBundles() { return bundles; }
-	void moveBundle(BundlePtr aBundle, const string& newTarget);
-	void removeBundle(BundlePtr aBundle);
+	void moveBundle(BundlePtr& aBundle, const string& newTarget);
+	void removeBundle(BundlePtr& aBundle);
 
 	void getDiskInfo(TargetUtil::TargetInfoMap& dirMap, const TargetUtil::VolumeSet& volumes) const;
 
-	void addSearchPrio(BundlePtr aBundle);
-	void removeSearchPrio(BundlePtr aBundle);
+	void addSearchPrio(BundlePtr& aBundle);
+	void removeSearchPrio(BundlePtr& aBundle);
 
 	void saveQueue(bool force) noexcept;
 

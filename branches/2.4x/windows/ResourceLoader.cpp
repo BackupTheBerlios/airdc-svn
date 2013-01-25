@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "../client/UserInfoBase.h"
 
 #include "ResourceLoader.h"
@@ -151,7 +150,7 @@ tstring ResourceLoader::getIconPath(const tstring& filename) {
 
 HICON ResourceLoader::loadIcon(int aDefault, int size/* = 0*/) {
 	tstring icon = getIconPath(getIconName(aDefault));
-	HICON iHandle = icon.empty() ? NULL : (HICON)::LoadImage(NULL, icon.c_str(), IMAGE_ICON, size, size, LR_DEFAULTSIZE | LR_DEFAULTCOLOR | LR_LOADFROMFILE);
+	HICON iHandle = icon.empty() ? NULL : (HICON)::LoadImage(NULL, icon.c_str(), IMAGE_ICON, size, size, LR_DEFAULTSIZE | LR_DEFAULTCOLOR | LR_SHARED | LR_LOADFROMFILE);
 	if(!iHandle) 
 		return loadDefaultIcon(aDefault, size);
 	return iHandle;
@@ -265,7 +264,7 @@ void ResourceLoader::loadFileImages() {
 	dirMaskedIndex = fileImageCount++;
 	fileImageCount++;
 
-	if(BOOLSETTING(USE_SYSTEM_ICONS)) {
+	if(SETTING(USE_SYSTEM_ICONS)) {
 		SHFILEINFO fi;
 		memzero(&fi, sizeof(SHFILEINFO));
 		if(::SHGetFileInfo(_T("./"), FILE_ATTRIBUTE_DIRECTORY, &fi, sizeof(fi), SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES)) {
@@ -303,6 +302,7 @@ void ResourceLoader::loadSettingsTreeIcons() {
 	settingsTreeImages.AddIcon(loadDefaultIcon(IDI_CONNECTIONS, size));
 	settingsTreeImages.AddIcon(loadDefaultIcon(IDI_SPEED, size));
 	settingsTreeImages.AddIcon(loadDefaultIcon(IDI_LIMITS, size));
+	settingsTreeImages.AddIcon(loadDefaultIcon(IDI_PROXY, size));
 	settingsTreeImages.AddIcon(loadDefaultIcon(IDI_DOWNLOADS, size));
 	settingsTreeImages.AddIcon(loadDefaultIcon(IDI_LOCATIONS, size));
 	settingsTreeImages.AddIcon(loadDefaultIcon(IDI_PREVIEW, size));
@@ -347,7 +347,7 @@ void ResourceLoader::loadSearchTypeIcons() {
 }
 
 int ResourceLoader::getIconIndex(const tstring& aFileName) {
-	if(BOOLSETTING(USE_SYSTEM_ICONS)) {
+	if(SETTING(USE_SYSTEM_ICONS)) {
 		SHFILEINFO fi;
 		tstring x = Text::toLower(Util::getFileExt(aFileName));
 		if(!x.empty()) {

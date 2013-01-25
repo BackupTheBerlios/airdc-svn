@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -96,6 +96,8 @@ public:
 	bool isUnique(const string& aUrl, ProfileToken aToken);
 	FavoriteHubEntry* getFavoriteHubEntry(const string& aServer) const;
 
+	void mergeHubSettings(const FavoriteHubEntry& entry, HubSettings& settings) const;
+	void setHubSetting(const string& aUrl, HubSettings::HubBoolSetting aSetting, bool newValue);
 // Favorite hub groups
 	const FavHubGroups& getFavHubGroups() const { return favHubGroups; }
 	void setFavHubGroups(const FavHubGroups& favHubGroups_) { favHubGroups = favHubGroups_; }
@@ -118,20 +120,12 @@ public:
 	void updateRecent(const RecentHubEntry* entry);
 
 	// remove user commands and possibly change the address for the next attempt
-	bool getFailOverUrl(ProfileToken aToken, string& hubAddress_);
+	optional<string> getFailOverUrl(ProfileToken aToken, const string& curHubUrl);
 	void setFailOvers(const string& hubUrl, ProfileToken aToken, StringList&& fo_);
 	bool blockFailOverUrl(ProfileToken aToken, string& hubAddress_);
 	bool isFailOverUrl(ProfileToken aToken, const string& hubAddress_);
 
-	RecentHubEntry* getRecentHubEntry(const string& aServer) {
-		for(RecentHubEntry::Iter i = recentHubs.begin(); i != recentHubs.end(); ++i) {
-			RecentHubEntry* r = *i;
-			if(stricmp(r->getServer(), aServer) == 0) {
-				return r;
-			}
-		}
-		return NULL;
-	}
+	RecentHubEntry* getRecentHubEntry(const string& aServer);
 
 	PreviewApplication* addPreviewApp(string name, string application, string arguments, string extension){
 		PreviewApplication* pa = new PreviewApplication(name, application, arguments, extension);
@@ -180,6 +174,8 @@ public:
 
 	int resetProfiles(const ProfileTokenList& aProfiles, ShareProfilePtr defaultProfile);
 	void onProfilesRenamed();
+
+	bool hasActiveHubs() const;
 private:
 	FavoriteHubEntryList favoriteHubs;
 	FavHubGroups favHubGroups;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -152,7 +152,7 @@ int SSLSocket::checkSSL(int ret) {
 			case SSL_ERROR_WANT_WRITE:
 				return -1;
 			case SSL_ERROR_ZERO_RETURN:
-				throw SocketException("Connection closed");
+				throw SocketException(STRING(CONNECTION_CLOSED));
 			default:
 				{
 					ssl.reset();

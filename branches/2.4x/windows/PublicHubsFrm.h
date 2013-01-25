@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,9 +28,6 @@
 #include "Resource.h"
 
 #include "../client/FavoriteManager.h"
-#include "../client/StringSearch.h"
-
-#include "WinUtil.h"
 
 #define FILTER_MESSAGE_MAP 8
 class PublicHubsFrame : public MDITabChildWindowImpl<PublicHubsFrame>, public StaticFrame<PublicHubsFrame, ResourceManager::PUBLIC_HUBS, ID_FILE_CONNECT>, 
@@ -96,17 +93,7 @@ public:
 	void UpdateLayout(BOOL bResizeBars = TRUE);
 	bool checkNick();
 	
-	LRESULT onCtlColor(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
-		HWND hWnd = (HWND)lParam;
-		HDC hDC = (HDC)wParam;
-		if(uMsg == WM_CTLCOLORLISTBOX || hWnd == ctrlPubLists.m_hWnd || hWnd == ctrlFilter.m_hWnd || hWnd == ctrlFilterSel.m_hWnd) {
-			::SetBkColor(hDC, WinUtil::bgColor);
-			::SetTextColor(hDC, WinUtil::textColor);
-			return (LRESULT)WinUtil::bgBrush;
-		}
-		bHandled = FALSE;
-		return FALSE;
-	}
+	LRESULT onCtlColor(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	
 	LRESULT onSetFocus(UINT /* uMsg */, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/) {
 		ctrlHubs.SetFocus();

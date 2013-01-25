@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2003-2006 RevConnect, http://www.revconnect.com
+ * Copyright (C) 2003-2013 RevConnect, http://www.revconnect.com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,15 +23,11 @@
 #include "QueueManager.h"
 #include "SearchManager.h"
 
-#include <boost/range/algorithm/for_each.hpp>
-#include <boost/range/algorithm_ext/for_each.hpp>
-
 namespace dcpp {
 
 using boost::range::for_each;
 	
-SearchQueue::SearchQueue(int32_t aInterval) 
-	: lastSearchTime(0), minInterval(aInterval)
+SearchQueue::SearchQueue() : lastSearchTime(0)
 {
 	nextInterval = 10*1000;
 }
@@ -40,8 +36,8 @@ SearchQueue::~SearchQueue() {
 	for_each(searchQueue, DeleteFunction());
 }
 
-int32_t SearchQueue::getInterval(const Search* aSearch) const {
-	int32_t ret = 0;
+int SearchQueue::getInterval(const Search* aSearch) const {
+	int ret = 0;
 	switch(aSearch->type) {
 		case Search::MANUAL: ret = 5000; break;
 		case Search::ALT: ret = 10000; break;
@@ -125,10 +121,7 @@ Search* SearchQueue::pop() {
 			Search* s = searchQueue.front();
 			searchQueue.pop_front();
 			lastSearchTime = GET_TICK();
-			nextInterval = minInterval;
-			if(!searchQueue.empty()) {
-				nextInterval = getInterval(searchQueue.front());
-			}
+			nextInterval = !searchQueue.empty() ? getInterval(searchQueue.front()) : minInterval;
 			return s;
 		} else {
 			nextInterval = -1;

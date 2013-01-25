@@ -705,6 +705,15 @@
     <ClCompile Include="windows\EncryptionPage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="windows\HashProgressDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="windows\ChatCommands.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="windows\ProxyPage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="windows\AboutDlg.h">
@@ -1058,6 +1067,12 @@
     <ClInclude Include="windows\EncryptionPage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="windows\ChatCommands.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="windows\ProxyPage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\SettingsTree\SearchTypes.ico">
@@ -1197,6 +1212,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\AutoSearch\PostSearch.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\SettingsTree\Proxy.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

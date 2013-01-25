@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -117,7 +117,10 @@ public:
 	ALT_MSG_MAP(FILTER_MESSAGE_MAP)
 		MESSAGE_HANDLER(WM_CTLCOLORLISTBOX, onCtlColor)
 		MESSAGE_HANDLER(WM_CHAR, onFilterChar)
+		MESSAGE_HANDLER(WM_CLEAR, onFilterChar)
 		MESSAGE_HANDLER(WM_KEYUP, onFilterChar)
+		MESSAGE_HANDLER(WM_CUT, onFilterChar)
+		MESSAGE_HANDLER(WM_PASTE, onFilterChar)
 		COMMAND_CODE_HANDLER(CBN_SELCHANGE, onSelChange)
 	END_MSG_MAP()
 
@@ -261,11 +264,6 @@ private:
 
 	tstring redirect;
 	bool timeStamps;
-	bool showJoins;
-	bool favShowJoins;
-	bool hubshowjoins; //favorite hub show joins
-	bool logMainChat;
-	bool showchaticon;
 	static bool shutdown;
 	HICON HubOpIcon; 
 	HICON HubRegIcon; 
@@ -292,7 +290,6 @@ private:
 	CComboBox ctrlFilterSel;
 	typedef TypedListViewCtrl<OnlineUser, IDC_USERS> CtrlUsers;
 	CtrlUsers ctrlUsers;
-	CStatusBarCtrl ctrlStatus;
 	
 	int statusSizes[4];
 	

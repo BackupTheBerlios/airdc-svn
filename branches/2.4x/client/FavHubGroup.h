@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,19 +19,16 @@
 #ifndef DCPLUSPLUS_DCPP_FAVHUBGROUP_H
 #define DCPLUSPLUS_DCPP_FAVHUBGROUP_H
 
+#include <unordered_map>
+
+#include "HubSettings.h"
+
 namespace dcpp {
 
-struct FavHubGroupProperties {
-	/**
-	* Designates a private group; hubs in a private group don't share their users with any other
-	* hub when trying to match an online user, and are not shared with any peer.
-	*/
-	bool priv;
-};
-
-typedef unordered_map<string, FavHubGroupProperties> FavHubGroups;
+typedef std::unordered_map<string, HubSettings> FavHubGroups;
 typedef FavHubGroups::value_type FavHubGroup;
 
 } // namespace dcpp
 
 #endif
+

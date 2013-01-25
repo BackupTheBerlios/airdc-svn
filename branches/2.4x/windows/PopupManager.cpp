@@ -17,9 +17,8 @@
 */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "../client/SettingsManager.h"
-#include "../client/Util.h"
+#include "../client/AirUtil.h"
 
 #include "WinUtil.h"
 #include "PopupManager.h"
@@ -33,10 +32,10 @@ void PopupManager::Show(const tstring &aMsg, const tstring &aTitle, int Icon, HI
 		return;
 
 
-	if (!Util::getAway() && BOOLSETTING(POPUP_AWAY) && !force)
+	if (!AirUtil::getAway() && SETTING(POPUP_AWAY) && !force)
 		return;
 	
-	if(!MainFrame::getMainFrame()->getAppMinimized() && BOOLSETTING(POPUP_MINIMIZED) && !force) {
+	if(!MainFrame::getMainFrame()->getAppMinimized() && SETTING(POPUP_MINIMIZED) && !force) {
 		return;
 	}
 
@@ -120,8 +119,8 @@ void PopupManager::Show(const tstring &aMsg, const tstring &aTitle, int Icon, HI
 }
 
 void PopupManager::on(TimerManagerListener::Second /*type*/, uint64_t /*tick*/) {
-	//post a message and let the main window thread take care of the window
-	::PostMessage(WinUtil::mainWnd, WM_SPEAKER, MainFrame::REMOVE_POPUP, 0);
+	//let the main thread take care of the window
+	MainFrame::getMainFrame()->callAsync([=] { AutoRemove(); });
 }
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,14 +91,7 @@ private:
 	typedef unordered_map<uint32_t, OnlineUser*> SIDMap;
 	typedef SIDMap::const_iterator SIDIter;
 
-	void getUserList(OnlineUserList& list) const {
-		RLock l(cs);
-		for(auto i = users.begin(); i != users.end(); i++) {
-			if(i->first != AdcCommand::HUB_SID) {
-				list.push_back(i->second);
-			}
-		}
-	}
+	void getUserList(OnlineUserList& list) const;
 
 	bool oldPassword;
 	Socket udp;

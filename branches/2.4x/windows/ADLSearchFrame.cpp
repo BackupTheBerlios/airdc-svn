@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 
 #include "stdafx.h"
 #include "Resource.h"
-#include "../client/DCPlusPlus.h"
-#include "../client/Client.h"
 #include "ADLSearchFrame.h"
 #include "AdlsProperties.h"
 
@@ -57,6 +55,19 @@ static ResourceManager::Strings columnNames[] = {
 	ResourceManager::COMMENT,
 	ResourceManager::REGEXP
 };
+
+LRESULT ADLSearchFrame::onCtlColor(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+	HWND hWnd = (HWND)lParam;
+	HDC hDC   = (HDC)wParam;
+	if(hWnd == ctrlList.m_hWnd) 
+	{
+		::SetBkColor(hDC, WinUtil::bgColor);
+		::SetTextColor(hDC, WinUtil::textColor);
+		return (LRESULT)WinUtil::bgBrush;
+	}
+	bHandled = FALSE;
+	return FALSE;
+}
 
 // Frame creation
 LRESULT ADLSearchFrame::onCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)

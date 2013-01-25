@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -66,11 +66,6 @@ public:
 		{
 		}
 
-		File& operator=(const File& rhs) {
-			name = rhs.name; size = rhs.size; parent = rhs.parent; tthRoot = rhs.tthRoot; dupe = rhs.dupe;
-			return *this;
-		}
-
 		~File() { }
 
 
@@ -104,8 +99,6 @@ public:
 		File::List files;
 
 		Directory(Directory* aParent, const string& aName, bool _adls, bool aComplete, bool checkDupe = false, const string& aSize = Util::emptyString, const string& aDate = Util::emptyString);
-		void setDate(const string& aDate);
-		time_t getDate() { return date; }
 
 		virtual ~Directory();
 
@@ -135,8 +128,7 @@ public:
 		GETSET(bool, adls, Adls);		
 		GETSET(bool, complete, Complete);
 		GETSET(DupeType, dupe, Dupe)
-	private:
-		time_t date;
+		GETSET(time_t, date, Date)
 	};
 
 	class AdlDirectory : public Directory {
@@ -151,8 +143,11 @@ public:
 	
 	void loadFile(const string& name);
 
-	string updateXML(const std::string&);
-	string loadXML(InputStream& xml, bool updating);
+	//return the number of loaded dirs
+	int updateXML(const string& aXml, const string& aBase);
+
+	//return the number of loaded dirs
+	int loadXML(InputStream& xml, bool updating, const string& aBase = "/");
 
 	bool downloadDir(const string& aDir, const string& aTarget, TargetUtil::TargetType aTargetType, bool highPrio, QueueItem::Priority prio = QueueItem::DEFAULT, ProfileToken aAutoSearch = 0);
 	bool downloadDir(Directory* aDir, const string& aTarget, TargetUtil::TargetType aTargetType, bool isSizeUnknown, QueueItem::Priority prio=QueueItem::DEFAULT, bool first=true, BundlePtr aBundle=nullptr, ProfileToken aAutoSearch=0);
@@ -181,17 +176,17 @@ public:
 	const string& getHubUrl() const { return hintedUser.hint; }	
 		
 	GETSET(HintedUser, hintedUser, HintedUser);
-	GETSET(bool, reloading, Reloading);
 	GETSET(bool, partialList, PartialList);
 	GETSET(bool, abort, Abort);
 	GETSET(bool, isOwnList, IsOwnList);
 	GETSET(bool, isClientView, isClientView);
 	GETSET(string, fileName, FileName);
-	GETSET(bool, matchADL, MatchADL);	
+	GETSET(bool, matchADL, MatchADL);
+	GETSET(bool, waiting, Waiting);	
 
 	void addMatchADLTask();
 	void addListDiffTask(const string& aFile, bool aOwnList);
-	void addPartialListTask(const string& aXmlDir, std::function<void ()> f = nullptr);
+	void addPartialListTask(const string& aXml, const string& aBase, std::function<void ()> f = nullptr);
 	void addFullListTask(const string& aDir);
 	void addQueueMatchTask();
 	void addFilterTask();

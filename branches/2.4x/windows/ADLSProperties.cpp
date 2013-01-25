@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,10 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 
 #include "ADLSProperties.h"
 #include "../client/ADLSearch.h"
-#include "../client/FavoriteManager.h"
 #include "WinUtil.h"
 #define GET_TEXT(id, var) \
 	GetDlgItemText(id, buf, 1024); \
@@ -43,7 +41,7 @@ LRESULT ADLSProperties::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
 	SetDlgItemText(IDC_ADLS_COMMENT_STRING, CTSTRING(COMMENT));
 	SetDlgItemText(IDC_REGEXP_TESTER, CTSTRING(REGEXP_TESTER));
 	SetDlgItemText(IDC_REGEXP_TEST, CTSTRING(MATCH));
-	SetDlgItemText(IDC_REGEXP, CTSTRING(ADLS_REGEXP));
+	SetDlgItemText(IDC_REGEXP, CTSTRING(REGEXP));
 
 	// Initialize dialog items
 	ctrlSearch.Attach(GetDlgItem(IDC_SEARCH_STRING));

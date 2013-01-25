@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 
 #include "TreePropertySheet.h"
 #include "../client/ResourceManager.h"
@@ -77,10 +76,10 @@ void TreePropertySheet::addTree()
 	::GetWindowRect(page, &rcPage);
 	::MapWindowPoints(NULL, m_hWnd, (LPPOINT)&rcPage, 2);
 
-	CRect rc(SPACE_LEFT, rcPage.top, TREE_WIDTH, rcPage.bottom);
+	CRect rc(SPACE_LEFT, rcPage.top, TREE_WIDTH, rcPage.bottom + 30);
 	ctrlTree.Create(m_hWnd, rc, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP | TVS_TRACKSELECT, WS_EX_CLIENTEDGE, IDC_PAGE);
 	
-	if(BOOLSETTING(USE_EXPLORER_THEME)) {
+	if(SETTING(USE_EXPLORER_THEME)) {
 		SetWindowTheme(ctrlTree.m_hWnd, L"explorer", NULL);
 	}
 	

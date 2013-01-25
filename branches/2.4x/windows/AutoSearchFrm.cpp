@@ -1,4 +1,6 @@
-/* 
+/*
+ * Copyright (C) 2012-2013 AirDC++ Project
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -15,14 +17,13 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 #include "MainFrm.h"
 
 #include "AutoSearchFrm.h"
+#include "ResourceLoader.h"
+
 #include "../client/SettingsManager.h"
-#include "../client/StringTokenizer.h"
-#include "../client/AutoSearchManager.h"
 
 int AutoSearchFrame::columnIndexes[] = { COLUMN_VALUE, COLUMN_TYPE, COLUMN_SEARCH_STATUS, COLUMN_LASTSEARCH, COLUMN_BUNDLES, COLUMN_ACTION, COLUMN_EXPIRATION,
 	COLUMN_PATH, COLUMN_REMOVE, COLUMN_USERMATCH };
@@ -209,7 +210,7 @@ void AutoSearchFrame::UpdateLayout(BOOL bResizeBars /* = TRUE */) {
 
 }
 
-LRESULT AutoSearchFrame::onCustomDraw(int /*idCtrl*/, LPNMHDR pnmh, BOOL& bHandled) {
+LRESULT AutoSearchFrame::onCustomDraw(int /*idCtrl*/, LPNMHDR pnmh, BOOL& /*bHandled*/) {
 	NMLVCUSTOMDRAW* cd = (NMLVCUSTOMDRAW*)pnmh;
 
 	switch(cd->nmcd.dwDrawStage) {
@@ -460,7 +461,7 @@ LRESULT AutoSearchFrame::onRemove(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWn
 		removelist.push_back((AutoSearch*)ctrlAutoSearch.GetItemData(i));
 	}
 
-	if(WinUtil::MessageBoxConfirm(SettingsManager::CONFIRM_AS_REMOVE, TSTRING(REALLY_REMOVE))) {
+	if(WinUtil::MessageBoxConfirm(SettingsManager::CONFIRM_AS_REMOVAL, TSTRING(REALLY_REMOVE))) {
 		for(auto a = removelist.begin(); a !=removelist.end(); ++a )
 			AutoSearchManager::getInstance()->removeAutoSearch(*a);
 	}

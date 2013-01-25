@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ void LogManager::log(Area area, ParamMap& params) noexcept {
 }
 
 void LogManager::message(const string& msg, Severity severity) {
-	if(BOOLSETTING(LOG_SYSTEM)) {
+	if(SETTING(LOG_SYSTEM)) {
 		ParamMap params;
 		params["message"] = msg;
 		log(SYSTEM, params);
@@ -40,7 +40,8 @@ void LogManager::message(const string& msg, Severity severity) {
 		// Keep the last 100 messages (completely arbitrary number...)
 		while(lastLogs.size() > 100)
 			lastLogs.pop_front();
-		lastLogs.push_back(make_pair(msg, MessageData(t, severity)));
+
+		lastLogs.emplace_back(msg, MessageData(t, severity));
 	}
 	fire(LogManagerListener::Message(), t, msg, severity);
 }

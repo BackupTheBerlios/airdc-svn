@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #endif // _MSC_VER > 1000
 
 #include "resource.h"
+#include "../client/typedefs.h"
 
 class TreePropertySheet : public CPropertySheetImpl<TreePropertySheet> {
 public:
@@ -71,7 +72,7 @@ private:
 		SPACE_BOTTOM = 10,
 		SPACE_LEFT = 10,
 		SPACE_RIGHT = 10,
-		TREE_WIDTH = 210,
+		TREE_WIDTH = 220,
 	};
 
 	enum {

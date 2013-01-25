@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -115,7 +115,7 @@ private:
 	FinishedManager();
 	~FinishedManager();
 
-	void on(QueueManagerListener::Finished, const QueueItemPtr, const string&, const HintedUser& aUser, int64_t aSpeed) noexcept;
+	void on(QueueManagerListener::Finished, const QueueItemPtr&, const string&, const HintedUser& aUser, int64_t aSpeed) noexcept;
 	void on(UploadManagerListener::Complete, const Upload*) noexcept;
 
 	CriticalSection cs;

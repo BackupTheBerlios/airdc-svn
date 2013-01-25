@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,15 +37,15 @@ bool Mapper::open(const string& port, const Protocol protocol, const string& des
 	if(!add(port, protocol, description))
 		return false;
 
-	rules.insert(make_pair(port, protocol));
+	rules.emplace(port, protocol);
 	return true;
 }
 
 bool Mapper::close() {
 	bool ret = true;
 
-	for(auto i = rules.cbegin(), iend = rules.cend(); i != iend; ++i)
-		ret &= remove(i->first, i->second);
+	for(auto& i: rules)
+		ret &= remove(i.first, i.second);
 	rules.clear();
 
 	return ret;

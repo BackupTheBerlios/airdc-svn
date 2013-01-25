@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 #include "AdcCommand.h"
 #include "Transfer.h"
 #include "DebugManager.h"
+
+#include "Download.h"
 
 namespace dcpp {
 
@@ -151,14 +153,14 @@ void UserConnection::connect(const string& aServer, const string& aPort, const s
 
 	socket = BufferedSocket::getSocket(0);
 	socket->addListener(this);
-	socket->connect(aServer, aPort, localPort, natRole, secure, BOOLSETTING(ALLOW_UNTRUSTED_CLIENTS), true);
+	socket->connect(aServer, aPort, localPort, natRole, secure, SETTING(ALLOW_UNTRUSTED_CLIENTS), true);
 }
 
 void UserConnection::accept(const Socket& aServer) {
 	dcassert(!socket);
 	socket = BufferedSocket::getSocket(0);
 	socket->addListener(this);
-	socket->accept(aServer, secure, BOOLSETTING(ALLOW_UNTRUSTED_CLIENTS));
+	socket->accept(aServer, secure, SETTING(ALLOW_UNTRUSTED_CLIENTS));
 }
 
 void UserConnection::inf(bool withToken, int mcnSlots) { 
@@ -174,8 +176,8 @@ void UserConnection::inf(bool withToken, int mcnSlots) {
 
 void UserConnection::sup(const StringList& features) {
 	AdcCommand c(AdcCommand::CMD_SUP);
-	for(auto i = features.begin(); i != features.end(); ++i)
-		c.addParam(*i);
+	for(auto& f: features)
+		c.addParam(f);
 	send(c);
 }
 
@@ -189,9 +191,9 @@ void UserConnection::sendError(const std::string& msg /*FILE_NOT_AVAILABLE*/, Ad
 
 void UserConnection::supports(const StringList& feat) {
 	string x;
-	for(auto i = feat.begin(); i != feat.end(); ++i) {
-		x += *i + ' ';
-	}
+	for(auto f: feat)
+		x += f + ' ';
+
 	send("$Supports " + x + '|');
 }
 
@@ -281,6 +283,32 @@ void UserConnection::send(const string& aString) {
 	lastActivity = GET_TICK();
 	COMMAND_DEBUG(aString, DebugManager::TYPE_CLIENT, DebugManager::OUTGOING, getRemoteIp());
 	socket->write(aString);
+}
+
+Download* UserConnection::getDownload() { 
+	dcassert(isSet(FLAG_DOWNLOAD)); 
+	return download;
+}
+
+void UserConnection::setDownload(Download* d, bool deleting) {
+	dcassert(isSet(FLAG_DOWNLOAD));
+	if (!deleting && download)
+		delete download;
+	download = d;
+}
+
+Upload* UserConnection::getUpload() { 
+	dcassert(isSet(FLAG_UPLOAD));
+	return upload;
+}
+
+void UserConnection::setUpload(Upload* u) { 
+	dcassert(isSet(FLAG_UPLOAD));
+	upload = u;
+}
+
+UserConnection::UserConnection(bool secure_) noexcept : encoding(Text::systemCharset), state(STATE_UNCONNECTED),
+	lastActivity(0), speed(0), chunkSize(0), secure(secure_), socket(0), slotType(NOSLOT), lastBundle(Util::emptyString), download(nullptr) {
 }
 
 } // namespace dcpp

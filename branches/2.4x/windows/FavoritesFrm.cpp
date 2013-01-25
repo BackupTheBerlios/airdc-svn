@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,16 +17,13 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 
 #include "FavoritesFrm.h"
 #include "HubFrame.h"
 #include "FavHubProperties.h"
 #include "FavHubGroupsDlg.h"
-#include "TextFrame.h"
 #include "../client/ClientManager.h"
-#include "../client/StringTokenizer.h"
 #include "../client/version.h"
 
 int FavoriteHubsFrame::columnIndexes[] = { COLUMN_NAME, COLUMN_DESCRIPTION, COLUMN_NICK, COLUMN_PASSWORD, COLUMN_SERVER, COLUMN_USERDESCRIPTION, 
@@ -198,10 +195,10 @@ void FavoriteHubsFrame::addEntry(const FavoriteHubEntry* entry, int pos, int gro
 	TStringList l;
 	l.push_back(Text::toT(entry->getName()));
 	l.push_back(Text::toT(entry->getDescription()));
-	l.push_back(Text::toT(entry->getNick(false)));
+	l.push_back(Text::toT(entry->get(HubSettings::Nick)));
 	l.push_back(tstring(entry->getPassword().size(), '*'));
 	l.push_back(Text::toT(entry->getServers()[0].first));
-	l.push_back(Text::toT(entry->getUserDescription()));
+	l.push_back(Text::toT(entry->get(HubSettings::Description)));
 	l.push_back(Text::toT(entry->getShareProfile()->getDisplayName()));
 	bool b = entry->getConnect();
 	int i = ctrlHubs.insert(pos, l, 0, (LPARAM)entry);
@@ -389,7 +386,7 @@ void FavoriteHubsFrame::handleMove(bool up) {
 	if(!up)
 		reverse(fh_copy.begin(), fh_copy.end());
 	FavoriteHubEntryList moved;
-	for(FavoriteHubEntryList::iterator i = fh_copy.begin(); i != fh_copy.end(); ++i) {
+	for(auto i = fh_copy.begin(); i != fh_copy.end(); ++i) {
 		if(find(selected.begin(), selected.end(), *i) == selected.end())
 			continue;
 		if(find(moved.begin(), moved.end(), *i) != moved.end())
@@ -462,8 +459,8 @@ void FavoriteHubsFrame::fillList()
 	}
 
 	const FavoriteHubEntryList& fl = FavoriteManager::getInstance()->getFavoriteHubs();
-	for(auto i = fl.begin(); i != fl.end(); ++i) {
-		const string& group = (*i)->getGroup();
+	for(auto fhe: fl) {
+		const string& group = fhe->getGroup();
 
 		int index = 0;
 		if(!group.empty()) {
@@ -472,7 +469,7 @@ void FavoriteHubsFrame::fillList()
 				index = groupI - groups.begin();
 		}
 
-		addEntry(*i, ctrlHubs.GetItemCount(), index);
+		addEntry(fhe, ctrlHubs.GetItemCount(), index);
 	}
 
 	nosave = old_nosave;
@@ -575,7 +572,7 @@ LRESULT FavoriteHubsFrame::onOpenHubLog(WORD /*wNotifyCode*/, WORD /*wID*/, HWND
 		ParamMap params;
 		params["hubNI"] = entry->getName();
 		params["hubURL"] = entry->getServers()[0].first;
-		params["myNI"] = entry->getNick(); 
+		params["myNI"] = entry->get(HubSettings::Nick); 
 		string file = LogManager::getInstance()->getPath(LogManager::CHAT, params);
 		if(Util::fileExists(file)){
 			WinUtil::viewLog(file);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,10 +28,11 @@
 #endif
 
 #include "noexcept.h"
+#include <boost/noncopyable.hpp>
 
 namespace dcpp {
 
-class Semaphore  
+class Semaphore : boost::noncopyable 
 {
 #ifdef _WIN32
 public:
@@ -97,9 +98,6 @@ public:
 private:
 	sem_t semaphore;
 #endif
-	Semaphore(const Semaphore&);
-	Semaphore& operator=(const Semaphore&);
-
 };
 
 } // namespace dcpp

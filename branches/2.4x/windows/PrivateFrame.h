@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,13 +25,11 @@
 
 #include "../client/User.h"
 #include "../client/ClientManagerListener.h"
-#include "../client/ResourceManager.h"
 #include "../client/DelayedEvents.h"
 #include "../client/UserInfoBase.h"
 
 #include "ChatFrameBase.h"
 #include "FlatTabCtrl.h"
-#include "WinUtil.h"
 #include "UCHandler.h"
 
 #define HUB_SEL_MAP 9
@@ -72,10 +70,10 @@ public:
 		COMMAND_ID_HANDLER(IDC_CLOSE_WINDOW, onCloseWindow)
 		COMMAND_ID_HANDLER(ID_EDIT_CLEAR_ALL, onEditClearAll)
 		COMMAND_ID_HANDLER(IDC_PUBLIC_MESSAGE, onPublicMessage)
+		CHAIN_MSG_MAP(chatBase)
 		CHAIN_COMMANDS(ucBase)
 		CHAIN_COMMANDS(uibBase)
 		CHAIN_MSG_MAP(baseClass)
-		CHAIN_MSG_MAP(chatBase)
 	ALT_MSG_MAP(EDIT_MESSAGE_MAP)
 		MESSAGE_HANDLER(WM_CHAR, onChar)
 		MESSAGE_HANDLER(WM_KEYDOWN, onChar)
@@ -158,7 +156,6 @@ private:
 	typedef unordered_map<UserPtr, PrivateFrame*, User::Hash> FrameMap;
 	typedef FrameMap::const_iterator FrameIter;
 	static FrameMap frames;
-	CStatusBarCtrl ctrlStatus;
 	CComboBox ctrlHubSel;
 
 	void updateOnlineStatus();

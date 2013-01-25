@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ public:
 	void decreaseSize(uint64_t aSize) { queueSize -= aSize; }
 	typedef vector<pair<QueueItem::SourceConstIter, const QueueItemPtr> > PFSSourceList;
 
-	void add(QueueItemPtr qi);
+	void add(QueueItemPtr& qi);
 	QueueItemPtr add(const string& aTarget, int64_t aSize, Flags::MaskType aFlags, QueueItem::Priority p, const string& aTempTarget, time_t aAdded, const TTHValue& root) noexcept;
 
 	QueueItemPtr findFile(const string& target) noexcept;
@@ -57,8 +57,8 @@ public:
 	size_t getSize() noexcept { return queue.size(); }
 	QueueItem::StringMap& getQueue() noexcept { return queue; }
 	QueueItem::TTHMap& getTTHIndex() noexcept { return tthIndex; }
-	void move(QueueItemPtr qi, const string& aTarget) noexcept;
-	void remove(QueueItemPtr qi) noexcept;
+	void move(QueueItemPtr& qi, const string& aTarget) noexcept;
+	void remove(QueueItemPtr& qi) noexcept;
 	int isFileQueued(const TTHValue& aTTH, const string& aFile) noexcept;
 	QueueItemPtr getQueuedFile(const TTHValue& aTTH, const string& aFile) noexcept;
 

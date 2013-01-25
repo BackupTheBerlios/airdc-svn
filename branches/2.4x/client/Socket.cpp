@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -387,7 +387,7 @@ void Socket::socksConnect(const string& aAddr, const string& aPort, uint32_t tim
 	connStr.push_back(1);			// Connect
 	connStr.push_back(0);			// Reserved
 
-	if(BOOLSETTING(SOCKS_RESOLVE)) {
+	if(SETTING(SOCKS_RESOLVE)) {
 		connStr.push_back(3);		// Address type: domain name
 		connStr.push_back((uint8_t)aAddr.size());
 		connStr.insert(connStr.end(), aAddr.begin(), aAddr.end());
@@ -603,7 +603,7 @@ void Socket::writeTo(const string& aAddr, const string& aPort, const void* aBuff
 		connStr.push_back(0);		// Reserved
 		connStr.push_back(0);		// Fragment number, always 0 in our case...
 
-		if(BOOLSETTING(SOCKS_RESOLVE)) {
+		if(SETTING(SOCKS_RESOLVE)) {
 			connStr.push_back(3);
 			connStr.push_back((uint8_t)aAddr.size());
 			connStr.insert(connStr.end(), aAddr.begin(), aAddr.end());

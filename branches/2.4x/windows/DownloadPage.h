@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,6 @@ public:
 
 	BEGIN_MSG_MAP(DownloadPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, onInitDialog)
-		COMMAND_HANDLER(IDC_ANTIVIR_BROWSE, BN_CLICKED, onBrowse)
 		COMMAND_ID_HANDLER(IDC_ENABLE_SEGMENTS, onTick)
 		COMMAND_ID_HANDLER(IDC_AUTO_SEARCH_ALT, onTick)
 		COMMAND_ID_HANDLER(IDC_CHUNKCOUNT, onTick)
@@ -46,7 +45,6 @@ public:
 	END_MSG_MAP()
 
 	LRESULT onInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
-	LRESULT onBrowse(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT onTick(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	// Common PropPage interface

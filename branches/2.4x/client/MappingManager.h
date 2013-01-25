@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 namespace dcpp {
 
 using std::function;
-using std::make_pair;
 using std::unique_ptr;
 using std::vector;
 
@@ -46,16 +45,9 @@ public:
 	/** add an implementation derived from the base Mapper class, passed as template parameter.
 	the first added mapper will be tried first, unless the "MAPPER" setting is not empty. */
 	template<typename T> void addMapper() {
-#if defined(_MSC_VER) && _MSC_VER < 1700
-		// the rvalue ref deal is too smart for MSVC; resort to a string copy...
-		mappers.push_back(make_pair(T::name, [](string localIp) {
-			return new T(std::move(localIp));
-		}));
-#else
 		mappers.emplace_back(T::name, [](string&& localIp) {
 			return new T(move(localIp));
 		});
-#endif
 	}
 	StringList getMappers() const;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@
 #include "FastAlloc.h"
 #include "GetSet.h"
 #include "SFVReader.h"
+#include "typedefs.h"
+
+#include "atomic.h"
 
 namespace dcpp {
 
@@ -64,8 +67,8 @@ public:
 	 */
 	bool checkTTH(const string& aFileName, int64_t aSize, uint32_t aTimeStamp);
 
-	void stopHashing(const string& baseDir) { hasher.stopHashing(baseDir); }
-	void setPriority(Thread::Priority p) { hasher.setThreadPriority(p); }
+	void stopHashing(const string& baseDir);
+	void setPriority(Thread::Priority p);
 
 	/** @return TTH root */
 	TTHValue getTTH(const string& aFileName, int64_t aSize);
@@ -80,29 +83,18 @@ public:
 	}
 	void addTree(const TigerTree& tree) { store.addTree(tree); }
 
-	void getStats(string& curFile, int64_t& bytesLeft, size_t& filesLeft, int64_t& speed) {
-		hasher.getStats(curFile, bytesLeft, filesLeft, speed);
-	}
+	void getStats(string& curFile, int64_t& bytesLeft, size_t& filesLeft, int64_t& speed, int& hashers);
 
-	void getFileTTH(const string& aFile, bool addStore, TTHValue& tth_, int64_t& size_);
+	void getFileTTH(const string& aFile, int64_t aSize, bool addStore, TTHValue& tth_, int64_t& sizeLeft_, const bool& aCancel, std::function<void (int64_t /*timeLeft*/, const string& /*fileName*/)> updateF = nullptr);
 
 	/**
 	 * Rebuild hash data file
 	 */
-	void rebuild() { hasher.scheduleRebuild(); }
+	void rebuild();
 
-	void startup() { hasher.start(); store.load(); }
-
-	void Stop() {
-		hasher.clear();
-	}
-
-	void shutdown() {
-		hasher.clear();
-		hasher.shutdown();
-		hasher.join(); //join before save, the hasher might already be saving.
-		store.save(); 
-	}
+	void startup();
+	void stop();
+	void shutdown();
 
 	struct HashPauser {
 		HashPauser();
@@ -113,42 +105,53 @@ public:
 	bool pauseHashing();
 	void resumeHashing(bool forced = false);	
 	bool isHashingPaused() const;
-
 private:
 	int pausers;
 	class Hasher : public Thread {
 	public:
-		Hasher();
+		Hasher(bool isPaused, int aHasherID);
 
-		void hashFile(const string& fileName, int64_t size);
+		void hashFile(const string& fileName, int64_t size, const string& devID);
 
 		/// @return whether hashing was already paused
 		bool pause();
 		void resume();
 		bool isPaused() const;
 		
-		void clear() {
-			Lock l(hcs);
-			w.clear();
-			totalBytesLeft = 0;
-		}
+		void clear();
 
 		void stopHashing(const string& baseDir);
 		int run();
 		void getStats(string& curFile, int64_t& bytesLeft, size_t& filesLeft, int64_t& speed);
-		void shutdown() { stop = true; if(paused) resume(); s.signal(); }
-		void scheduleRebuild() { rebuild = true; s.signal(); if(paused) t_resume(); }
+		void shutdown();
+		void scheduleRebuild();
 		void save() { saveData = true; s.signal(); if(paused) t_resume(); }
 
+		bool hasDevice(const string& aID) const { return devices.find(aID) != devices.end(); }
+		bool hasDevices() { return !devices.empty(); }
+		int64_t getTimeLeft() const;
+
+		int64_t getBytesLeft() const { return totalBytesLeft; }
+		static CriticalSection hcs;
+
+		int hasherID;
 	private:
-		typedef pair<string, int64_t> WorkPair;
-		deque<WorkPair> w;
-		struct HashSortOrder {
-			bool operator()(const WorkPair& left, const WorkPair& right) const;
+		struct WorkItem {
+			WorkItem(const string& aFilePath, int64_t aSize, const string& aDevID) : filePath(aFilePath), fileSize(aSize), devID(aDevID) { }
+
+			string devID;
+			string filePath;
+			int64_t fileSize;
 		};
 
-		mutable CriticalSection hcs;
+		//typedef pair<string, int64_t> WorkItem;
+		deque<WorkItem> w;
+		struct HashSortOrder {
+			bool operator()(const WorkItem& left, const WorkItem& right) const;
+		};
+
 		Semaphore s;
+		void removeDevice(const string& aID);
 
 		bool stop;
 		bool running;
@@ -173,9 +176,13 @@ private:
 		string initialDir;
 
 		DirSFVReader sfv;
+
+		StringIntMap devices;
 	};
 
 	friend class Hasher;
+	void removeHasher(Hasher* aHasher);
+	void log(const string& aMessage, int hasherID, bool isError);
 
 	class HashStore {
 	public:
@@ -199,8 +206,6 @@ private:
 		struct TreeInfo {
 			TreeInfo() : size(0), index(0), blockSize(0) { }
 			TreeInfo(int64_t aSize, int64_t aIndex, int64_t aBlockSize) : size(aSize), index(aIndex), blockSize(aBlockSize) { }
-			TreeInfo(const TreeInfo& rhs) : size(rhs.size), index(rhs.index), blockSize(rhs.blockSize) { }
-			TreeInfo& operator=(const TreeInfo& rhs) { size = rhs.size; index = rhs.index; blockSize = rhs.blockSize; return *this; }
 
 			GETSET(int64_t, size, Size);
 			GETSET(int64_t, index, Index);
@@ -222,16 +227,10 @@ private:
 		};
 
 		typedef vector<FileInfo> FileInfoList;
-		typedef FileInfoList::iterator FileInfoIter;
-		typedef FileInfoList::const_iterator FileInfoIterC;
 
 		typedef unordered_map<string, FileInfoList> DirMap;
-		typedef DirMap::iterator DirIter;
-		typedef DirMap::const_iterator DirIterC;
 
 		typedef unordered_map<TTHValue, TreeInfo> TreeMap;
-		typedef TreeMap::iterator TreeIter;
-		typedef TreeMap::const_iterator TreeIterC;
 
 		friend class HashLoader;
 		mutable SharedMutex cs;
@@ -243,38 +242,41 @@ private:
 
 		void createDataFile(const string& name);
 
-		bool loadTree(File& dataFile, const TreeInfo& ti, const TTHValue& root, TigerTree& tt);
+		bool loadTree(File& dataFile, const TreeInfo& ti, const TTHValue& root, TigerTree& tt, bool rebuilding = false);
 		int64_t saveTree(File& dataFile, const TigerTree& tt);
 
 		static string getIndexFile();
 		static string getDataFile();
+		static atomic_flag saving;
 	};
 
 	friend class HashLoader;
 
-	Hasher hasher;
+	void hashFile(const string& fileName, int64_t size);
+	bool aShutdown;
+
+	typedef vector<Hasher*> HasherList;
+	HasherList hashers;
+
 	HashStore store;
 
 	/** Single node tree where node = root, no storage in HashData.dat */
 	static const int64_t SMALL_TREE = -1;
 
-	void hashDone(const string& aFileName, uint64_t aTimeStamp, const TigerTree& tth, int64_t speed, int64_t size);
+	void hashDone(const string& aFileName, uint64_t aTimeStamp, const TigerTree& tth, int64_t speed, int64_t size, int hasherID = 0);
 
 	void doRebuild() {
+		// its useless to allow hashing with other threads during rebuild. ( TODO: Disallow resuming and show something in hashprogress )
+		HashPauser pause;
 		store.rebuild();
 	}
 	void SaveData() {
 		store.save();
 	}
 
-	uint64_t  lastSave;
+	uint64_t lastSave;
 
-	void on(TimerManagerListener::Minute, uint64_t) noexcept {
-		if(GET_TICK() - lastSave > 15*60*1000 && store.isDirty()) { 
-			lastSave = GET_TICK();
-			hasher.save();
-		}
-	}
+	void on(TimerManagerListener::Minute, uint64_t) noexcept;
 };
 
 } // namespace dcpp

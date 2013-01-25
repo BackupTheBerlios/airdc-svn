@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,6 +67,10 @@ SplashWindow::~SplashWindow() {
 		img.Destroy();
 	splash.DestroyWindow();
 	dummy.DestroyWindow();
+}
+
+HWND SplashWindow::getHWND() {
+	return splash.m_hWnd;
 }
 
 void SplashWindow::operator()(const string& status) {

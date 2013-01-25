@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 AirDC++ Project
+ * Copyright (C) 2011-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,10 @@
 #include "QueueManager.h"
 #include "format.h"
 
-#include <boost/range/adaptor/map.hpp>
-#include <boost/range/algorithm/for_each.hpp>
-#include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/copy.hpp>
 
 namespace dcpp {
 
-using boost::adaptors::map_values;
 using boost::range::for_each;
 using boost::range::find_if;
 
@@ -184,7 +180,7 @@ void DirectoryListingManager::addDirectoryDownload(const string& aDir, const Hin
 		}
 		
 		// Unique directory, fine...
-		dlDirectories.insert(make_pair(aUser.user, new DirectoryDownloadInfo(aUser, aDir, aTarget, aTargetType, p, aSizeCheckMode, aAutoSearch)));
+		dlDirectories.emplace(aUser.user, new DirectoryDownloadInfo(aUser, aDir, aTarget, aTargetType, p, aSizeCheckMode, aAutoSearch));
 		needList = aUser.user->isSet(User::NMDC) ? (dp.first == dp.second) : true;
 	}
 
@@ -201,7 +197,7 @@ void DirectoryListingManager::addDirectoryDownload(const string& aDir, const Hin
 	}
 }
 
-void DirectoryListingManager::processList(const string& name, const HintedUser& user, const string& path, int flags) {
+void DirectoryListingManager::processList(const string& name, const HintedUser& user, const string& aPath, int flags) {
 	{
 		RLock l(cs);
 		auto p = viewedLists.find(user.user);
@@ -209,7 +205,7 @@ void DirectoryListingManager::processList(const string& name, const HintedUser& 
 			if (p->second->getPartialList()) {
 				if(flags & QueueItem::FLAG_TEXT) {
 					//we don't want multiple threads to load those simultaneously. load in the list thread and return here after that
-					p->second->addPartialListTask(name, [p, this, path, flags] { processListAction(p->second, path, flags); });
+					p->second->addPartialListTask(name, aPath, [=] { processListAction(p->second, aPath, flags); });
 					return;
 				}
 			}
@@ -220,7 +216,7 @@ void DirectoryListingManager::processList(const string& name, const HintedUser& 
 	try {
 		if(flags & QueueItem::FLAG_TEXT) {
 			MemoryInputStream mis(name);
-			dirList->loadXML(mis, true);
+			dirList->loadXML(mis, true, aPath);
 		} else {
 			dirList->loadFile(name);
 		}
@@ -229,7 +225,7 @@ void DirectoryListingManager::processList(const string& name, const HintedUser& 
 		return;
 	}
 
-	processListAction(DirectoryListingPtr(dirList), path, flags);
+	processListAction(DirectoryListingPtr(dirList), aPath, flags);
 }
 
 void DirectoryListingManager::processListAction(DirectoryListingPtr aList, const string& path, int flags) {
@@ -252,8 +248,7 @@ void DirectoryListingManager::processListAction(DirectoryListingPtr aList, const
 			}
 		}
 
-		for(auto i = dl.begin(); i != dl.end(); ++i) {
-			auto di = *i;
+		for(auto di: dl) {
 
 			bool download = false;
 			{
@@ -350,14 +345,14 @@ void DirectoryListingManager::handleSizeConfirmation(const string& aTarget, bool
 	}
 
 	if (accepted) {
-		for_each(wdi->getDownloadInfos(), [](DirectoryDownloadInfo* di) {
+		for(auto di: wdi->getDownloadInfos()) {
 			di->getListing()->downloadDir(di->getListPath(), di->getTarget(), di->getTargetType(), false, di->getPriority(), di->getAutoSearch());
-		});
+		}
 	}
 	wdi->deleteListings();
 }
 
-void DirectoryListingManager::on(QueueManagerListener::Finished, const QueueItemPtr qi, const string& dir, const HintedUser& aUser, int64_t /*aSpeed*/) noexcept {
+void DirectoryListingManager::on(QueueManagerListener::Finished, const QueueItemPtr& qi, const string& dir, const HintedUser& aUser, int64_t /*aSpeed*/) noexcept {
 	if (!qi->isSet(QueueItem::FLAG_CLIENT_VIEW) || !qi->isSet(QueueItem::FLAG_USER_LIST))
 		return;
 
@@ -365,7 +360,6 @@ void DirectoryListingManager::on(QueueManagerListener::Finished, const QueueItem
 		RLock l(cs);
 		auto p = viewedLists.find(aUser.user);
 		if (p != viewedLists.end()) {
-			p->second->setReloading(true);
 			p->second->setFileName(qi->getListName());
 			p->second->addFullListTask(dir);
 			return;
@@ -375,8 +369,8 @@ void DirectoryListingManager::on(QueueManagerListener::Finished, const QueueItem
 	createList(aUser, qi->getListName(), dir);
 }
 
-void DirectoryListingManager::on(QueueManagerListener::PartialList, const HintedUser& aUser, const string& text) noexcept {
-	if (text.empty())
+void DirectoryListingManager::on(QueueManagerListener::PartialList, const HintedUser& aUser, const string& aXML, const string& aBase) noexcept {
+	if (aXML.empty())
 		return;
 
 	{
@@ -384,13 +378,13 @@ void DirectoryListingManager::on(QueueManagerListener::PartialList, const Hinted
 		auto p = viewedLists.find(aUser.user);
 		if (p != viewedLists.end()) {
 			if (p->second->getPartialList()) {
-				p->second->addPartialListTask(text);
+				p->second->addPartialListTask(aXML, aBase);
 			}
 			return;
 		}
 	}
 
-	createPartialList(aUser, text);
+	createPartialList(aUser, aBase, aXML);
 }
 
 void DirectoryListingManager::openOwnList(ProfileToken aProfile, bool fullList /*false*/) {
@@ -399,12 +393,12 @@ void DirectoryListingManager::openOwnList(ProfileToken aProfile, bool fullList /
 		return;
 
 	if (!fullList) {
-		createPartialList(me, Util::emptyString, aProfile, true);
+		createPartialList(me, Util::emptyString, Util::emptyString, aProfile, true);
 	} else {
 		DirectoryListing* dl = new DirectoryListing(me, false, Util::toString(aProfile), true, true);
-		if (BOOLSETTING(USE_ADLS_OWN))
+		if (SETTING(USE_ADLS_OWN))
 			dl->setMatchADL(true);
-		fire(DirectoryListingManagerListener::OpenListing(), dl, Util::emptyString);
+		fire(DirectoryListingManagerListener::OpenListing(), dl, Util::emptyString, Util::emptyString);
 
 		WLock l(cs);
 		viewedLists[me.user] = DirectoryListingPtr(dl);
@@ -420,15 +414,15 @@ void DirectoryListingManager::openFileList(const HintedUser& aUser, const string
 
 void DirectoryListingManager::createList(const HintedUser& aUser, const string& aFile, const string& aInitialDir /*empty*/, bool isOwnList /*false*/) {
 	DirectoryListing* dl = new DirectoryListing(aUser, false, aFile, true, isOwnList);
-	fire(DirectoryListingManagerListener::OpenListing(), dl, aInitialDir);
+	fire(DirectoryListingManagerListener::OpenListing(), dl, aInitialDir, Util::emptyString);
 
 	WLock l(cs);
 	viewedLists[aUser.user] = DirectoryListingPtr(dl);
 }
 
-void DirectoryListingManager::createPartialList(const HintedUser& aUser, const string& aXml, ProfileToken aProfile, bool isOwnList /*false*/) {
+void DirectoryListingManager::createPartialList(const HintedUser& aUser, const string& aXml, const string& aDir /*emptyString*/, ProfileToken aProfile /*SP_DEFAULT*/, bool isOwnList /*false*/) {
 	DirectoryListing* dl = new DirectoryListing(aUser, true, Util::toString(aProfile), true, isOwnList);
-	fire(DirectoryListingManagerListener::OpenListing(), dl, aXml);
+	fire(DirectoryListingManagerListener::OpenListing(), dl, aDir, aXml);
 
 	WLock l(cs);
 	viewedLists[aUser] = DirectoryListingPtr(dl);

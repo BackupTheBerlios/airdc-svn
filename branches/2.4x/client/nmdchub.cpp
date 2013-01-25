@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2012 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,9 +65,9 @@ void NmdcHub::refreshUserList(bool refreshOnly) {
 		Lock l(cs);
 
 		OnlineUserList v;
-		for(NickIter i = users.begin(); i != users.end(); ++i) {
-			v.push_back(i->second);
-		}
+		for(auto n: users | map_values)
+			v.push_back(n);
+
 		fire(ClientListener::UsersUpdated(), this, v);
 	} else {
 		clearUsers();
@@ -86,7 +86,7 @@ OnlineUser& NmdcHub::getUser(const string& aNick) {
 	}
 
 	UserPtr p;
-	if(aNick == getCurrentNick()) {
+	if(aNick == get(Nick)) {
 		p = ClientManager::getInstance()->getMe();
 	} else {
 		p = ClientManager::getInstance()->getUser(aNick, getHubUrl());
@@ -108,9 +108,9 @@ OnlineUser& NmdcHub::getUser(const string& aNick) {
 
 void NmdcHub::supports(const StringList& feat) { 
 	string x;
-	for(StringList::const_iterator i = feat.begin(); i != feat.end(); ++i) {
-		x+= *i + ' ';
-	}
+	for(const auto& f: feat)
+		x+= f + ' ';
+
 	send("$Supports " + x + '|');
 }
 
@@ -145,9 +145,9 @@ void NmdcHub::clearUsers() {
 		availableBytes = 0;
 	}
 
-	for(NickIter i = u2.begin(); i != u2.end(); ++i) {
-		ClientManager::getInstance()->putOffline(i->second);
-		i->second->dec();
+	for(auto ou: u2 | map_values) {
+		ClientManager::getInstance()->putOffline(ou);
+		ou->dec();
 	}
 }
 
@@ -159,33 +159,33 @@ void NmdcHub::updateFromTag(Identity& id, const string& tag) {
 	if(tag.find("AirDC++") != string::npos)
 		id.getUser()->setFlag(User::AIRDCPLUSPLUS);
 
-	for(StringIter i = tok.getTokens().begin(); i != tok.getTokens().end(); ++i) {
-		if(i->length() < 2)
+	for(auto t: tok.getTokens()) {
+		if(t.length() < 2)
 			continue;
 
-		if(i->compare(0, 2, "H:") == 0) {
-			StringTokenizer<string> t(i->substr(2), '/');
+		if(t.compare(0, 2, "H:") == 0) {
+			StringTokenizer<string> t(t.substr(2), '/');
 			if(t.getTokens().size() != 3)
 				continue;
 			id.set("HN", t.getTokens()[0]);
 			id.set("HR", t.getTokens()[1]);
 			id.set("HO", t.getTokens()[2]);
-		} else if(i->compare(0, 2, "S:") == 0) {
-			id.set("SL", i->substr(2));
-			slots = Util::toUInt32(i->substr(2));			
-		} else if((j = i->find("V:")) != string::npos) {
-			i->erase(i->begin(), i->begin() + j + 2);
-			id.set("VE", *i);
-		} else if(i->compare(0, 2, "M:") == 0) {
-			if(i->size() == 3) {
-				if((*i)[2] == 'A')
+		} else if(t.compare(0, 2, "S:") == 0) {
+			id.set("SL", t.substr(2));
+			slots = Util::toUInt32(t.substr(2));			
+		} else if((j = t.find("V:")) != string::npos) {
+			t.erase(t.begin(), t.begin() + j + 2);
+			id.set("VE", t);
+		} else if(t.compare(0, 2, "M:") == 0) {
+			if(t.size() == 3) {
+				if(t[2] == 'A')
 					id.getUser()->unsetFlag(User::PASSIVE);
 				else
 					id.getUser()->setFlag(User::PASSIVE);
 			}
-		} else if((j = i->find("L:")) != string::npos) {
-			i->erase(i->begin() + j, i->begin() + j + 2);
-			id.set("US", Util::toString(Util::toInt(*i) * 1024));
+		} else if((j = t.find("L:")) != string::npos) {
+			t.erase(t.begin() + j, t.begin() + j + 2);
+			id.set("US", Util::toString(Util::toInt(t) * 1024));
 		}
 	}
 	/// @todo Think about this
@@ -197,7 +197,7 @@ void NmdcHub::onLine(const string& aLine) noexcept {
 		return;
 
 	if(aLine[0] != '$') {
-		if (BOOLSETTING(SUPPRESS_MAIN_CHAT)) return;
+		if (SETTING(SUPPRESS_MAIN_CHAT)) return;
 
 		// Check if we're being banned...
 		if(state != STATE_NORMAL) {
@@ -298,15 +298,15 @@ void NmdcHub::onLine(const string& aLine) noexcept {
 		seekers.push_back(make_pair(seeker, tick));
 
 		// First, check if it's a flooder
-		for(FloodIter fi = flooders.begin(); fi != flooders.end(); ++fi) {
-			if(fi->first == seeker) {
+		for(const auto& f: flooders) {
+			if(f.first == seeker) {
 				return;
 			}
 		}
 
 		int count = 0;
-		for(FloodIter fi = seekers.begin(); fi != seekers.end(); ++fi) {
-			if(fi->first == seeker)
+		for(auto& f: seekers) {
+			if(f.first == seeker)
 				count++;
 
 			if(count > 7) {
@@ -358,7 +358,7 @@ void NmdcHub::onLine(const string& aLine) noexcept {
 
 				// ignore if we or remote client don't support NAT traversal in passive mode
 				// although many NMDC hubs won't send us passive if we're in passive too, so just in case...
-				if(!meActive && (!u->getUser()->isSet(User::NAT_TRAVERSAL) || !BOOLSETTING(ALLOW_NAT_TRAVERSAL)))
+				if(!meActive && !u->getUser()->isSet(User::NAT_TRAVERSAL))
 					return;
 			}
 
@@ -507,28 +507,26 @@ void NmdcHub::onLine(const string& aLine) noexcept {
 			}
 		}
 
-		if(BOOLSETTING(ALLOW_NAT_TRAVERSAL)) {
-			if(port[port.size() - 1] == 'N') {
-				if(senderNick.empty())
-					return;
-
-				port.erase(port.size() - 1);
-
-				// Trigger connection attempt sequence locally ...
-				ConnectionManager::getInstance()->nmdcConnect(server, port, Util::toString(sock->getLocalPort()), 
-					BufferedSocket::NAT_CLIENT, getMyNick(), getHubUrl(), getEncoding(), getStealth(), secure && !getStealth());
-
-				// ... and signal other client to do likewise.
-				send("$ConnectToMe " + senderNick + " " + getLocalIp() + ":" + Util::toString(sock->getLocalPort()) + (secure ? "RS" : "R") + "|");
+		if(port[port.size() - 1] == 'N') {
+			if(senderNick.empty())
 				return;
-			} else if(port[port.size() - 1] == 'R') {
-				port.erase(port.size() - 1);
+
+			port.erase(port.size() - 1);
+
+			// Trigger connection attempt sequence locally ...
+			ConnectionManager::getInstance()->nmdcConnect(server, port, Util::toString(sock->getLocalPort()), 
+				BufferedSocket::NAT_CLIENT, getMyNick(), getHubUrl(), getEncoding(), getStealth(), secure && !getStealth());
+
+			// ... and signal other client to do likewise.
+			send("$ConnectToMe " + senderNick + " " + getLocalIp() + ":" + Util::toString(sock->getLocalPort()) + (secure ? "RS" : "R") + "|");
+			return;
+		} else if(port[port.size() - 1] == 'R') {
+			port.erase(port.size() - 1);
 				
-				// Trigger connection attempt sequence locally
-				ConnectionManager::getInstance()->nmdcConnect(server, port, Util::toString(sock->getLocalPort()), 
-					BufferedSocket::NAT_SERVER, getMyNick(), getHubUrl(), getEncoding(), getStealth(), secure);
-				return;
-			}
+			// Trigger connection attempt sequence locally
+			ConnectionManager::getInstance()->nmdcConnect(server, port, Util::toString(sock->getLocalPort()), 
+				BufferedSocket::NAT_SERVER, getMyNick(), getHubUrl(), getEncoding(), getStealth(), secure);
+			return;
 		}
 		
 		if(port.empty())
@@ -552,7 +550,7 @@ void NmdcHub::onLine(const string& aLine) noexcept {
 
 		if(isActive()) {
 			connectToMe(*u);
-		} else if(BOOLSETTING(ALLOW_NAT_TRAVERSAL) && (u->getIdentity().getStatus() & Identity::NAT)) {
+		} else if(u->getIdentity().getStatus() & Identity::NAT) {
 			bool secure = CryptoManager::getInstance()->TLSOk() && u->getUser()->isSet(User::TLS) && !getStealth();
 			// NMDC v2.205 supports "$ConnectToMe sender_nick remote_nick ip:port", but many NMDC hubsofts block it
 			// sender_nick at the end should work at least in most used hubsofts
@@ -600,12 +598,12 @@ void NmdcHub::onLine(const string& aLine) noexcept {
 	} else if(cmd == "Supports") {
 		StringTokenizer<string> st(param, ' ');
 		StringList& sl = st.getTokens();
-		for(StringIter i = sl.begin(); i != sl.end(); ++i) {
-			if(*i == "UserCommand") {
+		for(auto& i: sl) {
+			if(i == "UserCommand") {
 				supportFlags |= SUPPORTS_USERCOMMAND;
-			} else if(*i == "NoGetINFO") {
+			} else if(i == "NoGetINFO") {
 				supportFlags |= SUPPORTS_NOGETINFO;
-			} else if(*i == "UserIP2") {
+			} else if(i == "UserIP2") {
 				supportFlags |= SUPPORTS_USERIP2;
 			}
 		}
@@ -677,7 +675,7 @@ void NmdcHub::onLine(const string& aLine) noexcept {
 			}
 
 			key(CryptoManager::getInstance()->makeKey(lock));
-			OnlineUser& ou = getUser(getCurrentNick());
+			OnlineUser& ou = getUser(get(Nick));
 			validateNick(ou.getIdentity().getNick());
 		}
 	} else if(cmd == "Hello") {
@@ -933,10 +931,10 @@ void NmdcHub::myInfo(bool alwaysSend) {
 
 
 		version = SHORTVERSIONSTRING;
-		if(Util::getAway()) {
+		if(AirUtil::getAway()) {
 			status |= Identity::AWAY;
 		}
-		if(BOOLSETTING(ALLOW_NAT_TRAVERSAL) && !isActive()) {
+		if(!isActive()) {
 			status |= Identity::NAT;
 		}
 	}
@@ -954,8 +952,8 @@ void NmdcHub::myInfo(bool alwaysSend) {
 	}
 
 	char myInfo[256];
-	snprintf(myInfo, sizeof(myInfo), "$MyINFO $ALL %s %s<%s V:%s,M:%c,H:%s,S:%d>$ $%s%c$%s$", fromUtf8(getCurrentNick()).c_str(),
-		fromUtf8(escape(getCurrentDescription())).c_str(), dc.c_str(), version.c_str(), modeChar, getCounts().c_str(), 
+	snprintf(myInfo, sizeof(myInfo), "$MyINFO $ALL %s %s<%s V:%s,M:%c,H:%s,S:%d>$ $%s%c$%s$", fromUtf8(getMyNick()).c_str(),
+		fromUtf8(escape(get(Description))).c_str(), dc.c_str(), version.c_str(), modeChar, getCounts().c_str(), 
 		UploadManager::getInstance()->getSlots(), fromUtf8(uploadSpeed).c_str(), status, fromUtf8(escape(SETTING(EMAIL))).c_str());
 
 	int64_t newBytesShared = getShareProfile() == SP_HIDDEN ? 0 : ShareManager::getInstance()->getTotalShareSize(SP_DEFAULT);
@@ -979,7 +977,7 @@ void NmdcHub::search(Search* s){
 		tmp[i] = '$';
 	}
 	string tmp2;
-	if(isActive() && !BOOLSETTING(SEARCH_PASSIVE)) {
+	if(isActive() && !SETTING(SEARCH_PASSIVE)) {
 		tmp2 = getLocalIp() + ':' + SearchManager::getInstance()->getPort();
 	} else {
 		tmp2 = "Hub:" + fromUtf8(getMyNick());

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 AirDC++ Project
+ * Copyright (C) 2012-2013 AirDC++ Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,8 +91,7 @@ bool UploadBundle::removeUpload(Upload* u) {
 uint64_t UploadBundle::countSpeed() {
 	int64_t bundleSpeed = 0, bundleRatio = 0, bundlePos = 0;
 	int up = 0;
-	for (auto s = uploads.begin(); s != uploads.end(); ++s) {
-		Upload* u = *s;
+	for (auto u: uploads) {
 		if (u->getAverageSpeed() > 0 && u->getStart() > 0) {
 			bundleSpeed += u->getAverageSpeed();
 			if (singleUser) {

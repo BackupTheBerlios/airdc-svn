@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include "stdafx.h"
 
-#include "../client/DCPlusPlus.h"
 #include "../client/SettingsManager.h"
 
 #include "Resource.h"
@@ -42,6 +41,7 @@
 #include "SDCPage.h"
 #include "UserListColours.h"
 #include "NetworkPage.h"
+#include "ProxyPage.h"
 #include "WindowsPage.h"
 #include "PriorityPage.h"
 #include "EncryptionPage.h"
@@ -67,6 +67,7 @@ PropertiesDlg::PropertiesDlg(HWND parent, SettingsManager *s, uint16_t initialPa
 	pages[n++] = new NetworkPage(s);
 	pages[n++] = new SpeedPage(s);
 	pages[n++] = new LimitPage(s);
+	pages[n++] = new ProxyPage(s);
 	pages[n++] = new DownloadPage(s);
 	pages[n++] = new LocationsPage(s);
 	pages[n++] = new AVIPreview(s);	

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 2001-2006 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2013 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 
 #include "stdafx.h"
-#include "../client/DCPlusPlus.h"
 #include "Resource.h"
 
 #include "SpyFrame.h"
@@ -26,7 +25,6 @@
 
 #include "../client/ShareManager.h"
 #include "../client/ResourceManager.h"
-#include "../client/ConnectionManager.h"
 
 int SpyFrame::columnSizes[] = { 305, 70, 85 };
 int SpyFrame::columnIndexes[] = { COLUMN_STRING, COLUMN_COUNT, COLUMN_TIME };
@@ -83,7 +81,7 @@ LRESULT SpyFrame::onClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, B
 		return 0;
 	} else {
 		WinUtil::saveHeaderOrder(ctrlSearches, SettingsManager::SPYFRAME_ORDER, SettingsManager::SPYFRAME_WIDTHS, COLUMN_LAST, columnIndexes, columnSizes);
-		if (ignoreTth != BOOLSETTING(SPY_FRAME_IGNORE_TTH_SEARCHES))
+		if (ignoreTth != SETTING(SPY_FRAME_IGNORE_TTH_SEARCHES))
 			SettingsManager::getInstance()->set(SettingsManager::SPY_FRAME_IGNORE_TTH_SEARCHES, ignoreTth);
 
 		WinUtil::setButtonPressed(IDC_SEARCH_SPY, false);
