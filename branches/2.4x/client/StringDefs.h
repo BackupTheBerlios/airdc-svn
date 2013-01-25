@@ -199,7 +199,6 @@ enum Strings { // @DontAdd
 	HASH_PROGRESS_STATS, // "Statistics"
 	HASH_PROGRESS_TEXT, // "Please wait while AirDC++ indexes your files (they won't be shared until they've been indexed)..."
 	HASH_READ_FAILED, // "Unable to read hash data file"
-	HASH_REBUILT, // "Hash database rebuilt"
 	HASHING_FAILED, // "Hashing failed: "
 	HASHING_FINISHED, // "Finished hashing: "
 	HIBERNATE, // "Hibernate"
@@ -1604,5 +1603,12 @@ enum Strings { // @DontAdd
 	GEOIP_UPDATED, // "The %1% GeoIP database has been successfully updated"
 	GEOIP_UPDATING_FAILED, // "The %1% GeoIP database could not be updated"
 	AS_X_FOUND_FROM, // "A %s %s was found from an user %s"
+	FAV_DIRECTORY, // "Favorite directory"
+	TRASFER_RATE_LIMITING, // "Transfer rate limiting"
+	HOURS_LOWER, // "hours"
+	HASH_REBUILT_UNUSED, // "Hash database has been rebuilt: %d unused file entries and %d unused tree entries have been removed"
+	REBUILD_FAILED_ENTRIES, // "Failed to load %d tree entries from the hash data; it's recommended to refresh your share as those files (total of %s) must be rehashed if they are still shared"
+	HASH_REBUILT_NO_UNUSED, // "Hash database has been rebuilt and no unused entries were found"
+	SETTINGS_USE_SPACE_WARNING, // "Warn me about Insufficient space left on target drive"
 	LAST // @DontAdd
 };

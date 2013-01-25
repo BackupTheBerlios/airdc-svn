@@ -1488,6 +1488,7 @@
 #define IDC_AUTOSEARCH_ITEMS            15056
 #define IDC_SETTINGS_KBPS8              15056
 #define IDC_TYPE                        15056
+#define IDC_HOURS                       15056
 #define IDC_MATCHER_TYPE                15057
 #define IDC_AUTOSEARCH_ENABLE_TIME      15058
 #define IDC_START_TIME                  15058

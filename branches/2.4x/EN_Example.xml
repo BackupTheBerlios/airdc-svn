@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<Language Name="Example Language" Author="AirDC++ Team" Version="2.40" Revision="1">
+<Language Name="Example Language" Author="AirDC++ Team" Version="2.42" Revision="1">
 	<Strings>
 		<String Name="AairdcppLanguageFile">EN_Example.xml</String>
 		<String Name="AairdcppLanguageVersion">1.00</String>
@@ -200,7 +200,6 @@
 		<String Name="HashProgressStats">Statistics</String>
 		<String Name="HashProgressText">Please wait while AirDC++ indexes your files (they won't be shared until they've been indexed)...</String>
 		<String Name="HashReadFailed">Unable to read hash data file</String>
-		<String Name="HashRebuilt">Hash database rebuilt</String>
 		<String Name="HashingFailed">Hashing failed: </String>
 		<String Name="HashingFinished">Finished hashing: </String>
 		<String Name="Hibernate">Hibernate</String>
@@ -1742,5 +1741,12 @@ Do you want to use this destination anyway?</String>
 		<String Name="GeoipUpdated">The %1% GeoIP database has been successfully updated</String>
 		<String Name="GeoipUpdatingFailed">The %1% GeoIP database could not be updated</String>
 		<String Name="AsXFoundFrom">A %s %s was found from an user %s</String>
+		<String Name="FavDirectory">Favorite directory</String>
+		<String Name="TrasferRateLimiting">Transfer rate limiting</String>
+		<String Name="HoursLower">hours</String>
+		<String Name="HashRebuiltUnused">Hash database has been rebuilt: %d unused file entries and %d unused tree entries have been removed</String>
+		<String Name="RebuildFailedEntries">Failed to load %d tree entries from the hash data; it's recommended to refresh your share as those files (total of %s) must be rehashed if they are still shared</String>
+		<String Name="HashRebuiltNoUnused">Hash database has been rebuilt and no unused entries were found</String>
+		<String Name="SettingsUseSpaceWarning">Warn me about Insufficient space left on target drive</String>
 	</Strings>
 </Language>
