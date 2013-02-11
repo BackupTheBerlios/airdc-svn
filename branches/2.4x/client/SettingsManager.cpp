@@ -721,9 +721,9 @@ SettingsManager::SettingsManager()
 	setDefault(AWAY_IDLE_TIME, 5);
 
 	//set depending on the cpu count
-	SYSTEM_INFO info={{0}};
-	GetSystemInfo(&info);
-	setDefault(MAX_HASHING_THREADS, info.dwNumberOfProcessors);
+	//SYSTEM_INFO info={{0}};
+	//GetSystemInfo(&info);
+	setDefault(MAX_HASHING_THREADS, 1);
 
 	setDefault(HASHERS_PER_VOLUME, 1);
 #ifdef _WIN64
