@@ -111,7 +111,6 @@ bool Bundle::allowHash() const {
 
 void Bundle::setDownloadedBytes(int64_t aSize) {
 	dcassert(aSize + finishedSegments <= size);
-	dcassert(((aSize + finishedSegments)) >= currentDownloaded);
 	dcassert(((aSize + finishedSegments)) >= 0);
 	currentDownloaded = aSize;
 	dcassert(currentDownloaded <= size);

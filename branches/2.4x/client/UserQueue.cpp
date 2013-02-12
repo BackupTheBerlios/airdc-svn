@@ -129,15 +129,8 @@ void UserQueue::addDownload(QueueItemPtr& qi, Download* d) {
 	qi->getDownloads().push_back(d);
 }
 
-void UserQueue::removeDownload(QueueItemPtr& qi, const UserPtr& aUser, const string& aToken) {
-	if (!aToken.empty()) {
-		//erase a specific download
-		qi->removeDownload(aToken);
-	} else {
-		//erase all downloads from this user
-		qi->removeDownloads(aUser);
-	}
-	return;
+void UserQueue::removeDownload(QueueItemPtr& qi, const string& aToken) {
+	qi->removeDownload(aToken);
 }
 
 void UserQueue::setQIPriority(QueueItemPtr& qi, QueueItem::Priority p) {
@@ -155,7 +148,7 @@ void UserQueue::removeQI(QueueItemPtr& qi, bool removeRunning /*true*/, bool fir
 void UserQueue::removeQI(QueueItemPtr& qi, const UserPtr& aUser, bool removeRunning /*true*/, bool addBad /*false*/, bool fireSources /*false*/) {
 
 	if(removeRunning) {
-		removeDownload(qi, aUser, Util::emptyString);
+		qi->removeDownloads(aUser);
 	}
 
 	dcassert(qi->isSource(aUser));

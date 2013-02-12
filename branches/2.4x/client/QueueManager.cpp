@@ -733,12 +733,9 @@ QueueItem::Priority QueueManager::hasDownload(const UserPtr& aUser, string& hubH
 	if (hubs.empty())
 		return QueueItem::PAUSED;
 
-	QueueItemPtr qi = nullptr;
-	{
-		RLock l(cs);
-		qi = userQueue.getNext(aUser, hubs, QueueItem::LOWEST, 0, 0, smallSlot);
-	}
 
+	RLock l(cs);
+	QueueItemPtr qi = userQueue.getNext(aUser, hubs, QueueItem::LOWEST, 0, 0, smallSlot);
 	if(qi) {
 		if (qi->getBundle()) {
 			bundleToken = qi->getBundle()->getToken();
@@ -1301,7 +1298,7 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool noAccess
 				q->getOnlineUsers(getConn);
 			}
 
-			userQueue.removeDownload(q, d->getUser(), d->getToken());
+			userQueue.removeDownload(q, d->getToken());
 			fire(QueueManagerListener::StatusUpdated(), q);
 		} else { // Finished
 			if(d->getType() == Transfer::TYPE_PARTIAL_LIST) {
@@ -1322,7 +1319,7 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool noAccess
 				fileQueue.remove(q);
 			} else if(d->getType() == Transfer::TYPE_TREE) {
 				//add it in hashmanager outside the lock
-				userQueue.removeDownload(q, d->getUser(), d->getToken());
+				userQueue.removeDownload(q, d->getToken());
 				fire(QueueManagerListener::StatusUpdated(), q);
 			} else if(d->getType() == Transfer::TYPE_FULL_LIST) {
 				d->close();
@@ -1373,7 +1370,7 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool noAccess
 							fileQueue.remove(q);
 					}
 				} else {
-					userQueue.removeDownload(q, d->getUser(), d->getToken());
+					userQueue.removeDownload(q, d->getToken());
 					fire(QueueManagerListener::StatusUpdated(), q);
 
 					//the segment finished, don't close the file in this point in case we continue with the same one
