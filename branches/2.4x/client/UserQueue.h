@@ -40,7 +40,7 @@ public:
 	void addDownload(QueueItemPtr& qi, Download* d);
 	void removeDownload(QueueItemPtr& qi, const string& token);
 
-	void removeQI(QueueItemPtr& qi, bool removeRunning = true, bool fireSources = false);
+	void removeQI(QueueItemPtr& qi, bool removeRunning = true, bool fireSources = true);
 	void removeQI(QueueItemPtr& qi, const UserPtr& aUser, bool removeRunning=true, bool addBad=false, bool fireSources=false);
 	void setQIPriority(QueueItemPtr& qi, QueueItem::Priority p);
 

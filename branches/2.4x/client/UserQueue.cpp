@@ -139,7 +139,7 @@ void UserQueue::setQIPriority(QueueItemPtr& qi, QueueItem::Priority p) {
 	addQI(qi);
 }
 
-void UserQueue::removeQI(QueueItemPtr& qi, bool removeRunning /*true*/, bool fireSources /*false*/) {
+void UserQueue::removeQI(QueueItemPtr& qi, bool removeRunning /*true*/, bool fireSources /*true*/) {
 	for(auto i: qi->getSources()) {
 		removeQI(qi, i.getUser(), removeRunning, false, fireSources);
 	}
@@ -160,7 +160,7 @@ void UserQueue::removeQI(QueueItemPtr& qi, const UserPtr& aUser, bool removeRunn
 		}
 		if (qi->getBundle()->removeUserQueue(qi, aUser, addBad)) {
 			removeBundle(bundle, aUser);
-			if (!fireSources) {
+			if (fireSources) {
 				QueueManager::getInstance()->fire(QueueManagerListener::BundleSources(), bundle);
 			}
 		} else {

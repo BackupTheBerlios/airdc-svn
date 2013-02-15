@@ -586,7 +586,7 @@ size_t Bundle::countOnlineUsers() const noexcept {
 }
 
 tstring Bundle::getBundleText() noexcept {
-	double percent = (currentDownloaded+finishedSegments) > size ? 100.00 : (double)((currentDownloaded+finishedSegments)*100.0)/(double)size;
+	double percent = size <= 0 ? 0.00 : (double)((currentDownloaded+finishedSegments)*100.0)/(double)size;
 	if (fileBundle) {
 		return Text::toT(getName());
 	} else {

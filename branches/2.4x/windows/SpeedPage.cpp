@@ -37,6 +37,7 @@ PropPage::TextItem SpeedPage::texts[] = {
 	{ IDC_SETTINGS_KBPS, ResourceManager::KBPS },
 	{ IDC_SETTINGS_AUTO_SLOTS, ResourceManager::SETTINGS_AUTO_SLOTS	},
 	{ IDC_SLOTS_GROUP2, ResourceManager::UPLOAD_LIMITS_ADD },
+	{ IDC_UL_AUTODETECT, ResourceManager::AUTODETECT },
 	{ IDC_DL_AUTODETECT, ResourceManager::AUTODETECT },
 	{ IDC_SETTINGS_DOWNLOAD_LIMITS, ResourceManager::DOWNLOAD_LIMITS },
 	{ IDC_SETTINGS_DOWNLOADS_MAX, ResourceManager::SETTINGS_DOWNLOADS_MAX },
