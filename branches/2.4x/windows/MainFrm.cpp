@@ -431,7 +431,7 @@ LRESULT MainFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		m_PictureWindow.Load(Text::toT(currentPic).c_str());
 	}
 	if(SETTING(TESTWRITE)) {
-		TestWrite(true, true, true);
+		TestWrite(true, true, Util::usingLocalMode());
 	}
 
 	WinUtil::splash.reset();

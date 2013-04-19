@@ -820,6 +820,10 @@ Fixed:
 
 2.44
 
+Changed:
+
+- Improve the error reporting for SSL errors (DC++)
+
 Fixed:
 
 - Fix possible problems causing downloads getting corrupted
@@ -836,3 +840,5 @@ Fixed:
 - Fix a crash when generating a crash report (32 bit version only)
 - Fix loading of certificates with wide character paths (צהו for example) (DC++)
 - Fix the check marks in the transfer view context menu
+- No test write in the application folder when not using a local setting directory
+- Fix the total user count for hubs

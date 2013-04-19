@@ -73,6 +73,17 @@ AdcHub::~AdcHub() {
 	clearUsers();
 }
 
+size_t AdcHub::getUserCount() const { 
+	RLock l(cs); 
+	size_t userCount = 0;
+	for(auto& i: users) {
+		if(!i.second->isHidden()) {
+			++userCount;
+		}
+	}
+	return userCount;
+}
+
 OnlineUser& AdcHub::getUser(const uint32_t aSID, const CID& aCID) {
 	OnlineUser* ou = findUser(aSID);
 	if(ou) {
