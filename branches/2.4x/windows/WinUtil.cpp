@@ -925,7 +925,7 @@ string WinUtil::makeMagnet(const TTHValue& aHash, const string& aFile, int64_t s
  void WinUtil::registerDchubHandler() {
 	HKEY hk;
 	TCHAR Buf[512];
-	tstring app = _T("\"") + Text::toT(Util::getAppName()) + _T("\" %1");
+	tstring app = _T("\"") + Text::toT(Util::getAppName()) + _T("\" \"%1\"");
 	Buf[0] = 0;
 
 	if(::RegOpenKeyEx(HKEY_CURRENT_USER, _T("SOFTWARE\\Classes\\dchub\\Shell\\Open\\Command"), 0, KEY_WRITE | KEY_READ, &hk) == ERROR_SUCCESS) {
