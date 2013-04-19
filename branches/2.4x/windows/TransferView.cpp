@@ -155,28 +155,6 @@ LRESULT TransferView::onContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam,
 		copyMenu.CreatePopupMenu();
 		priorityMenu.CreatePopupMenu();
 		//previewMenu.InsertSeparatorFirst(TSTRING(PREVIEW_MENU));
-
-		if(ii->download) {
-			if(!ii->target.empty()) {
-				if (selCount == 1) {
-					previewMenu = transferMenu.getMenu();
-					WinUtil::appendPreviewMenu(previewMenu, Text::fromT(ii->target));
-				}
-
-				if(!ii->bundle.empty() && QueueManager::getInstance()->getAutoDrop(ii->bundle)) {
-					transferMenu.CheckMenuItem(IDC_MENU_SLOWDISCONNECT, MF_BYCOMMAND | MF_CHECKED);
-				}
-			} 
-			if (parent) {
-				BundlePtr aBundle = QueueManager::getInstance()->getBundle(ii->bundle);
-				if (aBundle) {
-					Bundle::Priority p = aBundle->getPriority();
-					priorityMenu.CheckMenuItem(p + 1, MF_BYPOSITION | MF_CHECKED);
-					if(aBundle->getAutoPriority())
-						priorityMenu.CheckMenuItem(7, MF_BYPOSITION | MF_CHECKED);
-				}
-			}
-		}
 		
 		if(!parent) {
 			transferMenu.InsertSeparatorFirst(TSTRING(MENU_TRANSFERS));
@@ -229,6 +207,28 @@ LRESULT TransferView::onContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam,
 				transferMenu.AppendMenu(MF_POPUP, (UINT)(HMENU)priorityMenu, CTSTRING(SET_BUNDLE_PRIORITY));
 				transferMenu.AppendMenu(MF_STRING, IDC_MENU_SLOWDISCONNECT, CTSTRING(SETCZDC_DISCONNECTING_ENABLE));
 				transferMenu.AppendMenu(MF_STRING, IDC_REMOVE_BUNDLE, CTSTRING(REMOVE_BUNDLE));
+			}
+		}
+
+		if(ii->download) {
+			if(!ii->target.empty()) {
+				if (selCount == 1) {
+					previewMenu = transferMenu.getMenu();
+					WinUtil::appendPreviewMenu(previewMenu, Text::fromT(ii->target));
+				}
+
+				if(!ii->bundle.empty() && QueueManager::getInstance()->getAutoDrop(ii->bundle)) {
+					transferMenu.CheckMenuItem(IDC_MENU_SLOWDISCONNECT, MF_BYCOMMAND | MF_CHECKED);
+				}
+			} 
+			if (parent) {
+				BundlePtr aBundle = QueueManager::getInstance()->getBundle(ii->bundle);
+				if (aBundle) {
+					Bundle::Priority p = aBundle->getPriority();
+					priorityMenu.CheckMenuItem(p + 1, MF_BYPOSITION | MF_CHECKED);
+					if(aBundle->getAutoPriority())
+						priorityMenu.CheckMenuItem(7, MF_BYPOSITION | MF_CHECKED);
+				}
 			}
 		}
 			

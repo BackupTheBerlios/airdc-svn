@@ -19,6 +19,7 @@
 #include "stdinc.h"
 #include "SettingsManager.h"
 
+#include "CID.h"
 #include "ConnectivityManager.h"
 #include "ResourceManager.h"
 #include "SimpleXML.h"
@@ -924,7 +925,13 @@ You can customize those settings for each favorite hub if needed")
 
 		xml.stepOut();
 
-	} catch(const Exception&) { }
+	} catch(const Exception&) { 
+		//...
+	}
+
+	if(SETTING(PRIVATE_ID).length() != 39 || CID(SETTING(PRIVATE_ID)).isZero()) {
+		set(SettingsManager::PRIVATE_ID, CID::generate().toBase32());
+	}
 
 	//lanMode = SETTING(SETTINGS_PROFILE) == PROFILE_LAN;
 	lanMode = false;

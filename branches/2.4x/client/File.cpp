@@ -150,10 +150,8 @@ size_t File::flush() {
 }
 
 void File::renameFile(const string& source, const string& target) {
-	if(!::MoveFile(Text::toT(Util::FormatPath(source)).c_str(), Text::toT(Util::FormatPath(target)).c_str())) {
-		// Can't move, try copy/delete...
-		copyFile(source, target);
-		deleteFile(source);
+	if(!::MoveFileEx(Text::toT(Util::FormatPath(source)).c_str(), Text::toT(Util::FormatPath(target)).c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH)) {
+		throw FileException(Util::translateError(GetLastError()));
 	}
 }
 
@@ -163,9 +161,18 @@ void File::copyFile(const string& src, const string& target) {
 	}
 }
 
-void File::deleteFile(const string& aFileName) noexcept
+bool File::deleteFile(const string& aFileName) noexcept
 {
-	::DeleteFile(Text::toT(Util::FormatPath(aFileName)).c_str());
+	return ::DeleteFile(Text::toT(Util::FormatPath(aFileName)).c_str()) > 0 ? true : false;
+}
+
+bool File::delayedDeleteFile(const string& aFileName, int maxAttempts) noexcept {
+	bool success = false;
+
+	for(int i = 0; i < maxAttempts && (success = deleteFile(aFileName)) == false; ++i)
+		Thread::sleep(1000);
+
+	return success;
 }
 
 void File::removeDirectory(const string& aPath) noexcept
@@ -619,5 +626,11 @@ uint32_t FileFindIter::DirData::getLastWriteTime() {
 }
 
 #endif // _WIN32
+
+#ifdef _WIN32
+FILE* dcpp_fopen(const char* filename, const char* mode) {
+	return _wfopen(Text::toT(filename).c_str(), Text::toT(mode).c_str());
+}
+#endif
 
 } // namespace dcpp

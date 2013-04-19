@@ -816,3 +816,23 @@ Fixed:
 - Avoid problems on update check when using Avast antivirus
 - Fix per-hub passive mode
 - Fix empty hub names in finished transfers, fix the shell menu actions
+
+
+2.44
+
+Fixed:
+
+- Fix possible problems causing downloads getting corrupted
+- Fix generating a random CID if the settings directory isn't accessible
+- Avoid hashers getting freezed
+- Fix a problem with merging file list directories that both contain files
+- Fix max total hashers when multiple per volume hashers are used
+- Fix reading of SFV files that have multiple whitespaces between the CRC value and the file name
+- Improve the reliability of removing temp updater files
+- Fix downloading magnet links from chatrooms
+- Correct the loaded page when editing profiles from favorite hubs
+- Restore "View as text" in the search tab
+- Fix a crash when dragging folders in the chat window
+- Fix a crash when generating a crash report (32 bit version only)
+- Fix loading of certificates with wide character paths (צהו for example) (DC++)
+- Fix the check marks in the transfer view context menu

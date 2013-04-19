@@ -576,11 +576,6 @@ void FavoriteManager::loadCID() {
 	} catch(const Exception& e) {
 		LogManager::getInstance()->message("Error Loading CID : " + e.getError(), LogManager::LOG_ERROR);
 	}
-
-	if(SETTING(PRIVATE_ID).length() != 39 || CID(SETTING(PRIVATE_ID)).isZero()) {
-		SettingsManager::getInstance()->set(SettingsManager::PRIVATE_ID, CID::generate().toBase32());
-		ClientManager::getInstance()->getMe(); // create the user
-	}
 }
 
 void FavoriteManager::load() {

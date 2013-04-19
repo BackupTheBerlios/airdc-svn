@@ -180,11 +180,14 @@ public:
 	/** When socks settings are updated, this has to be called... */
 	static void socksUpdated();
 
+	static int getLastError();
+
 	GETSET(string, ip, Ip);
 	GETSET(string, localIp4, LocalIp4);
 	GETSET(string, localIp6, LocalIp6);
 	GETSET(bool, v4only, V4only);
 
+	bool isV6Valid() const noexcept;
 protected:
 	typedef union {
 		sockaddr sa;

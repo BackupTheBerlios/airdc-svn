@@ -104,7 +104,7 @@ public:
 	/// @return whether hashing was already paused
 	bool pauseHashing();
 	void resumeHashing(bool forced = false);	
-	bool isHashingPaused() const;
+	bool isHashingPaused(bool lock = true) const;
 private:
 	int pausers;
 	class Hasher : public Thread {
@@ -132,7 +132,7 @@ private:
 		int64_t getTimeLeft() const;
 
 		int64_t getBytesLeft() const { return totalBytesLeft; }
-		static CriticalSection hcs;
+		static SharedMutex hcs;
 
 		int hasherID;
 	private:
@@ -182,7 +182,7 @@ private:
 
 	friend class Hasher;
 	void removeHasher(Hasher* aHasher);
-	void log(const string& aMessage, int hasherID, bool isError);
+	void log(const string& aMessage, int hasherID, bool isError, bool lock);
 
 	class HashStore {
 	public:
@@ -218,7 +218,7 @@ private:
 			FileInfo(const string& aFileName, const TTHValue& aRoot, uint64_t aTimeStamp, bool aUsed) :
 			  fileName(aFileName), root(aRoot), timeStamp(aTimeStamp), used(aUsed) { }
 
-			bool operator==(const string& name) { return name == fileName; }
+			bool operator==(const string& name) { return fileName.compare(name) == 0; }
 
 			GETSET(string, fileName, FileName);
 			GETSET(TTHValue, root, Root);

@@ -210,7 +210,7 @@ void FavHubProperties::appendProfiles() {
 }
 
 LRESULT FavHubProperties::OnEditProfiles(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	MainFrame::getMainFrame()->openSettings(9);
+	MainFrame::getMainFrame()->openSettings(10);
 	while(ctrlProfile.GetCount()) {
 		ctrlProfile.DeleteString(0);
 	}

@@ -40,6 +40,7 @@
 #include "SearchResult.h"
 #include "Wildcards.h"
 #include "AirUtil.h"
+#include "version.h"
 
 #include <boost/range/algorithm/remove_if.hpp>
 #include <boost/algorithm/cxx11/copy_if.hpp>
@@ -1930,15 +1931,15 @@ void ShareManager::FileListDir::filesToXml(OutputStream& xmlFile, string& indent
 	bool filesAdded = false;
 	for(auto di = shareDirs.begin(); di != shareDirs.end(); ++di) {
 		if (filesAdded) {
-			for(auto& fi: (*di)->files) {
+			for(const auto& fi: (*di)->files) {
 				//go through the dirs that we have added already
-				if (find_if(shareDirs.begin(), di-1, [fi](Directory::Ptr d) { return d->files.find(fi) != d->files.end(); }) == shareDirs.end()) {
+				if (none_of(shareDirs.begin(), di, [&fi](const Directory::Ptr& d) { return d->files.find(fi) != d->files.end(); })) {
 					fi.toXml(xmlFile, indent, tmp2);
 				}
 			}
 		} else if (!(*di)->files.empty()) {
 			filesAdded = true;
-			for(auto& f: (*di)->files)
+			for(const auto& f: (*di)->files)
 				f.toXml(xmlFile, indent, tmp2);
 		}
 	}

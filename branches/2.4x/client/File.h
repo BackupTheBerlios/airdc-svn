@@ -88,7 +88,8 @@ public:
 
 	static void copyFile(const string& src, const string& target);
 	static void renameFile(const string& source, const string& target);
-	static void deleteFile(const string& aFileName) noexcept;
+	static bool deleteFile(const string& aFileName) noexcept;
+	static bool delayedDeleteFile(const string& aFileName, int maxAttempts) noexcept;
 
 	static int64_t getSize(const string& aFileName) noexcept;
 
@@ -102,6 +103,7 @@ public:
 
 	string read(size_t len);
 	string read();
+	void write(string&& aString) { write((void*)aString.data(), aString.size()); }
 	void write(const string& aString) { write((void*)aString.data(), aString.size()); }
 	static StringList findFiles(const string& path, const string& pattern);
 
@@ -156,6 +158,13 @@ private:
 
 	DirData data;
 };
+
+#ifdef _WIN32
+	// on Windows, prefer _wfopen over fopen.
+	FILE* dcpp_fopen(const char* filename, const char* mode);
+#else
+#define dcpp_fopen fopen
+#endif
 
 } // namespace dcpp
 

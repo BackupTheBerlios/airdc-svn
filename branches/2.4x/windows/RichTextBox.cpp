@@ -1164,25 +1164,29 @@ LRESULT RichTextBox::onOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/
 
 HintedUser RichTextBox::getMagnetSource() {
 	UserPtr u = nullptr;
-	if (user) {
+	if (user && !user->isSet(User::BOT)) {
 		u = user;
 	} else if (client && !author.empty()) {
 		OnlineUserPtr ou = client->findUser(Text::fromT(author));
-		if (ou) {
+		if (ou && !ou->getUser()->isSet(User::BOT)) {
 			u = ou->getUser();
 		}
 	}
 
-	if (u && !u->isSet(User::BOT))
+	if (u)
 		return HintedUser(u, client->getHubUrl());
 
 	return HintedUser(nullptr, Util::emptyString);
 }
 
+string RichTextBox::getTempShareKey() const {
+	return (user && !user->isSet(User::BOT) && !user->isSet(User::NMDC)) ? user->getCID().toBase32() : Util::emptyString;
+}
+
 LRESULT RichTextBox::onRemoveTemp(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
 	string link = Text::fromT(selectedWord);
 	Magnet m = Magnet(link);
-	ShareManager::getInstance()->removeTempShare(user ? user->getCID().toBase32() : Util::emptyString, m.getTTH());
+	ShareManager::getInstance()->removeTempShare(getTempShareKey(), m.getTTH());
 	for (auto cl: links | map_values) {
 		if (cl->getType() == ChatLink::TYPE_MAGNET && cl->url == link) {
 			updateDupeType(cl);
