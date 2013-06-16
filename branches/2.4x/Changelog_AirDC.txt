@@ -828,7 +828,6 @@ Fixed:
 
 - Fix possible problems causing downloads getting corrupted
 - Fix generating a random CID if the settings directory isn't accessible
-- Avoid hashers getting freezed
 - Fix a problem with merging file list directories that both contain files
 - Fix max total hashers when multiple per volume hashers are used
 - Fix reading of SFV files that have multiple whitespaces between the CRC value and the file name
