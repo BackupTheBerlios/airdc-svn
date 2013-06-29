@@ -2586,7 +2586,9 @@ end:
 }*/
 
 void ShareManager::on(TimerManagerListener::Second, uint64_t /*tick*/) noexcept {
-	monitor->dispatch();
+	while (monitor->dispatch()) {
+		//...
+	}
 }
 
 void ShareManager::on(TimerManagerListener::Minute, uint64_t tick) noexcept {
