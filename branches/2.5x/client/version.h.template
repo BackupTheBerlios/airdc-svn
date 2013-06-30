@@ -21,7 +21,7 @@
 #define DCVERSIONSTRING "0.825"
 #define SVNVERSION "$WCREV$"
 
-#define BETAVER
+//#define BETAVER
 
 
 #ifdef _WIN64
