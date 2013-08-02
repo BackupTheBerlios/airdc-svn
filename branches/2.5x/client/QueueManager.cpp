@@ -1666,7 +1666,7 @@ void QueueManager::putDownload(Download* aDownload, bool finished, bool noAccess
 		HashManager::getInstance()->addTree(d->getTigerTree());
 	}
 
-	if (finished && q->isSet(QueueItem::FLAG_OPEN)) {
+	if (removeFinished && q->isSet(QueueItem::FLAG_OPEN)) {
 		Util::openFile(q->getTarget());
 	}
 
@@ -3780,17 +3780,11 @@ void QueueManager::searchBundle(BundlePtr& aBundle, bool manual) {
 	} else if(SETTING(REPORT_ALTERNATES)) {
 		//if (aBundle->getSimpleMatching()) {
 			if (aBundle->isRecent()) {
-				LogManager::getInstance()->message(str(boost::format(STRING(BUNDLE_ALT_SEARCH_RECENT) + 
-				" " + (STRING(NEXT_RECENT_SEARCH_IN))) % 
-					aBundle->getName().c_str() % 
-					searchCount % 
-					nextSearch), LogManager::LOG_INFO);
+				LogManager::getInstance()->message(STRING_F(BUNDLE_ALT_SEARCH_RECENT, aBundle->getName() % searchCount) + 
+					" " + STRING_F(NEXT_RECENT_SEARCH_IN, nextSearch), LogManager::LOG_INFO);
 			} else {
-				LogManager::getInstance()->message(str(boost::format(STRING(BUNDLE_ALT_SEARCH) + 
-					" " + (STRING(NEXT_SEARCH_IN))) % 
-					aBundle->getName().c_str() % 
-					searchCount % 
-					nextSearch), LogManager::LOG_INFO);
+				LogManager::getInstance()->message(STRING_F(BUNDLE_ALT_SEARCH, aBundle->getName() % searchCount) +
+					" " + STRING_F(NEXT_SEARCH_IN, nextSearch), LogManager::LOG_INFO);
 			}
 		/*} else {
 			if (!aBundle->isRecent()) {

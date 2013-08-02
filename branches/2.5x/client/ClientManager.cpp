@@ -177,7 +177,7 @@ map<string, Identity> ClientManager::getIdentities(const UserPtr &u) const {
 	auto op = onlineUsers.equal_range(const_cast<CID*>(&u->getCID()));
 	auto ret = map<string, Identity>();
 	for(auto i = op.first; i != op.second; ++i) {
-		ret.insert(make_pair(i->second->getHubUrl(), i->second->getIdentity()));
+		ret.emplace(i->second->getHubUrl(), i->second->getIdentity());
 	}
 
 	return ret;
@@ -530,21 +530,18 @@ void ClientManager::listProfiles(const UserPtr& aUser, ProfileTokenSet& profiles
 }
 
 optional<ProfileToken> ClientManager::findProfile(UserConnection& p, const string& userSID) {
-	optional<ProfileToken> ret;
-
 	if(!userSID.empty()) {
 		RLock l(cs);
 		auto op = onlineUsers.equal_range(const_cast<CID*>(&p.getUser()->getCID())) | map_values;
 		for(const auto& ou: op) {
 			if(compare(ou->getIdentity().getSIDString(), userSID) == 0) {
-				p.setHubUrl(ou->getClient().getAddress());
-				ret = ou->getClient().getShareProfile();
-				break;
+				p.setHubUrl(ou->getClient().getHubUrl());
+				return ou->getClient().getShareProfile();
 			}
 		}
 
 		//don't accept invalid SIDs
-		return ret;
+		return nullptr;
 	}
 
 	//no SID specified, find with hint.
@@ -553,13 +550,13 @@ optional<ProfileToken> ClientManager::findProfile(UserConnection& p, const strin
 	RLock l(cs);
 	auto ou = findOnlineUserHint(p.getUser()->getCID(), p.getHubUrl(), op);
 	if(ou) {
-		ret = ou->getClient().getShareProfile();
+		return ou->getClient().getShareProfile();
 	} else if(op.first != op.second) {
 		//pick a random profile
-		ret = op.first->second->getClient().getShareProfile();
+		return op.first->second->getClient().getShareProfile();
 	}
 
-	return ret;
+	return nullptr;
 }
 
 bool ClientManager::isActive() const {

@@ -2464,6 +2464,7 @@ void ShareManager::runTasks(function<void (float)> progressF /*nullptr*/) {
 			if (checkHidden(ri.path)) {
 				auto pathLower = Text::toLower(ri.path);
 				auto path = ri.path;
+				ri.root->addBloom(*refreshBloom);
 				buildTree(path, pathLower, ri.root, ri.subProfiles, ri.dirNameMapNew, ri.rootPathsNew, ri.hashSize, ri.addedSize, ri.tthIndexNew, *refreshBloom);
 				dcassert(ri.path == path);
 			}
@@ -2555,7 +2556,8 @@ void ShareManager::runTasks(function<void (float)> progressF /*nullptr*/) {
 
 		setProfilesDirty(dirtyProfiles);
 			
-		ClientManager::getInstance()->infoUpdated();
+		if (task->type == TYPE_MANUAL)
+			ClientManager::getInstance()->infoUpdated();
 
 		reportTaskStatus(t.first, task->dirs, true, totalHash, task->displayName, task->type);
 

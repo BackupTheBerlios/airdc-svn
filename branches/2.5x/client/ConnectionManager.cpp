@@ -144,7 +144,7 @@ void ConnectionManager::getDownloadConnection(const HintedUser& aUser, bool smal
 			dcdebug("Get cqi");
 			cqi = getCQI(aUser, true);
 			if (smallSlot)
-				cqi->setType(ConnectionQueueItem::TYPE_SMALL);
+				cqi->setType(supportMcn ? ConnectionQueueItem::TYPE_SMALL_CONF : ConnectionQueueItem::TYPE_SMALL);
 		}
 	}
 }
@@ -757,7 +757,7 @@ void ConnectionManager::addDownloadConnection(UserConnection* uc) {
 			if(cqi->getState() == ConnectionQueueItem::WAITING || cqi->getState() == ConnectionQueueItem::CONNECTING) {
 				cqi->setState(ConnectionQueueItem::ACTIVE);
 				if (uc->isSet(UserConnection::FLAG_MCN1)) {
-					if (cqi->getType() == ConnectionQueueItem::TYPE_SMALL) {
+					if (cqi->getType() == ConnectionQueueItem::TYPE_SMALL || cqi->getType() == ConnectionQueueItem::TYPE_SMALL_CONF) {
 						uc->setFlag(UserConnection::FLAG_SMALL_SLOT);
 						cqi->setType(ConnectionQueueItem::TYPE_SMALL_CONF);
 					} else {
@@ -970,7 +970,7 @@ void ConnectionManager::failDownload(const string& aToken, const string& aError,
 			if (cqi->isSet(ConnectionQueueItem::FLAG_MCN1) && !cqi->isSet(ConnectionQueueItem::FLAG_REMOVE)) {
 				//remove an existing waiting item, if exists
 				auto s = find_if(downloads.begin(), downloads.end(), [&](const ConnectionQueueItem* c) { 
-					return c->getUser() == cqi->getUser() && c->getType() != ConnectionQueueItem::TYPE_SMALL_CONF && 
+					return c->getUser() == cqi->getUser() && c->getType() != ConnectionQueueItem::TYPE_SMALL_CONF && c->getType() != ConnectionQueueItem::TYPE_SMALL &&
 						c->getState() != ConnectionQueueItem::RUNNING && c->getState() != ConnectionQueueItem::ACTIVE && c != cqi && !c->isSet(ConnectionQueueItem::FLAG_REMOVE);
 				});
 
@@ -1000,11 +1000,20 @@ void ConnectionManager::failed(UserConnection* aSource, const string& aError, bo
 	if(aSource->isSet(UserConnection::FLAG_ASSOCIATED)) {
 		if(aSource->isSet(UserConnection::FLAG_DOWNLOAD)) {
 			if (aSource->getState() == UserConnection::STATE_IDLE) {
-				WLock l (cs);
-				auto i = find(downloads.begin(), downloads.end(), aSource->getToken());
-				dcassert(i != downloads.end());
-				if (i != downloads.end()) {
-					putCQI(*i);
+				// don't remove the CQI if we are only out of downloading slots
+
+				bool allowChange = false;
+				string tmp;
+				auto p = QueueManager::getInstance()->hasDownload(aSource->getUser(), tmp, aSource->isSet(UserConnection::FLAG_SMALL_SLOT) ? QueueItem::TYPE_SMALL : QueueItem::TYPE_ANY, tmp, allowChange);
+				if (p > QueueItemBase::PAUSED) {
+					failDownload(aSource->getToken(), STRING(ALL_DOWNLOAD_SLOTS_TAKEN), protocolError);
+				} else {
+					WLock l(cs);
+					auto i = find(downloads.begin(), downloads.end(), aSource->getToken());
+					dcassert(i != downloads.end());
+					if (i != downloads.end()) {
+						putCQI(*i);
+					}
 				}
 			} else {
 				failDownload(aSource->getToken(), aError, protocolError);
@@ -1087,7 +1096,9 @@ void ConnectionManager::shutdown(function<void (float)> progressF) {
 			if(userConnections.empty()) {
 				break;
 			}
-			progressF(static_cast<float>(userConnections.size()) / static_cast<float>(connections));
+
+			if (progressF)
+				progressF(static_cast<float>(userConnections.size()) / static_cast<float>(connections));
 		}
 		Thread::sleep(50);
 	}

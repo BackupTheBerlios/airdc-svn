@@ -433,6 +433,7 @@ static int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 	nRet = theLoop.Run();
 	_Module.RemoveMessageLoop();
 
+	wndMain.reset(nullptr);
 	WinUtil::splash.reset(nullptr);
 	WinUtil::runPendingUpdate();
 	return nRet;
