@@ -21,7 +21,7 @@
 #define DCVERSIONSTRING "0.825"
 #define SVNVERSION "$WCREV$"
 
-#define BETAVER
+//#define BETAVER
 
 
 #ifdef _WIN64
@@ -30,11 +30,11 @@
 # define CONFIGURATION_TYPE "x86-32"
 #endif
 
-#ifdef BETAVER
-#define VERSION_URL "http://builds.airdcpp.net/version/version.xml"
-#else
+//#ifdef BETAVER
+//#define VERSION_URL "http://builds.airdcpp.net/version/version.xml"
+//#else
 #define VERSION_URL "http://version.airdcpp.net/version.xml"
-#endif
+//#endif
 
 # define REVSEPARATOR "r"
 
