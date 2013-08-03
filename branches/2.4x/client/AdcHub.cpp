@@ -318,7 +318,7 @@ void AdcHub::handle(AdcCommand::MSG, AdcCommand& c) noexcept {
 }
 
 void AdcHub::handle(AdcCommand::GPA, AdcCommand& c) noexcept {
-	if(c.getParameters().empty())
+	if(c.getParameters().empty() || c.getFrom() != AdcCommand::HUB_SID)
 		return;
 	salt = c.getParam(0);
 	state = STATE_VERIFY;
@@ -406,7 +406,10 @@ void AdcHub::handle(AdcCommand::CTM, AdcCommand& c) noexcept {
 	ConnectionManager::getInstance()->adcConnect(*u, port, token, secure);
 }
 
-void AdcHub::handle(AdcCommand::ZON, AdcCommand& /*c */) noexcept {
+void AdcHub::handle(AdcCommand::ZON, AdcCommand& c) noexcept {
+	if (c.getFrom() != AdcCommand::HUB_SID)
+		return;
+
 	try {
 		sock->setMode(BufferedSocket::MODE_ZPIPE);
 	} catch (const Exception& e) {
@@ -414,7 +417,10 @@ void AdcHub::handle(AdcCommand::ZON, AdcCommand& /*c */) noexcept {
 	}
 }
 
-void AdcHub::handle(AdcCommand::ZOF, AdcCommand& /*c */) noexcept {
+void AdcHub::handle(AdcCommand::ZOF, AdcCommand& c) noexcept {
+	if (c.getFrom() != AdcCommand::HUB_SID)
+		return;
+
 	try {
 		sock->setMode(BufferedSocket::MODE_LINE);
 	} catch (const Exception& e) {
@@ -530,19 +536,22 @@ void AdcHub::handle(AdcCommand::STA, AdcCommand& c) noexcept {
 
 	switch(Util::toInt(c.getParam(0).substr(1))) {
 
-	case AdcCommand::ERROR_BAD_PASSWORD:
-		{
-		setPassword(Util::emptyString);
-			break;
-		}
+		case AdcCommand::ERROR_BAD_PASSWORD:
+			{
+				if (c.getFrom() == AdcCommand::HUB_SID)
+					setPassword(Util::emptyString);
+				break;
+			}
 
-	case AdcCommand::ERROR_COMMAND_ACCESS:
-		{
-			string tmp;
-			if(c.getParam("FC", 1, tmp) && tmp.size() == 4)
-				forbiddenCommands.insert(AdcCommand::toFourCC(tmp.c_str()));
-			break;
-		}
+		case AdcCommand::ERROR_COMMAND_ACCESS:
+			{
+				if (c.getFrom() == AdcCommand::HUB_SID) {
+					string tmp;
+					if(c.getParam("FC", 1, tmp) && tmp.size() == 4)
+						forbiddenCommands.insert(AdcCommand::toFourCC(tmp.c_str()));
+				}
+				break;
+			}
 
 	case AdcCommand::ERROR_PROTOCOL_UNSUPPORTED:
 		{
