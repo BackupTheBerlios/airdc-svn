@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by C:\Projects\airsvn\trunk\AirDC.rc
+// Used by N:\projects\airsvn\trunk\AirDC.rc
 //
 #define IDOK2                           3
 #define IDCANCEL2                       3
@@ -95,7 +95,6 @@
 #define IDR_ADLSEARCH                   233
 #define IDD_ADLS_PROPERTIES             234
 #define IDD_UCPAGE                      236
-#define IDR_NET_STATS                   237
 #define IDR_RECENTS                     238
 #define IDR_AUTOSEARCH                  239
 #define IDB_SPLASH                      240
@@ -191,7 +190,6 @@
 #define IDD_PASS                        359
 #define IDD_CHANGE_PASS                 360
 #define IDI_SHUTDOWN                    361
-#define IDI_NETSTATS                    362
 #define IDI_FOLLOW                      363
 #define IDI_USERS                       364
 #define IDI_OPEN_LIST                   365
@@ -503,7 +501,6 @@
 #define IDC_MATCH_QUEUE                 1125
 #define IDC_IS_FORBIDDEN2               1125
 #define IDC_PAGE                        1130
-#define IDC_NET_STATS                   1131
 #define IDC_SETTINGS_PERSONAL_INFORMATION 1132
 #define IDC_SETTINGS_NICK               1133
 #define IDC_SETTINGS_EMAIL              1134
@@ -1375,6 +1372,7 @@
 #define IDC_OWN_CERT                    1732
 #define IDC_CERT_USE_DEFAULT_PATHS      1733
 #define IDC_UPDATE_ICON                 1734
+#define IDC_MFCVSLISTBOX1               1735
 #define IDC_TOOLBAR_ADD                 2200
 #define IDC_HOTBROWSE                   2201
 #define IDC_TOOLBAR_REMOVE              2202
@@ -1571,7 +1569,7 @@
 #define IDC_REFRESH_WINAMP              11011
 #define IDC_WINAMP_LIST                 11012
 #define IDC_POSITION                    11013
-#define IDC_ASCH_ONLY					11014
+#define IDC_ASCH_ONLY                   11014
 #define ID_SHELLCONTEXTMENU_MIN         12000
 #define ID_SHELLCONTEXTMENU_MAX         14000
 #define IDC_REGEXP                      15000
@@ -1782,7 +1780,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        359
 #define _APS_NEXT_COMMAND_VALUE         32795
-#define _APS_NEXT_CONTROL_VALUE         1735
+#define _APS_NEXT_CONTROL_VALUE         1736
 #define _APS_NEXT_SYMED_VALUE           136
 #endif
 #endif
