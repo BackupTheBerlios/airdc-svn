@@ -787,6 +787,14 @@ void WinUtil::ShowMessageBox(SettingsManager::BoolSetting i, const tstring& txt)
 	}
 }
 
+void WinUtil::showMessageBox(const tstring& aText, int icon) {
+	::MessageBox(WinUtil::splash ? WinUtil::splash->m_hWnd : WinUtil::mainWnd, aText.c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), icon | MB_OK);
+}
+
+bool WinUtil::showQuestionBox(const tstring& aText, int icon, int defaultButton /*= MB_DEFBUTTON2*/) {
+	return ::MessageBox(WinUtil::splash ? WinUtil::splash->m_hWnd : WinUtil::mainWnd, aText.c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | icon | defaultButton) == IDYES;
+}
+
 bool WinUtil::browseFile(tstring& target, HWND owner /* = NULL */, bool save /* = true */, const tstring& initialDir /* = Util::emptyString */, const tstring& aTitle /*= Util::emptyStringW*/, const TCHAR* types /* = NULL */, const TCHAR* defExt /* = NULL */) {
 	TCHAR buf[UNC_MAX_PATH];
 	OPENFILENAME ofn = { 0 };       // common dialog box structure
@@ -1445,6 +1453,13 @@ bool WinUtil::isOnScrollbar(HWND m_hWnd, POINT& pt) {
 	return false;
 }
 
+void WinUtil::openFile(const tstring& file) {
+	MainFrame::getMainFrame()->addThreadedTask([=] {
+		if (Util::fileExists(Text::fromT(file)))
+			::ShellExecute(NULL, NULL, file.c_str(), NULL, NULL, SW_SHOWNORMAL);
+	});
+}
+
 void WinUtil::openFolder(const tstring& file) {
 	if(file.empty() )
 		return;
@@ -1916,7 +1931,7 @@ void WinUtil::addUpdate(const string& aUpdater) {
 
 void WinUtil::runPendingUpdate() {
 	if(updated && !updateCommand.first.empty()) {
-		auto cmd = updateCommand.second + Util::getParams(false);
+		auto cmd = updateCommand.second + Text::toT(Util::getParams(false));
 		ShellExecute(NULL, Util::getOsMajor() >= 6 ? _T("runas") : NULL, updateCommand.first.c_str(), cmd.c_str(), NULL, SW_SHOWNORMAL);
 	}
 }

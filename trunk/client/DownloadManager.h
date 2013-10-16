@@ -28,6 +28,7 @@
 #include "Speaker.h"
 
 #include "Bundle.h"
+#include "CriticalSection.h"
 #include "MerkleTree.h"
 
 namespace dcpp {
@@ -68,6 +69,11 @@ public:
 	}
 
 	void getRunningBundles(StringSet& bundles_) const;
+
+	SharedMutex& getCS() { return cs; }
+	const DownloadList& getDownloads() const {
+		return downloads;
+	}
 private:
 	
 	mutable SharedMutex cs;

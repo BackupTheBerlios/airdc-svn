@@ -161,7 +161,6 @@ private:
 	void showHubSelection(bool show);
 
 	HICON userOffline;
-	HICON userOnline;
 
 	HintedUser replyTo;
 	const UserPtr& getUser() const { return replyTo.user; }	

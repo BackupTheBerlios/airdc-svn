@@ -355,8 +355,9 @@ enum Strings { // @DontAdd
 	NO_ERRORS, // "No errors"
 	NO_FREE_BLOCK, // "No free block"
 	NO_FULL_TREE, // "No full tree available"
-	NO_LOG_FOR_HUB, // "Hub log not exist"
-	NO_LOG_FOR_USER, // "User log not exist"
+	NO_LOG_FOR_HUB, // "Hub log does not exist"
+	NO_LOG_FOR_USER, // "User log does not exist"
+	NO_LOG_EXISTS, // "No log file exist"
 	NO_NEEDED_PART, // "No needed part"
 	NO_SLOTS_AVAILABLE, // "No slots available"
 	NO_USERS, // "No users"
@@ -911,6 +912,7 @@ enum Strings { // @DontAdd
 	USE_REGEXP, // "Use regexp"
 	FAV_DL_SPEED, // "Add user to favorites if download speed is over"
 	CASE_SENSITIVE, // "Case sensitive"
+	INVALID_ENCODING, // "Invalid encoding"
 	INVALID_REGEXP, // "Invalid regexp!"
 	MATCH, // "Match"
 	RAW, // "Raw"
@@ -1814,6 +1816,7 @@ enum Strings { // @DontAdd
 	DONT_SHARE_APP_DIRECTORY, // "Application directories cannot be shared because they may contain passwords and other sensitive information"
 	COMPLETE_ITEM_X_REMOVED, // "A completed item %1% has been removed"
 	OVERRIDE_LIMITER, // "Override limiter"
+	CLEAR, // "Clear"
 	AS_END_GREATER, // "End time must be greater than the start time!"
 	LAST // @DontAdd
 };

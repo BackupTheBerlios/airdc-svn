@@ -18,6 +18,7 @@
 
 #include "stdinc.h"
 #include "File.h"
+#include "Thread.h"
 
 #ifdef _WIN32
 #include "w.h"
@@ -208,7 +209,7 @@ bool File::isHidden(const string& aPath) noexcept {
 		return ff->isHidden();
 	}
 
-	return true;
+	return false;
 }
 
 bool File::deleteFile(const string& aFileName) noexcept {

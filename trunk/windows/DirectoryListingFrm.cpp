@@ -39,7 +39,6 @@
 #include "../client/ShareScannerManager.h"
 #include "../client/Wildcards.h"
 #include "../client/DirectoryListingManager.h"
-#include "../client/version.h"
 #include "TextFrame.h"
 
 #include <boost/move/algorithm.hpp>
@@ -327,7 +326,11 @@ LRESULT DirectoryListingFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM
 	//ctrlStatus.SetFont(WinUtil::boldFont);
 	ctrlStatus.SetFont(WinUtil::systemFont);
 
-	ctrlTree.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP | TVS_TRACKSELECT, WS_EX_CLIENTEDGE, IDC_DIRECTORIES);
+	ctrlTree.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP | TVS_TRACKSELECT | TVS_NOHSCROLL,
+		TVS_EX_DOUBLEBUFFER | WS_EX_CLIENTEDGE, IDC_DIRECTORIES);
+	ctrlTree.SetIndent(10);
+	ctrlTree.SetScrollTime(10);
+
 	if(SETTING(USE_EXPLORER_THEME)) {
 		SetWindowTheme(ctrlTree.m_hWnd, L"explorer", NULL);
 	}
@@ -1027,8 +1030,9 @@ void DirectoryListingFrame::changeDir(const ItemInfo* ii, ReloadMode aReload /*R
 		updateItems(d);
 
 
-	if(!d->isComplete() || aReload != RELOAD_NONE) {
+	if((!d->isComplete() || aReload != RELOAD_NONE) && !d->getLoading()) {
 		if (dl->getIsOwnList()) {
+			d->setLoading(true);
 			dl->addPartialListTask(Util::emptyString, d->getPath(), aReload == RELOAD_ALL);
 		} else if(dl->getUser()->isOnline()) {
 			tasks.run([=] {
@@ -1208,7 +1212,7 @@ LRESULT DirectoryListingFrame::onExitMenuLoop(UINT /*uMsg*/, WPARAM /*wParam*/, 
 }
 
 LRESULT DirectoryListingFrame::onMatchADL(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/) {
-	if (dl->getPartialList() && (dl->getIsOwnList() || MessageBox(CTSTRING(ADL_DL_FULL_LIST), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES)) {
+	if (dl->getPartialList() && (dl->getIsOwnList() || WinUtil::showQuestionBox(TSTRING(ADL_DL_FULL_LIST), MB_ICONQUESTION))) {
 		if (!dl->getIsOwnList())
 			ctrlStatus.SetText(0, CTSTRING(DOWNLOADING_LIST));
 
@@ -1557,9 +1561,14 @@ void DirectoryListingFrame::handleOpenFile() {
 	handleItemAction(false, [this](const ItemInfo* ii) {
 		if (ii->type == ItemInfo::FILE) {
 			try {
-				dl->openFile(ii->file, false);
+				if (ii->file->getDupe() == FINISHED_DUPE || ii->file->getDupe() == SHARE_DUPE) {
+					openDupe(ii->file, false);
+				} else {
+					dl->openFile(ii->file, false);
+				}
+			} catch (const Exception& e) {
+				updateStatus(Text::toT(e.getError()));
 			}
-			catch (const Exception&) {}
 		}
 	});
 }
@@ -1615,6 +1624,8 @@ void DirectoryListingFrame::openDupe(const DirectoryListing::File* f, bool openD
 			else {
 				WinUtil::openFolder(path);
 			}
+		} else {
+			updateStatus(_T("File not found"));
 		}
 	} catch (const ShareException& e) {
 		updateStatus(Text::toT(e.getError()));
@@ -2185,13 +2196,15 @@ void DirectoryListingFrame::onComboSelChanged(bool manual) {
 			if (p != hubs.end()) {
 				auto& oldHub = *p;
 				auto diff = newHub.shared > 0 ? abs(static_cast<double>(oldHub.shared) / static_cast<double>(newHub.shared)) : oldHub.shared;
-				if ((diff < 0.95 || diff > 1.05) && MessageBox(CTSTRING_F(LIST_SIZE_DIFF_NOTE, Text::toT(newHub.hubName) % Util::formatBytesW(newHub.shared) % Text::toT(oldHub.hubName) % Util::formatBytesW(oldHub.shared)),
-					_T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES) {
+				if (diff < 0.95 || diff > 1.05) {
+					auto msg = TSTRING_F(LIST_SIZE_DIFF_NOTE, Text::toT(newHub.hubName) % Util::formatBytesW(newHub.shared) % Text::toT(oldHub.hubName) % Util::formatBytesW(oldHub.shared));
+					if (WinUtil::showQuestionBox(msg, MB_ICONQUESTION)) {
 						tasks.run([=] {
 							try {
 								QueueManager::getInstance()->addList(HintedUser(dl->getUser(), newHub.hubUrl), (dl->getPartialList() ? QueueItem::FLAG_PARTIAL_LIST : 0) | QueueItem::FLAG_CLIENT_VIEW, Util::emptyString);
 							} catch (...) {}
 						});
+					}
 				}
 			}
 		}

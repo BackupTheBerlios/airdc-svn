@@ -22,6 +22,7 @@
 #include "forward.h"
 
 #include "ClientManagerListener.h"
+#include "CriticalSection.h"
 #include "FastAlloc.h"
 #include "HintedUser.h"
 #include "MerkleTree.h"
@@ -139,6 +140,10 @@ public:
 	GETSET(uint8_t, extra, Extra);
 	GETSET(uint64_t, lastGrant, LastGrant);
 
+	SharedMutex& getCS() { return cs; }
+	const UploadList& getUploads() const {
+		return uploads;
+	}
 private:
 	StringMatch freeSlotMatcher;
 

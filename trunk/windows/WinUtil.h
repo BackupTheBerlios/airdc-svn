@@ -276,6 +276,9 @@ public:
 	static bool MessageBoxConfirm(SettingsManager::BoolSetting i, const tstring& txt);
 	static void ShowMessageBox(SettingsManager::BoolSetting i, const tstring& txt);
 
+	static void showMessageBox(const tstring& aText, int icon = MB_ICONINFORMATION);
+	static bool showQuestionBox(const tstring& aText, int icon = MB_ICONQUESTION, int defaultButton = MB_DEFBUTTON2);
+
 	struct ConnectFav {
 		void operator()(UserPtr aUser, const string& aUrl) const;
 	};
@@ -389,10 +392,7 @@ public:
 	static int textUnderCursor(POINT p, CEdit& ctrl, tstring& x);
 	static int textUnderCursor(POINT p, CRichEditCtrl& ctrl, tstring& x);
 	static void openLink(const tstring& url);
-	static void openFile(const tstring& file) {
-	if(Util::fileExists(Text::fromT(file)))
-		::ShellExecute(NULL, NULL, file.c_str(), NULL, NULL, SW_SHOWNORMAL);
-	}
+	static void openFile(const tstring& file);
 	static void openFolder(const tstring& file);
 	
 	static double toBytes(TCHAR* aSize);

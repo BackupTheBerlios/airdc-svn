@@ -174,22 +174,24 @@ void FavoriteManager::addFavoriteUser(const HintedUser& aUser) {
 			return;
 		}
 	}
-	string nick = Util::emptyString;
+
+	string nick;
 
 	//prefer to use the add nick
 	ClientManager* cm = ClientManager::getInstance();
-	cm->lockRead();
-	OnlineUser* ou = cm->findOnlineUser(aUser.user->getCID(), aUser.hint);
-	if(!ou) {
-		StringList nicks = move(ClientManager::getInstance()->getNicks(aUser.user->getCID(), false));  
-		if(!nicks.empty())
-			nick = nicks[0];
-	} else {
-		nick = ou->getIdentity().getNick();
+	{
+		RLock l(cm->getCS());
+		auto ou = cm->findOnlineUser(aUser.user->getCID(), aUser.hint);
+		if (!ou) {
+			auto nicks = move(ClientManager::getInstance()->getNicks(aUser.user->getCID(), false));
+			if (!nicks.empty())
+				nick = nicks[0];
+		} else {
+			nick = ou->getIdentity().getNick();
+		}
 	}
-	cm->unlockRead();
 
-	FavoriteUser fu = FavoriteUser(aUser, nick, aUser.hint, aUser.user->getCID().toBase32());
+	auto fu = FavoriteUser(aUser, nick, aUser.hint, aUser.user->getCID().toBase32());
 	{
 		WLock l (cs);
 		users.emplace(aUser.user->getCID(), fu);
@@ -1186,17 +1188,18 @@ void FavoriteManager::on(UserDisconnected, const UserPtr& user, bool wentOffline
 }
 
 void FavoriteManager::on(UserConnected, const OnlineUser& aUser, bool /*wasOffline*/) noexcept {
-	bool isFav = false;
+	//bool isFav = false;
 	UserPtr user = aUser.getUser();
+	/*
 	{
 		RLock l(cs);
 		auto i = users.find(user->getCID());
 		if(i != users.end()) {
 			isFav = true;
 		}
-	}
+	}*/
 
-	if(isFav)
+	if(user->isSet(User::FAVORITE))
 		fire(FavoriteManagerListener::StatusChanged(), user);
 }
 

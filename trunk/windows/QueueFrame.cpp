@@ -27,7 +27,6 @@
 #include "../client/AirUtil.h"
 #include "../client/ShareManager.h"
 #include "../client/ClientManager.h"
-#include "../client/version.h"
 #include "../client/DownloadManager.h"
 #include "../client/ScopedFunctor.h"
 #include "BarShader.h"
@@ -1000,7 +999,7 @@ void QueueFrame::removeSelectedDir() {
 			} else {
 				if (finishedFiles > 0) {
 					tmp = STRING_F(CONFIRM_REMOVE_DIR_FINISHED_BUNDLE_PART, finishedFiles);
-					if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES) {
+					if (WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 						moveFinished = true;
 					}
 				}
@@ -1012,7 +1011,7 @@ void QueueFrame::removeSelectedDir() {
 			} else {
 				if (finishedFiles > 0) {
 					tmp = STRING_F(CONFIRM_REMOVE_DIR_FINISHED_BUNDLE, finishedFiles);
-					if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES) {
+					if (WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 						moveFinished = true;
 					}
 				}
@@ -1025,7 +1024,7 @@ void QueueFrame::removeSelectedDir() {
 		} else {
 			if (finishedFiles > 0) {
 				tmp = STRING_F(CONFIRM_REMOVE_DIR_FINISHED_MULTIPLE, finishedFiles);
-				if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES) {
+				if (WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 					moveFinished = true;
 				}
 			}
@@ -1107,32 +1106,32 @@ void QueueFrame::moveSelectedDir() {
 			BundlePtr bundle = bundles.front();
 			if (stricmp(bundle->getTarget(), curDir) != 0) {
 				tmp = STRING_F(CONFIRM_MOVE_DIR_BUNDLE_PART, Util::getLastDir(curDir).c_str() % bundle->getName().c_str() % newDir.c_str());
-				if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES) {
+				if (!WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 					return;
 				} else if (finishedFiles > 0) {
 					tmp = STRING_F(CONFIRM_MOVE_DIR_FINISHED_BUNDLE_PART, finishedFiles);
-					if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES) {
+					if(WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 						moveFinished = true;
 					}
 				}
 			} else {
 				tmp = STRING_F(CONFIRM_MOVE_DIR_BUNDLE, bundle->getName().c_str() % newDir.c_str());
-				if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES) {
+				if (!WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 					return;
 				} else if (finishedFiles > 0) {
 					tmp = STRING_F(CONFIRM_MOVE_DIR_FINISHED_BUNDLE, finishedFiles);
-					if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES) {
+					if (WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 						moveFinished = true;
 					}
 				}
 			}
 		} else {
 			tmp = STRING_F(CONFIRM_MOVE_DIR_MULTIPLE, dirBundles % fileBundles % newDir.c_str());
-			if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES) {
+			if (!WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 				return;
 			} else if (finishedFiles > 0) {
 				tmp = STRING_F(CONFIRM_MOVE_DIR_FINISHED_MULTIPLE, finishedFiles);
-				if(MessageBox(Text::toT(tmp).c_str(), _T(APPNAME) _T(" ") _T(VERSIONSTRING), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES) {
+				if (WinUtil::showQuestionBox(Text::toT(tmp), MB_ICONQUESTION)) {
 					moveFinished = true;
 				}
 			}
@@ -1510,7 +1509,6 @@ LRESULT QueueFrame::onContextMenu(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, B
 			WinUtil::appendSearchMenu(dirMenu, curDir);
 			dirMenu.AppendMenu(MF_STRING, IDC_SEARCHDIR, CTSTRING(SEARCH_DIRECTORY));
 			dirMenu.appendItem(TSTRING(COPY_DIRECTORY), [this] { WinUtil::setClipboard(Text::toT(Util::getLastDir(curDir))); });
-			dirMenu.AppendMenu(MF_STRING, IDC_COPY, CTSTRING(COPY_DIRECTORY));
 			dirMenu.AppendMenu(MF_SEPARATOR);
 			dirMenu.AppendMenu(MF_STRING, IDC_OPEN_FOLDER, CTSTRING(OPEN_FOLDER));
 			dirMenu.AppendMenu(MF_STRING, IDC_MOVE, CTSTRING(MOVE_DIR));

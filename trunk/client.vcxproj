@@ -140,7 +140,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <PreBuildEvent>
       <Message>Generating revision number...</Message>
-      <Command>"SubWCRev.exe" "$(SolutionDir)." "$(SolutionDir)client\version.h.template" "$(SolutionDir)client\version.h"</Command>
+      <Command>"SubWCRev.exe" "$(SolutionDir)." "$(SolutionDir)client\version-revno.inc.template" "$(SolutionDir)client\version-revno.inc"</Command>
     </PreBuildEvent>
     <ClCompile>
       <Optimization>Full</Optimization>
@@ -184,7 +184,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <PreBuildEvent>
       <Message>Generating revision number...</Message>
-      <Command>"SubWCRev.exe" "$(SolutionDir)." "$(SolutionDir)client\version.h.template" "$(SolutionDir)client\version.h"</Command>
+      <Command>"SubWCRev.exe" "$(SolutionDir)." "$(SolutionDir)client\version-revno.inc.template" "$(SolutionDir)client\version-revno.inc"</Command>
     </PreBuildEvent>
     <Midl>
       <TargetEnvironment>X64</TargetEnvironment>
@@ -247,6 +247,7 @@
     <ClCompile Include="client\ColorSettings.cpp" />
     <ClCompile Include="client\ConnectionManager.cpp" />
     <ClCompile Include="client\ConnectivityManager.cpp" />
+    <ClCompile Include="client\CriticalSection.cpp" />
     <ClCompile Include="client\CryptoManager.cpp" />
     <ClCompile Include="client\DCPlusPlus.cpp" />
     <ClCompile Include="client\DirectoryListing.cpp" />
@@ -328,6 +329,7 @@
     <ClCompile Include="client\UserConnection.cpp" />
     <ClCompile Include="client\UserQueue.cpp" />
     <ClCompile Include="client\Util.cpp" />
+    <ClCompile Include="client\version.cpp" />
     <ClCompile Include="client\WebShortcuts.cpp" />
     <ClCompile Include="client\Wildcards.cpp" />
     <ClCompile Include="client\ZipFile.cpp" />
@@ -362,6 +364,7 @@
     <ClInclude Include="client\ConnectionManager.h" />
     <ClInclude Include="client\ConnectionManagerListener.h" />
     <ClInclude Include="client\ConnectivityManager.h" />
+    <ClInclude Include="client\CriticalSection.h" />
     <ClInclude Include="client\CryptoManager.h" />
     <ClInclude Include="client\DbHandler.h" />
     <ClInclude Include="client\DCPlusPlus.h" />
@@ -512,7 +515,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
-    <None Include="client\version.h.template" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="boost\boost.vcxproj">

@@ -64,7 +64,6 @@ LRESULT PrivateFrame::OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	
 	bool userBot = replyTo.user && replyTo.user->isSet(User::BOT);
 	userOffline = userBot ? ResourceLoader::loadIcon(IDI_BOT_OFF) : ResourceLoader::loadIcon(IDR_PRIVATE_OFF);
-	userOnline = userBot ? ResourceLoader::loadIcon(IDI_BOT) : ResourceLoader::loadIcon(IDR_PRIVATE);
 	created = true;
 
 	ClientManager::getInstance()->addListener(this);
@@ -407,7 +406,6 @@ LRESULT PrivateFrame::onClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*
 		ClientManager::getInstance()->removeListener(this);
 		SettingsManager::getInstance()->removeListener(this);
 		closed = true;
-		DestroyIcon(userOnline);
 		DestroyIcon(userOffline);
 		PostMessage(WM_CLOSE);
 		return 0;
